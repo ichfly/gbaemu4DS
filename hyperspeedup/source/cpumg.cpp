@@ -469,12 +469,13 @@ void gbaExceptionHdl()
 			else instr = *(u32*)(exRegs[15] - 4);*/
 			
 			
-			u16 tempforwtf = *(u16*)(exRegs[15] - 2);
 			
 			
 			
 			if(cpuMode)
 			{
+				u16 tempforwtf = *(u16*)(exRegs[15] - 2);
+
 				//Log("%08X\n", instr);
 				if(tempforwtf > 0xBE00 && tempforwtf < 0xBE2B)
 				{
@@ -496,7 +497,13 @@ void gbaExceptionHdl()
 			else
 			{
 			
-			
+				u32 tempforwtf = *(u32*)(exRegs[15] - 4);
+
+				//Log("%08X\n", instr);
+				if(tempforwtf &0xFFF000F0) == 0xE1200070)
+				{
+					BIOScall((tempforwtf & 0xFFF00)<<0x8,  exRegs);
+				}
 	// 			Log("ARM: %08X\n", instr);
 				emuInstrARM(instr, exRegs);
 	// 			Log("NDS TRACE\n")
