@@ -100,7 +100,7 @@ exMain:
 	@enable irq
 	 ldr	r12, =REG_IME
 	 ldr	lr, =0x1
-	 str	lr, [r0]
+	 str	lr, [r12]
 	
 	ldr	r12, =_exMain_tmpPu
 	ldr	r12, [r12]

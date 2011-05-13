@@ -433,7 +433,7 @@ void gbaExceptionHdl()
 	
 	exRegs[15] -= 4; //ichfly patch not working on emulators
 	
-	//Log("%08X\n", exRegs[15]);
+	Log("%08X\n", exRegs[15]);
 	
 	if(exRegs[15] & 0x08000000)
 	{
@@ -481,7 +481,7 @@ void gbaExceptionHdl()
 				{
 				
 					
-				
+					exRegs[15] += 4;
 					//debugDump();
 					BIOScall(tempforwtf,  exRegs);
 					
@@ -500,7 +500,7 @@ void gbaExceptionHdl()
 				u32 tempforwtf = *(u32*)(exRegs[15] - 4);
 
 				//Log("%08X\n", instr);
-				if(tempforwtf &0xFFF000F0) == 0xE1200070)
+				if((tempforwtf &0xFFF000F0) == 0xE1200070)
 				{
 					BIOScall((tempforwtf & 0xFFF00)<<0x8,  exRegs);
 				}

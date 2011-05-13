@@ -441,10 +441,10 @@ void VblankHandler(void) {
 #ifdef ichflytestkeypossibillity  
   
   // disallow L+R or U+D of being pressed at the same time
-  if((res & 48) == 48)
-    res &= ~16;
-  if((res & 192) == 192)
-    res &= ~128;
+  if((joy & 48) == 48)
+    joy &= ~16;
+  if((joy & 192) == 192)
+    joy &= ~128;
 #endif
 
               P1 = 0x03FF ^ (joy & 0x3FF);             
@@ -695,9 +695,9 @@ int rrrresxfss = 0;
 	
 	irqSet(IRQ_HBLANK, HblankHandler);
 	
-	timerStart(0, ClockDivider_1024,  TIMER_FREQ_1024(1),speedtest); // 1 sec
+	//timerStart(0, ClockDivider_1024,  TIMER_FREQ_1024(1),speedtest); // 1 sec
 	
-	
+
 	irqEnable( IRQ_VBLANK);
 	
 	irqEnable( IRQ_HBLANK);
