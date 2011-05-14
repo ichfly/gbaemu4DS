@@ -142,153 +142,780 @@ void emuInstrARM(u32 op, s32 *R)
 		if(op & (1 << 20)) R[Rd] = CPUReadMemory(addr);
 		else CPUWriteMemory(addr, R[Rd]);
 	}
-	else if ((op & 0xFFF000F0) == 0xE1200070) //ichfly todo do it in one step
-	{
-	
-	int comment = (op & 0x000FFF00) >> 0x8; // first is ignored 
-	
-	switch(comment) {
-	  case 0x00:
-		BIOS_SoftReset();
-		break;
-	  case 0x01:
-		BIOS_RegisterRamReset();
-		break;
-	  case 0x02:         //ichfly todo 2 - 7
-	#ifdef DEV_VERSION
-		  Log("Halt(not yet)\n");      
-	#endif    
-		//holdState = true;
-		//holdType = -1;
-		//cpuNextEvent = cpuTotalTicks;
-		break;
-	  case 0x03:
-	#ifdef DEV_VERSION
-		  Log("Stop:\n");      
-	#endif    
-		//holdState = true;
-		//holdType = -1;
-		//stopState = true;
-		//cpuNextEvent = cpuTotalTicks;
-		swiIntrWait(1,IE);
-		break;
-	  case 0x04:
-	#ifdef DEV_VERSION
-		  Log("IntrWait: 0x%08x,0x%08x\n",
-			  R[0],
-			  R[1]);      
-	#endif
-	
-		swiIntrWait(R[0],R[1]);
-		//CPUSoftwareInterrupt();
-		break;    
-	  case 0x05:
-	#ifdef DEV_VERSION
-		  Log("VBlankIntrWait:\n");
-	#endif
-		//CPUSoftwareInterrupt();
-		swiWaitForVBlank();
-		Log("exit:\n");
-		break;
-	  case 0x06:
-		//CPUSoftwareInterrupt();
-		Log("swi 6 (not yet):\n");
-		break;
-	  case 0x07:
-		Log("swi 7 (not yet):\n");
-		//CPUSoftwareInterrupt();
-		break;
-	  case 0x08:
-		BIOS_Sqrt();
-		break;
-	  case 0x09:
-		BIOS_ArcTan();
-		break;
-	  case 0x0A:
-		BIOS_ArcTan2();
-		break;
-	  case 0x0B:
-		BIOS_CpuSet();
-		break;
-	  case 0x0C:
-		BIOS_CpuFastSet();
-		break;
-	  case 0x0D:
-		BIOS_GetBiosChecksum();
-		break;
-	  case 0x0E:
-		BIOS_BgAffineSet();
-		break;
-	  case 0x0F:
-		BIOS_ObjAffineSet();
-		break;
-	  case 0x10:
-		BIOS_BitUnPack();
-		break;
-	  case 0x11:
-		BIOS_LZ77UnCompWram();
-		break;
-	  case 0x12:
-		BIOS_LZ77UnCompVram();
-		break;
-	  case 0x13:
-		BIOS_HuffUnComp();
-		break;
-	  case 0x14:
-		BIOS_RLUnCompWram();
-		break;
-	  case 0x15:
-		BIOS_RLUnCompVram();
-		break;
-	  case 0x16:
-		BIOS_Diff8bitUnFilterWram();
-		break;
-	  case 0x17:
-		BIOS_Diff8bitUnFilterVram();
-		break;
-	  case 0x18:
-
-		BIOS_Diff16bitUnFilter();
-		break;
-	  case 0x19:
-	#ifdef DEV_VERSION
-		  Log("SoundBiasSet: 0x%08x \n",
-			  R[0]);      
-	#endif    
-		//if(reg[0].I) //ichfly sound todo
-		  //systemSoundPause(); //ichfly sound todo
-		//else //ichfly sound todo
-		  //systemSoundResume(); //ichfly sound todo
-		break;
-	  case 0x1F:
-		BIOS_MidiKey2Freq();
-		break;
-	  case 0x2A:
-		BIOS_SndDriverJmpTableCopy();
-		// let it go, because we don't really emulate this function
-	  default:
-	#ifdef DEV_VERSION
-		if(systemVerbose & VERBOSE_SWI) {
-		  Log("SWI: %08x (0x%08x,0x%08x,0x%08x)\n", comment,
-			  R[0],
-			  R[1],
-			  R[2]);
-		}
-	#endif
-		
-		if(!disableMessage) {
-		  systemMessage(MSG_UNSUPPORTED_BIOS_FUNCTION,
-						N_("Unsupported BIOS function %02x. A BIOS file is needed in order to get correct behaviour."),
-						comment);
-		  disableMessage = true;
-		}
-		break;
-	  }
-	}
 	else
+	{
+	int opcode = op;
+  switch(((opcode>>16)&0xFF0) | ((opcode>>4)&0x0F)) {
+  case 0x00b:
+  case 0x02b:
+    {
+      // STRH Rd, [Rn], -Rm
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = R[opcode & 0x0F];
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0); 
+      address -= offset;
+      R[base] = address;
+    }
+    break;
+  case 0x04b:
+  case 0x06b:
+    {
+      // STRH Rd, [Rn], #-offset
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = (opcode & 0x0F) | ((opcode >> 4) & 0xF0);
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0); 
+      address -= offset;
+      R[base] = address;
+    }
+    break;
+  case 0x08b:
+  case 0x0ab:
+    {
+      // STRH Rd, [Rn], Rm
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = R[opcode & 0x0F];
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0); 
+      address += offset;
+      R[base] = address;
+    }
+    break;
+  case 0x0cb:
+  case 0x0eb:
+    {
+      // STRH Rd, [Rn], #offset
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = (opcode & 0x0F) | ((opcode >> 4) & 0xF0);
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0);
+      address += offset;
+      R[base] = address;
+    }
+    break;
+  case 0x10b:
+    {
+      // STRH Rd, [Rn, -Rm]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - R[opcode & 0x0F];
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0); 
+    }
+    break;
+  case 0x12b:
+    {
+      // STRH Rd, [Rn, -Rm]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - R[opcode & 0x0F];
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0); 
+      R[base] = address;
+    }
+    break;
+  case 0x14b:
+    {
+      // STRH Rd, [Rn, -#offset]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0); 
+    }
+    break;
+  case 0x16b:
+    {
+      // STRH Rd, [Rn, -#offset]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0); 
+      R[base] = address;
+    }
+    break;
+  case 0x18b:
+    {
+      // STRH Rd, [Rn, Rm]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + R[opcode & 0x0F];
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0); 
+    }
+    break;
+  case 0x1ab:
+    {
+      // STRH Rd, [Rn, Rm]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + R[opcode & 0x0F];
+      CPUWriteHalfWord(address,((reg_pair*)R)[dest].W.W0); 
+      R[base] = address;
+    }
+    break;
+  case 0x1cb:
+    {
+      // STRH Rd, [Rn, #offset]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0); 
+    }
+    break;
+  case 0x1eb:
+    {
+      // STRH Rd, [Rn, #offset]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      CPUWriteHalfWord(address, ((reg_pair*)R)[dest].W.W0); 
+      R[base] = address;
+    }
+    break;
+  case 0x01b:
+  case 0x03b:
+    {
+      // LDRH Rd, [Rn], -Rm
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = R[opcode & 0x0F];
+      R[dest] = CPUReadHalfWord(address);
+      if(dest != base) {
+        address -= offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x05b:
+  case 0x07b:
+    {
+      // LDRH Rd, [Rn], #-offset
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = (opcode & 0x0F) | ((opcode >> 4) & 0xF0);
+      R[dest] = CPUReadHalfWord(address);
+      if(dest != base) {
+        address -= offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x09b:
+  case 0x0bb:
+    {
+      // LDRH Rd, [Rn], Rm
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = R[opcode & 0x0F];
+      R[dest] = CPUReadHalfWord(address);
+      if(dest != base) {
+        address += offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x0db:
+  case 0x0fb:
+    {
+      // LDRH Rd, [Rn], #offset
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = (opcode & 0x0F) | ((opcode >> 4) & 0xF0);
+      R[dest] = CPUReadHalfWord(address);
+      if(dest != base) {
+        address += offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x11b:
+    {
+      // LDRH Rd, [Rn, -Rm]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - R[opcode & 0x0F];
+      R[dest] = CPUReadHalfWord(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x13b:
+    {
+      // LDRH Rd, [Rn, -Rm]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - R[opcode & 0x0F];
+      R[dest] = CPUReadHalfWord(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x15b:
+    {
+      // LDRH Rd, [Rn, -#offset]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = CPUReadHalfWord(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x17b:
+    {
+      // LDRH Rd, [Rn, -#offset]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = CPUReadHalfWord(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x19b:
+    {
+      // LDRH Rd, [Rn, Rm]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + R[opcode & 0x0F];
+      R[dest] = CPUReadHalfWord(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x1bb:
+    {
+      // LDRH Rd, [Rn, Rm]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + R[opcode & 0x0F];
+      R[dest] = CPUReadHalfWord(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x1db:
+    {
+      // LDRH Rd, [Rn, #offset]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = CPUReadHalfWord(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x1fb:
+    {
+      // LDRH Rd, [Rn, #offset]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = CPUReadHalfWord(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x01d:
+  case 0x03d:
+    {
+      // LDRSB Rd, [Rn], -Rm
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = R[opcode & 0x0F];
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest != base) {
+        address -= offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x05d:
+  case 0x07d:
+    {
+      // LDRSB Rd, [Rn], #-offset
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = (opcode & 0x0F) | ((opcode >> 4) & 0xF0);
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest != base) {
+        address -= offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x09d:
+  case 0x0bd:
+    {
+      // LDRSB Rd, [Rn], Rm
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = R[opcode & 0x0F];
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest != base) {
+        address += offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x0dd:
+  case 0x0fd:
+    {
+      // LDRSB Rd, [Rn], #offset
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = (opcode & 0x0F) | ((opcode >> 4) & 0xF0);
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest != base) {
+        address += offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x11d:
+    {
+      // LDRSB Rd, [Rn, -Rm]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - R[opcode & 0x0F];
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x13d:
+    {
+      // LDRSB Rd, [Rn, -Rm]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - R[opcode & 0x0F];
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x15d:
+    {
+      // LDRSB Rd, [Rn, -#offset]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x17d:
+    {
+      // LDRSB Rd, [Rn, -#offset]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x19d:
+    {
+      // LDRSB Rd, [Rn, Rm]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + R[opcode & 0x0F];
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x1bd:
+    {
+      // LDRSB Rd, [Rn, Rm]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + R[opcode & 0x0F];
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x1dd:
+    {
+      // LDRSB Rd, [Rn, #offset]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x1fd:
+    {
+      // LDRSB Rd, [Rn, #offset]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = (s8)CPUReadByte(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x01f:
+  case 0x03f:
+    {
+      // LDRSH Rd, [Rn], -Rm
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = R[opcode & 0x0F];
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest != base) {
+        address -= offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x05f:
+  case 0x07f:
+    {
+      // LDRSH Rd, [Rn], #-offset
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = (opcode & 0x0F) | ((opcode >> 4) & 0xF0);
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest != base) {
+        address -= offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x09f:
+  case 0x0bf:
+    {
+      // LDRSH Rd, [Rn], Rm
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = R[opcode & 0x0F];
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest != base) {
+        address += offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x0df:
+  case 0x0ff:
+    {
+      // LDRSH Rd, [Rn], #offset
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base];
+      int offset = (opcode & 0x0F) | ((opcode >> 4) & 0xF0);
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest != base) {
+        address += offset;
+        R[base] = address;
+      }
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x11f:
+    {
+      // LDRSH Rd, [Rn, -Rm]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - R[opcode & 0x0F];
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x13f:
+    {
+      // LDRSH Rd, [Rn, -Rm]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - R[opcode & 0x0F];
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x15f:
+    {
+      // LDRSH Rd, [Rn, -#offset]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x17f:
+    {
+      // LDRSH Rd, [Rn, -#offset]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] - ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x19f:
+    {
+      // LDRSH Rd, [Rn, Rm]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + R[opcode & 0x0F];
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x1bf:
+    {
+      // LDRSH Rd, [Rn, Rm]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + R[opcode & 0x0F];
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x1df:
+    {
+      // LDRSH Rd, [Rn, #offset]
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+  case 0x1ff:
+    {
+      // LDRSH Rd, [Rn, #offset]!
+      int base = (opcode >> 16) & 0x0F;
+      int dest = (opcode >> 12) & 0x0F;
+      u32 address = R[base] + ((opcode & 0x0F)|((opcode>>4)&0xF0));
+      R[dest] = (s16)CPUReadHalfWordSigned(address);
+      if(dest != base)
+        R[base] = address;
+      if(dest == 15) {
+        R[15] &= 0xFFFFFFFC;
+        armNextPC = R[15];
+        R[15] += 4;
+        //ARM_PREFETCH;
+      }
+    }
+    break;
+	default:
 	{
 		Log("Unh. ARM: %08X\n", op);
 		while(1);
+	}
+	}
 	}
 }
 

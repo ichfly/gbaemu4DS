@@ -1559,7 +1559,9 @@ int CPULoadRom(const char *szFile,bool extram)
 		if (keysDown()&KEY_RIGHT) malloctempmulti *= 2;
 		if (keysDown()&KEY_LEFT && malloctempmulti != 1) malloctempmulti /= 2;
 	}
-	rom = (u8 *)malloc(romSize); //test normal 0x2000000 current 1/10 oh no only 2 MB
+	rom = (u8 *)malloc(romSize + 0x1000); //test normal 0x2000000 current 1/10 oh no only 2 MB
+	
+	rom = (u8*)(((u32)rom >> 12) << 12) ; //alinged 
   		/*printf("failed %x",(u32)rom);
 		while(1);*/   
 	}

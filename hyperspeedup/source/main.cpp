@@ -757,11 +757,10 @@ int rrrresxfss = 0;
 	
 	//while(1)swiWaitForVBlank();
 
-	
-
 	//cpu_ArmJump((u32)0x2000000, 0);
 	
 	cpu_ArmJump((u32)rom, 0);
+	
 	
 	//cpu_ArmJump((u32)0x02000000, 0);
 	

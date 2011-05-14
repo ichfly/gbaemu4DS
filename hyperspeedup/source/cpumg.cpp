@@ -415,6 +415,11 @@ int durchgang = 0;
 
 void gbaExceptionHdl()
 {
+
+
+
+
+
 	int i;
 	u32 instr;
 	u32 sysMode;
@@ -428,15 +433,18 @@ void gbaExceptionHdl()
 	if(cpuMode) opSize = 2;
 	else opSize = 4;
 	
-	
-	
+
 	
 	exRegs[15] -= 4; //ichfly patch not working on emulators
 	
-	Log("%08X\n", exRegs[15]);
+	//Log("%08X\n", exRegs[15]);
 	
 	if(exRegs[15] & 0x08000000)
 	{
+		Log("%08X\n", exRegs[15]);
+		debugDump();
+		BIOSDBG_SPSR |= 0x20;
+		exRegs[15] -= 4;
 		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
 	}
 	else
@@ -470,7 +478,8 @@ void gbaExceptionHdl()
 			
 			
 			
-			
+
+
 			
 			if(cpuMode)
 			{
@@ -502,7 +511,8 @@ void gbaExceptionHdl()
 				//Log("%08X\n", instr);
 				if((tempforwtf &0xFFF000F0) == 0xE1200070)
 				{
-					BIOScall((tempforwtf & 0xFFF00)<<0x8,  exRegs);
+					exRegs[15] += 4;
+					BIOScall((tempforwtf & 0xFFF00)>>0x8, exRegs);
 				}
 	// 			Log("ARM: %08X\n", instr);
 				emuInstrARM(instr, exRegs);
@@ -537,6 +547,8 @@ void gbaExceptionHdl()
 		}
 	}
 	gbaMode();
+	
+	
 	//if(*(u16*)(exRegs[15] - 2) == 0xBE05) while(1);
 			//swiDelay(0x2000000); --
 	//swiDelay(0x20000);
