@@ -5,7 +5,7 @@
 %(old_gcc_c_sequence) --start-group -lsysbase -lc --end-group
 
 *link:
-%(old_link) -T C:/Users/entwickler/hwspeedup/tgba_arm9.ld%s
+%(old_link) -T ../tgba_arm9.ld%s
 
 *startfile:
 ds_arm9_crt0%O%s crti%O%s crtbegin%O%s

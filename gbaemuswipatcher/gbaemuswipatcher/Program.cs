@@ -14,7 +14,7 @@ namespace gbaemuswipatcher
             Byte[] Feld = new Byte[insram.Length];
             insram.Read(Feld, 0, (int)insram.Length);
             //search for swi
-            for (int i = 0; i < insram.Length - 1; i++)
+            for (int i = 0; i < insram.Length - 2; i+=2)
             {
                 if (Feld[i + 1] == 0xDF && Feld[i] < 0x2A /*&& !(Feld[i] == 0x4 || Feld[i] == 0x5)*/)
                 {
@@ -24,7 +24,7 @@ namespace gbaemuswipatcher
             }
             FileStream outram = new FileStream(args[1], FileMode.OpenOrCreate);
             outram.Write(Feld, 0, Feld.Length);
-
+            Console.ReadLine();
         }
     }
 }

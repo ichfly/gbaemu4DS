@@ -450,7 +450,7 @@ void VblankHandler(void) {
               P1 = 0x03FF ^ (joy & 0x3FF);             
               UPDATE_REG(0x130, P1);
 	//iprintf("test"); //sorry no write here
-	
+	//*(u32*)0x2003000 = *(u32*)0x2003000 + 1;
 	/*if(IME & 1 && IE & 1)
 	{
 		IE &= 1;

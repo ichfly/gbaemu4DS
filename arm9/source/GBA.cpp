@@ -72,6 +72,11 @@ bool ichflytest = false;
 #endif
 
 
+#define UPDATE_REG(address, value)\
+{\
+   WRITE16LE(((u16 *)&ioMem[address]),value);\
+}\
+
 
 #define ARM_PREFETCH \
   {\

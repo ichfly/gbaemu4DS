@@ -441,8 +441,8 @@ void gbaExceptionHdl()
 	
 	if(exRegs[15] & 0x08000000)
 	{
-		Log("%08X\n", exRegs[15]);
-		debugDump();
+		//Log("%08X\n", exRegs[15]);
+		//debugDump();
 		BIOSDBG_SPSR |= 0x20;
 		exRegs[15] -= 4;
 		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
