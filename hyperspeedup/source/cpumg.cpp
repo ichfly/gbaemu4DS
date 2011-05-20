@@ -50,7 +50,7 @@ void BIOScall(int op,  s32 *R);
 
 
 
-
+#define releas
 
 
 
@@ -333,16 +333,16 @@ void emuInstrTHUMB(u16 instr, s32 *regs);
 
 void puGba()
 {
-	/* GBA PU REGIONS:
-	0: fond inscriptible
-	1: io (tout interdit)
-	2: iwram
-	3: gba slot
-	4: dtcm (for exceptions)
-	5: itcm (idem)
-	6: arm9 bios (idem)
-	7: shared ram (again)
-	*/ //wrong !!!
+	/* NDS PU REGIONS: 
+	0: io + vram
+	1: bios
+	2: alternate vector base
+	3: DTCM
+	4: ITCM
+	5: new 0x300000 (old gba slot)
+	6: non cacheable main ram
+	7: cacheable main ram
+	*/
 	
 	
 	//REG_IME = IME_DISABLE;
@@ -369,16 +369,17 @@ void puGba()
 
 void puNds()
 {
-	/* NDS PU REGIONS:
+	/* NDS PU REGIONS: 
 	0: io + vram
-	1: main ram (including gba ewram)
-	2: gba iwram
-	3: gba slot
-	4: dtcm
-	5: itcm
-	6: arm9 bios
-	7: shared ram
-	*/ // wrong
+	1: bios
+	2: alternate vector base
+	3: DTCM
+	4: ITCM
+	5: new 0x300000 (old gba slot)
+	6: non cacheable main ram
+	7: cacheable main ram
+	*/
+	
 	
 	pu_SetDataPermissions(0x33333363);
 	pu_SetCodePermissions(0x33333363);
@@ -439,6 +440,8 @@ void gbaExceptionHdl()
 	
 	//Log("%08X\n", exRegs[15]);
 	
+	//debugDump();
+	
 	if(exRegs[15] & 0x08000000)
 	{
 		//Log("%08X\n", exRegs[15]);
@@ -446,6 +449,10 @@ void gbaExceptionHdl()
 		BIOSDBG_SPSR |= 0x20;
 		exRegs[15] -= 4;
 		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
+		
+		
+			  //while(1);
+	
 	}
 	else
 	{
@@ -546,6 +553,9 @@ void gbaExceptionHdl()
 			exRegs[15] += 4;
 		}
 	}
+	
+	//debugDump();
+	
 	gbaMode();
 	
 	
@@ -554,26 +564,37 @@ void gbaExceptionHdl()
 	//swiDelay(0x20000);
 	
 	//if(exRegs[15] < 0x02000000)while(1) { ; } //i was funny hahahahaha
-	
-	
+
 }
 
 
 void gbaInit()
 {
-// 	puSetGbaIWRAM();
-	pu_SetRegion(5, 0x03000000 | PU_PAGE_32K | 1);	/* gba iwram */ //it is the GBA Cart in the original
-	WRAM_CR = 0;
-	
-	
-	pu_SetDataCachability(   B8(0,0,0,0,0,0,0,0)); //ichfly todo slowdown !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	pu_SetCodeCachability(   B8(0,0,0,0,0,0,0,0));
+	pu_SetDataCachability(   B8(0,1,0,0,0,0,0,0)); //ichfly todo slowdown !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	pu_SetCodeCachability(   B8(0,1,0,0,0,0,0,0));
 	pu_GetWriteBufferability(B8(0,0,0,0,0,0,0,0));
+	
+	// 	puSetGbaIWRAM();
+	pu_SetRegion(5, 0x03000000 | PU_PAGE_32K | 1);	/* gba iwram */ //it is the GBA Cart in the original
+	pu_SetRegion(6, 0x02000000 | PU_PAGE_16M | 1);    //ram
+	//pu_SetRegion(7, 0x07000000 | PU_PAGE_16M | 1);
+	pu_SetRegion(2, 0x05000000 | PU_PAGE_16M | 1);
+	pu_SetRegion(7, 0x06000000 | PU_PAGE_32M | 1);	//todo swap
+	//pu_SetRegion(2, 0x05000000 | PU_PAGE_64M | 1);
+	//pu_SetRegion(3, 0x00000000 | PU_PAGE_32M | 1);
+	//pu_SetRegion(4, 0x02040000 | PU_PAGE_8M | 1);
+	WRAM_CR = 0;
+#ifdef releas
+	exInit(gbaExceptionHdl);
+#endif
+	
 }
 
 void gbaMode()
 {
+#ifndef releas
 	exInit(gbaExceptionHdl);
+#endif
 	puGba();
 	
 }
@@ -595,8 +616,9 @@ void ndsExceptionHdl()
 void ndsMode()
 {
 	puNds();
+#ifndef releas
 	exInit(ndsExceptionHdl);
-
+#endif
 }
 void BIOScall(int op,  s32 *R)
 {

@@ -368,7 +368,7 @@ void VblankHandler(void) {
 	CPUCheckDMA(1, 0x0f);
 	if(framewtf == frameskip)
 	{
-		for(int iy = 0; iy <0x200 ; iy++)
+		/*for(int iy = 0; iy <0x200 ; iy++)
 		{
 			*(u16 *)(0x07000000 + 2*iy) = *(u16 *)(oam + 2*iy);
 		}
@@ -376,13 +376,13 @@ void VblankHandler(void) {
 		{
 			*(u16 *)(0x05000000 + 2*iy) = *(u16 *)(paletteRAM + 2*iy);
 			
-		}
+		}*/
 		
 		
 		if((DISPCNT & 7) < 3)
 		{
 			if(lastDISPCNT != DISPCNT)REG_DISPCNT = (DISPCNT | 0x10010); //need 0x10010
-			dmaCopyWordsAsynch(0,vram,(void*)0x06000000,0x10000);
+			//dmaCopyWordsAsynch(0,vram,(void*)0x06000000,0x10000);
 			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
 			lastDISPCNT = DISPCNT;
 		}
@@ -390,39 +390,40 @@ void VblankHandler(void) {
 		{
 			if(lastDISPCNT != DISPCNT)
 			{
-				REG_DISPCNT = (DISPCNT | 0x10010) & ~0x400; //need 0x10010
-				if((DISPCNT & 7) == 4)bgrouid = bgInit(3, BgType_Bmp8, BgSize_B8_256x256,0,0); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
-				else if((DISPCNT & 7) == 3)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,0,0);
-				else if((DISPCNT & 7) == 5)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,0,0);
+				REG_DISPCNT = (DISPCNT | 0x12010010) & ~0x400; //need 0x10010
+				if((DISPCNT & 7) == 4)bgrouid = bgInit(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
+				else if((DISPCNT & 7) == 3)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				else if((DISPCNT & 7) == 5)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
 			}
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
 			{
-				u8 *pointertobild = (u8 *)(vram);
+				u8 *pointertobild = (u8 *)(0x6000000);
 				for(int iy = 0; iy <160; iy++){
-					dmaCopy( (void*)pointertobild, bgGetGfxPtr(bgrouid)+256*(iy), 480);
+					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 480);
 					pointertobild+=480;
 				}
 			}	
 			if((DISPCNT & 7) == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
 			{
-				u8 *pointertobild = (u8 *)(vram);
+				u8 *pointertobild = (u8 *)(0x6000000);
 				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 				for(int iy = 0; iy <160; iy++){
-					dmaCopy( (void*)pointertobild, bgGetGfxPtr(bgrouid)+128*(iy), 240);
+					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 480);
 					pointertobild+=240;
+					//pointertobild+=120;
 				}
 			}
 			if((DISPCNT & 7) == 5) //BG Mode 5 - 160x128 pixels, 32768 colors
 			{
-				u8 *pointertobild = (u8 *)(vram);
+				u8 *pointertobild = (u8 *)(0x6000000);
 				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 				for(int iy = 0; iy <128; iy++){
-					dmaCopy( (void*)pointertobild, bgGetGfxPtr(bgrouid)+256*(iy), 320);
+					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 320);
 					pointertobild+=320;
 				}
 			}
 			//dmaCopyWordsAsynch(0,vram,(void*)0x06000000,0x14000);
-			dmaCopyWordsAsynch(1,(void*)vram + 0x14000,(void*)0x06404000,0x4000);
+			dmaCopyWordsAsynch(1,(void*)0x600014000,(void*)0x06404000,0x4000);
 			//dmaCopy(vram, bgGetGfxPtr(bgrouid), 240*160);
 			lastDISPCNT = DISPCNT;
 		}
@@ -474,7 +475,7 @@ int main(void) {
 	//D is not used..if you need a bigger background then you will need to map
 	//more vram banks consecutivly (VRAM A-D are all 0x20000 bytes in size)
 	vramSetPrimaryBanks(	VRAM_A_MAIN_BG_0x06000000, VRAM_B_MAIN_SPRITE, 
-		VRAM_C_SUB_BG , VRAM_D_LCD); 
+		VRAM_C_SUB_BG , /*VRAM_D_LCD*/ VRAM_D_MAIN_BG_0x06020000); 
 
 
 	//bg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
@@ -693,14 +694,14 @@ int rrrresxfss = 0;
   	irqSet(IRQ_VBLANK, VblankHandler);
 	
 	
-	irqSet(IRQ_HBLANK, HblankHandler);
+	//irqSet(IRQ_HBLANK, HblankHandler); //todo
 	
 	//timerStart(0, ClockDivider_1024,  TIMER_FREQ_1024(1),speedtest); // 1 sec
 	
 
 	irqEnable( IRQ_VBLANK);
 	
-	irqEnable( IRQ_HBLANK);
+	//irqEnable( IRQ_HBLANK);
 	
 	
 	
@@ -759,6 +760,9 @@ int rrrresxfss = 0;
 
 	//cpu_ArmJump((u32)0x2000000, 0);
 	
+	//if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+	//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+	
 	cpu_ArmJump((u32)rom, 0);
 	
 	
@@ -779,3 +783,4 @@ int rrrresxfss = 0;
   return 0;
 
 }
+//a

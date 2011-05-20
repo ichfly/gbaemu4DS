@@ -73,6 +73,9 @@ static inline u32 CPUReadMemory(u32 address)
   }
 #endif
   
+  //iprintf("word read: %08x\n",address);
+  
+  
   u32 value;
   switch(address >> 24) {
   case 0:
@@ -215,6 +218,9 @@ extern u32 myROM[];
 
 static inline u32 CPUReadHalfWord(u32 address)
 {
+
+//iprintf("hword read: %08x\n",address);
+
 #ifdef DEV_VERSION      
   if(address & 1) {
     if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
@@ -370,6 +376,10 @@ static inline u16 CPUReadHalfWordSigned(u32 address)
 
 static inline u8 CPUReadByte(u32 address)
 {
+
+//iprintf("byte read: %08x\n",address);
+
+
   switch(address >> 24) {
   case 0:
     if (reg[15].I >> 24) {
@@ -479,6 +489,10 @@ static inline u8 CPUReadByte(u32 address)
 
 static inline void CPUWriteMemory(u32 address, u32 value)
 {
+
+     //iprintf("word write: %08x to %08x\n",value,address);
+		  
+
 
 #ifdef DEV_VERSION
   if(address & 3) {

@@ -3147,6 +3147,9 @@ void applyTimer ()
 
 void CPUWriteHalfWord(u32 address, u16 value)
 {
+
+//iprintf("w16 %x %x\r\n",address,value);
+
 #ifdef DEV_VERSION
   if(address & 1) {
     if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
@@ -3254,6 +3257,9 @@ void CPUWriteHalfWord(u32 address, u16 value)
 
 void CPUWriteByte(u32 address, u8 b)
 {
+
+	//iprintf("w8 %x %x\r\n",address,b);
+
   switch(address >> 24) {
   case 2:
 #ifdef BKPT_SUPPORT

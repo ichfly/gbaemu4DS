@@ -47,6 +47,7 @@ u8  CPUReadByte (u32 addr);
 
 #define DEV_VERSION
 
+#define patchregfromromtoromaddr
 
 bool disableMessage = false;
 
@@ -971,7 +972,7 @@ void emuInstrTHUMB(u16 op, s32 *R)
 		// ldrh/strh R, [R, #]
 		addr = R[(op >> 3) & 0x7] + ((op >> 6) & 0x1F) * 2;
 		Rd = (op) & 0x7;
-		if((op & 0x400) == 0x400) R[Rd] = (s32)CPUReadHalfWordSigned(addr);
+		if((op & 0x800) == 0x800) R[Rd] = (s32)CPUReadHalfWordSigned(addr);
 		else CPUWriteHalfWord(addr, (s16)(R[Rd] & 0xFFFF));
 	}
 	else if ((op & 0xF600) == 0x5200)
@@ -979,7 +980,7 @@ void emuInstrTHUMB(u16 op, s32 *R)
 		// ldrh/strh R, [R, R]
 		Rd = (op) & 0x7;
 		addr = R[(op >> 3) & 0x7] + R[(op >> 6) & 0x7];
-		if((op & 0x400) == 0x400) R[Rd] = (s32)CPUReadByte(addr);
+		if((op & 0x800) == 0x800) R[Rd] = (s32)CPUReadByte(addr);
 		else CPUWriteByte(addr, (s8)(R[Rd] & 0xFF));
 	}
 	else if ((op & 0xF000) == 0x7000)
@@ -987,7 +988,7 @@ void emuInstrTHUMB(u16 op, s32 *R)
 		// ldrb/strb R, [R, #]
 		addr = R[(op >> 3) & 0x7] + ((op >> 6) & 0x1F);
 		Rd = (op) & 0x7;
-		if((op & 0x400) == 0x400) R[Rd] = (s32)CPUReadByte(addr);
+		if((op & 0x800) == 0x800) R[Rd] = (s32)CPUReadByte(addr);
 		else CPUWriteByte(addr, (s8)(R[Rd] & 0xFF));
 	}
 	else if ((op & 0xF600) == 0x5400)
@@ -995,13 +996,13 @@ void emuInstrTHUMB(u16 op, s32 *R)
 		// ldrb/strb R, [R, R]
 		Rd = (op) & 0x7;
 		addr = R[(op >> 3) & 0x7] + R[(op >> 6) & 0x7];
-		if((op & 0x400) == 0x400) R[Rd] = (s32)CPUReadHalfWordSigned(addr);
+		if((op & 0x800) == 0x800) R[Rd] = (s32)CPUReadHalfWordSigned(addr);
 		else CPUWriteHalfWord(addr, (s16)(R[Rd] & 0xFFFF));
 	}
 	else if ((op & 0xF700) == 0xB500) 
 	{
 		// push/pop {R,R,R,...}
-		if((op & 0x400) == 0x400)	/* pop */
+		if((op & 0x800) == 0x800)	/* pop */
 		{
 			addr = R[13];
 			for(i = 0; i <= 7; i++)
@@ -1045,7 +1046,7 @@ void emuInstrTHUMB(u16 op, s32 *R)
 		// ldmia/stmia R!, {R, R, R...}
 		Rd = (op >> 8) & 0x7;
 		addr = R[Rd];
-		if((op & 0x400) == 0x400)	/* ldmia */
+		if((op & 0x800) == 0x800)	/* ldmia */ //ichfly
 		{
 			for(i = 0; i <= 7; i++)
 			{
