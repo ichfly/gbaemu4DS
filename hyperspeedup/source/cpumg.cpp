@@ -438,7 +438,7 @@ void gbaExceptionHdl()
 	
 	exRegs[15] -= 4; //ichfly patch not working on emulators
 	
-	//Log("%08X\n", exRegs[15]);
+	Log("%08X\n", exRegs[15]);
 	
 	//debugDump();
 	

@@ -47,7 +47,7 @@ u8  CPUReadByte (u32 addr);
 
 #define DEV_VERSION
 
-#define patchregfromromtoromaddr
+#define patchregfromromtoromaddr //parts todo
 
 bool disableMessage = false;
 
@@ -926,81 +926,166 @@ void emuInstrTHUMB(u16 op, s32 *R)
 	u32 Rd;
 	u32 addr;
 	
+	
+	
 	if((op & 0xF000) == 0x6000)
 	{
 		// ldr/str R, [R, #]
+
 		addr = R[(op >> 3) & 0x7] + ((op >> 6) & 0x1F) * 4;
 		Rd = (op) & 0x7;
 		if((op & 0x400) == 0x400) R[Rd] = CPUReadMemory(addr);
 		else CPUWriteMemory(addr, R[Rd]);
+		
+#ifdef patchregfromromtoromaddrun
+		if(R[(op >> 3) & 0x7] & 0x08000000)R[(op >> 3) & 0x7] = (R[(op >> 3) & 0x7] & 0x07FFFFFF) + (s32)rom;
+#endif
+		
 	}
 	else if ((op & 0xF800) == 0x4800)
 	{
+
+	
 		// ldr/str R, [pc, #]
 		addr = (R[15] & ~1) + (op & 0xff) * 4;
 		Rd = (op >> 8) & 0x7;
 		if((op & 0x400) == 0x400) R[Rd] = CPUReadMemory(addr);
 		else CPUWriteMemory(addr, R[Rd]);
 		
+			
+#ifdef patchregfromromtoromaddrun
+		//nothing todo here
+#endif
+		
+		
 	}
 	else if ((op & 0xF000) == 0x9000)
 	{
+	
+
+	
 		// ldr/str R, [sp, #]
 		addr = R[13] + (op & 0xff) * 4;
 		Rd = (op >> 8) & 0x7;
 		if((op & 0x400) == 0x400) R[Rd] = CPUReadMemory(addr);
 		else CPUWriteMemory(addr, R[Rd]);
 		
+#ifdef patchregfromromtoromaddrun
+		if(R[13] & 0x08000000)R[13] = (R[13] & 0x07FFFFFF) + (s32)rom;
+#endif
+		
+		
 	} 
 	else if ((op & 0xF200) == 0x5000)
 	{
+	
+
+	
+	
 		// ldr/str R, [R, R]
 		Rd = (op) & 0x7;
 		addr = R[(op >> 3) & 0x7] + R[(op >> 6) & 0x7];
 		if((op & 0x400) == 0x400) R[Rd] = CPUReadMemory(addr);
 		else CPUWriteMemory(addr, R[Rd]);
+		
+#ifdef patchregfromromtoromaddrun
+		if(R[(op >> 3) & 0x7] & 0x08000000)R[(op >> 3) & 0x7] = (R[(op >> 3) & 0x7] & 0x07FFFFFF) + (s32)rom;
+		if(R[(op >> 6) & 0x7] & 0x08000000)R[(op >> 6) & 0x7] = (R[(op >> 6) & 0x7] & 0x07FFFFFF) + (s32)rom;
+#endif
+		
+		
 	}
 	else if ((op & 0xF200) == 0x5200)
 	{
+	
+	
+
+	
 		// ldrsh R, [R, R]
 		Rd = (op) & 0x7;
 		addr = R[(op >> 3) & 0x7] + R[(op >> 6) & 0x7];
 		R[Rd] = (s32)CPUReadHalfWordSigned(addr);
+		
+#ifdef patchregfromromtoromaddrun
+		if(R[(op >> 3) & 0x7] & 0x08000000)R[(op >> 3) & 0x7] = (R[(op >> 3) & 0x7] & 0x07FFFFFF) + (s32)rom;
+		if(R[(op >> 6) & 0x7] & 0x08000000)R[(op >> 6) & 0x7] = (R[(op >> 6) & 0x7] & 0x07FFFFFF) + (s32)rom;
+#endif
+		
 	}
 	else if ((op & 0xF000) == 0x8000)
 	{
+	
+
+	
 		// ldrh/strh R, [R, #]
 		addr = R[(op >> 3) & 0x7] + ((op >> 6) & 0x1F) * 2;
 		Rd = (op) & 0x7;
 		if((op & 0x800) == 0x800) R[Rd] = (s32)CPUReadHalfWordSigned(addr);
 		else CPUWriteHalfWord(addr, (s16)(R[Rd] & 0xFFFF));
+		
+#ifdef patchregfromromtoromaddr
+		if(R[(op >> 3) & 0x7] & 0x08000000)R[(op >> 3) & 0x7] = (R[(op >> 3) & 0x7] & 0x07FFFFFF) + (s32)rom;
+#endif
+		
 	}
 	else if ((op & 0xF600) == 0x5200)
 	{
+	
+
+	
+	
 		// ldrh/strh R, [R, R]
 		Rd = (op) & 0x7;
 		addr = R[(op >> 3) & 0x7] + R[(op >> 6) & 0x7];
 		if((op & 0x800) == 0x800) R[Rd] = (s32)CPUReadByte(addr);
 		else CPUWriteByte(addr, (s8)(R[Rd] & 0xFF));
+		
+#ifdef patchregfromromtoromaddrun
+		if(R[(op >> 3) & 0x7] & 0x08000000)R[(op >> 3) & 0x7] = (R[(op >> 3) & 0x7] & 0x07FFFFFF) + (s32)rom;
+#endif
+		
 	}
 	else if ((op & 0xF000) == 0x7000)
 	{
+	
+
+	
+	
 		// ldrb/strb R, [R, #]
 		addr = R[(op >> 3) & 0x7] + ((op >> 6) & 0x1F);
 		Rd = (op) & 0x7;
 		if((op & 0x800) == 0x800) R[Rd] = (s32)CPUReadByte(addr);
 		else CPUWriteByte(addr, (s8)(R[Rd] & 0xFF));
+		
+#ifdef patchregfromromtoromaddr
+		if(R[(op >> 3) & 0x7] & 0x08000000)R[(op >> 3) & 0x7] = (R[(op >> 3) & 0x7] & 0x07FFFFFF) + (s32)rom;
+#endif
+		
 	}
 	else if ((op & 0xF600) == 0x5400)
 	{
+	
+
+	
+	
 		// ldrb/strb R, [R, R]
 		Rd = (op) & 0x7;
 		addr = R[(op >> 3) & 0x7] + R[(op >> 6) & 0x7];
 		if((op & 0x800) == 0x800) R[Rd] = (s32)CPUReadHalfWordSigned(addr);
 		else CPUWriteHalfWord(addr, (s16)(R[Rd] & 0xFFFF));
+		
+#ifdef patchregfromromtoromaddrun
+		if(R[(op >> 3) & 0x7] & 0x08000000)R[(op >> 3) & 0x7] = (R[(op >> 3) & 0x7] & 0x07FFFFFF) + (s32)rom;
+		if(R[(op >> 6) & 0x7] & 0x08000000)R[(op >> 6) & 0x7] = (R[(op >> 6) & 0x7] & 0x07FFFFFF) + (s32)rom;
+#endif
+		
+		
 	}
 	else if ((op & 0xF700) == 0xB500) 
 	{
+
+	
+	
 		// push/pop {R,R,R,...}
 		if((op & 0x800) == 0x800)	/* pop */
 		{
@@ -1040,9 +1125,21 @@ void emuInstrTHUMB(u16 op, s32 *R)
 			}
 			R[13] = addr + 4;
 		}
+		
+		
+#ifdef patchregfromromtoromaddr
+		if(R[13] & 0x08000000)R[13] = (R[13] & 0x07FFFFFF) + (s32)rom;
+#endif
+		
+		
 	} 
 	else if ((op & 0xF000) == 0xC000) 
 	{
+	
+	
+
+	
+	
 		// ldmia/stmia R!, {R, R, R...}
 		Rd = (op >> 8) & 0x7;
 		addr = R[Rd];
@@ -1071,11 +1168,22 @@ void emuInstrTHUMB(u16 op, s32 *R)
 			}
 		}
 		R[Rd] = addr - 4;
+		
+		
+#ifdef patchregfromromtoromaddr
+		if(R[Rd] & 0x08000000)
+		{
+			R[Rd] = (R[Rd] & 0x07FFFFFF) + (s32)rom;
+
+		}
+#endif
+		
 	}
 	else
 	{
 		Log("Unh. THUMB: %04X\n", op);
 		while(1);
 	}
+	//while(1);
 }
 

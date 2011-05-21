@@ -1627,28 +1627,28 @@ int CPULoadRom(const char *szFile,bool extram)
     CPUCleanUp();
     return 0;
   }    
-  internalRAM = (u8 *)calloc(1,0x8000);
-  if(internalRAM == NULL) {
+  internalRAM = (u8 *)0x03000000;//calloc(1,0x8000);
+  /*if(internalRAM == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "IRAM");
     CPUCleanUp();
     return 0;
-  }    
-  paletteRAM = (u8 *)calloc(1,0x400);
+  }*/
+  paletteRAM = (u8 *)0x05000000;//calloc(1,0x400);
   if(paletteRAM == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "PRAM");
     CPUCleanUp();
     return 0;
   }      
-  vram = (u8 *)calloc(1, 0x20000);
+  vram = (u8 *)0x06000000;//calloc(1, 0x20000);
   if(vram == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "VRAM");
     CPUCleanUp();
     return 0;
   }      
-  oam = (u8 *)calloc(1, 0x400); //ichfly test
+  oam = (u8 *)0x07000000;/*calloc(1, 0x400); //ichfly test
   if(oam == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "OAM");
@@ -1661,7 +1661,7 @@ int CPULoadRom(const char *szFile,bool extram)
                   "PIX");
     CPUCleanUp();
     return 0;
-  }      
+  }  */
   ioMem = (u8 *)calloc(1, 0x400);
   if(ioMem == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
@@ -3529,13 +3529,13 @@ void CPUReset()
   // clean registers
   memset(&reg[0], 0, sizeof(reg));
   // clean OAM
-  memset(oam, 0, 0x400);
+  //memset(oam, 0, 0x400);
   // clean palette
-  memset(paletteRAM, 0, 0x400);
+  //memset(paletteRAM, 0, 0x400);
   // clean picture
-  memset(pix, 0, 4*160*240);
+  //memset(pix, 0, 4*160*240);
   // clean vram
-  memset(vram, 0, 0x20000);
+  //memset(vram, 0, 0x20000);
   // clean io memory
   memset(ioMem, 0, 0x400);
 

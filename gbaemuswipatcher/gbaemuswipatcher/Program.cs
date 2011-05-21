@@ -14,7 +14,7 @@ namespace gbaemuswipatcher
             Byte[] Feld = new Byte[insram.Length];
             insram.Read(Feld, 0, (int)insram.Length);
             //search for swi
-            for (int i = 0; i < insram.Length - 2; i+=2)
+            for (int i = 0; i < insram.Length - 1; i+=1)
             {
                 if (Feld[i + 1] == 0xDF && Feld[i] < 0x2A /*&& !(Feld[i] == 0x4 || Feld[i] == 0x5)*/)
                 {
