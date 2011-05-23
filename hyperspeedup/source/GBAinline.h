@@ -73,7 +73,7 @@ static inline u32 CPUReadMemory(u32 address)
   }
 #endif
   
-  //iprintf("word read: %08x\n",address);
+  iprintf("word read: %08x\n",address);
   
   
   u32 value;
@@ -490,9 +490,9 @@ static inline u8 CPUReadByte(u32 address)
 static inline void CPUWriteMemory(u32 address, u32 value)
 {
 
-     //iprintf("word write: %08x to %08x\n",value,address);
+    if(address & 0x08000000) iprintf("word write: %08x to %08x\n",value,address);
 		  
-
+		
 
 #ifdef DEV_VERSION
   if(address & 3) {

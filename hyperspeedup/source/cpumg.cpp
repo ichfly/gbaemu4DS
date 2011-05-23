@@ -442,16 +442,20 @@ void gbaExceptionHdl()
 	
 	//debugDump();
 	
+		if(exRegs[15] < 0x02000000)while(1);
+		if(exRegs[15] > 0x04000000 && !(exRegs[15] & 0x08000000))while(1);
+	
 	if(exRegs[15] & 0x08000000)
 	{
+		//if(exRegs[15] == 0x08000290)while(1);
 		//Log("%08X\n", exRegs[15]);
 		//debugDump();
 		BIOSDBG_SPSR |= 0x20;
-		exRegs[15] -= 4;
+		//exRegs[15] -= 4;
 		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
 		
 		
-			  //while(1);
+		
 	
 	}
 	else
@@ -554,10 +558,9 @@ void gbaExceptionHdl()
 		}
 	}
 	
-	//debugDump();
+	//Log("%08X\n", exRegs[1]);
 	
 	gbaMode();
-	
 	
 	//if(*(u16*)(exRegs[15] - 2) == 0xBE05) while(1);
 			//swiDelay(0x2000000); --
