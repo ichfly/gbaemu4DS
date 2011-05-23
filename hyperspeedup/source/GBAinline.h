@@ -73,7 +73,7 @@ static inline u32 CPUReadMemory(u32 address)
   }
 #endif
   
-  iprintf("word read: %08x\n",address);
+  //iprintf("word read: %08x\n",address);
   
   
   u32 value;
@@ -171,11 +171,11 @@ static inline u32 CPUReadMemory(u32 address)
     // default
   default:
   unreadable:
+  while(1);
 #ifdef DEV_VERSION
-    if(systemVerbose & VERBOSE_ILLEGAL_READ) {
+
       log("Illegal word read: %08x at %08x\n", address, armMode ?
           armNextPC - 4 : armNextPC - 2);
-    }
 #endif
 
     if(cpuDmaHack) {
