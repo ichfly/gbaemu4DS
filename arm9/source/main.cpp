@@ -6,7 +6,7 @@
 #include <nds.h>
 #include <stdio.h>
 
-
+#define loaddirect
 
 #include <filesystem.h>
 #include "GBA.h"
@@ -214,6 +214,7 @@ nitroFSInit();
 	
 	iprintf("\x1b[2J");
 //main menü
+#ifndef loaddirect
 	while(nichtausgewauhlt)
 	{
 		for(int i = 0; i < 3; i++)
@@ -282,6 +283,8 @@ nitroFSInit();
 		iprintf("\x1b[2J");	
 	}
 	dirfree();
+
+#endif
 
 	/*iprintf(szFile);
 	while(1);*/
