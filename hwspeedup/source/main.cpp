@@ -44,6 +44,9 @@ int framenummer;
 
 //#define public
 
+#define loaddirect
+
+
 char szFile[2048];
 
 char filename[2048];
@@ -469,6 +472,8 @@ nitroFSInit();
 	
 	iprintf("\x1b[2J");
 //main menü
+
+#ifndef loaddirect
 	while(nichtausgewauhlt)
 	{
 		for(int i = 0; i < 3; i++)
@@ -534,6 +539,7 @@ nitroFSInit();
 		iprintf("\x1b[2J");	
 	}
 	dirfree();
+#endif
 	bool extraram =false; 
 	if(!REG_DSIMODE) extraram = ram_init(DETECT_RAM); 
 	//extraram = true; //testtest

@@ -32,6 +32,11 @@
 
 extern int framenummer;
 
+#define loaddirect
+
+#ifdef loaddirect
+#include "puzzleorginal.h"
+#endif
 
 #define ichflytestkeypossibillity
 
@@ -1534,6 +1539,8 @@ int CPULoadRom(const char *szFile,bool extram)
 
   systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
 
+#ifndef loaddirect
+
   if(extram)
   {
 	rom = (u8 *)ram_unlock();
@@ -1569,12 +1576,16 @@ int CPULoadRom(const char *szFile,bool extram)
     return 0;
   }
 
+#endif
+
   workRAM = (u8 *)calloc(1, 0x40000);
   if(workRAM == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "WRAM");
     return 0;
   }
+
+#ifndef loaddirect
   u8 *whereToLoad = rom;
   if(cpuIsMultiBoot)
     whereToLoad = workRAM;
@@ -1609,6 +1620,10 @@ int CPULoadRom(const char *szFile,bool extram)
     workRAM = NULL;
     return 0;
   }
+#endif
+#ifdef loaddirect
+  rom = (u8*)puzzleorginal;
+#endif
   /*u16 *temp = (u16 *)(rom+((romSize+1)&~1));
   int i;
   for(i = (romSize+1)&~1; i < 0x2000000; i+=2) {
