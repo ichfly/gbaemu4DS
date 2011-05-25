@@ -183,9 +183,11 @@ int main(void) {
 
 	consoleDemoInit();
 
-	
+
+#ifndef loaddirect
 fatInitDefault();
 nitroFSInit();
+#endif
 
 
 

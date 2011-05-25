@@ -434,8 +434,10 @@ int main(void) {
 
 
 //rootenabelde[2] = fatMountSimple  ("sd", &__io_dsisd); //DSi//sems to be inited by fatInitDefault
+#ifndef loaddirect
 fatInitDefault();
 nitroFSInit();
+#endif
 /*
 #ifdef public	
 	iprintf("Init Fat...\n");
