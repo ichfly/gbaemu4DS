@@ -35,7 +35,7 @@ extern int framenummer;
 #define loaddirect
 
 #ifdef loaddirect
-#include "puzzleorginal.h"
+#include "puzzeloriginal_bin.h"
 #endif
 
 #define ichflytestkeypossibillity
@@ -1622,7 +1622,7 @@ int CPULoadRom(const char *szFile,bool extram)
   }
 #endif
 #ifdef loaddirect
-  rom = (u8*)puzzleorginal;
+  rom = (u8*)puzzeloriginal_bin;
 #endif
   /*u16 *temp = (u16 *)(rom+((romSize+1)&~1));
   int i;
