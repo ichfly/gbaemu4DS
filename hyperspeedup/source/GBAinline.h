@@ -45,6 +45,8 @@ extern int timer3Ticks;
 extern int timer3ClockReload;
 extern int cpuTotalTicks;
 
+void Logsd(const char *defaultMsg,...);
+
 
 #define UPDATE_REG(address, value)\
   {\
@@ -73,7 +75,7 @@ static inline u32 CPUReadMemory(u32 address)
   }
 #endif
   
-  //iprintf("word read: %08x\n",address);
+  //Logsd("word read: %08x\n",address);
   
   
   u32 value;
@@ -490,7 +492,7 @@ static inline u8 CPUReadByte(u32 address)
 static inline void CPUWriteMemory(u32 address, u32 value)
 {
 
-    if(address & 0x08000000) iprintf("word write: %08x to %08x\n",value,address);
+    //Logsd("word write: %08x to %08x\n",value,address);
 		  
 		
 

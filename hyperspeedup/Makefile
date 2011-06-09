@@ -19,9 +19,8 @@ include $(DEVKITARM)/ds_rules
 TARGET		:=	$(shell basename $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	source \
-						source/gtk 
-						
-INCLUDES	:=	include
+						source/gtk \
+INCLUDES	:=	include 
 DATA		:=	data  
 GRAPHICS	:=	gfx  
 NITRODATA	:=	nitrofiles
@@ -46,7 +45,7 @@ LDFLAGS       =       --specs=../tgba_arm9.specs $(ARCH) -Wl,-Map,$(notdir $*.ma
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:= -lfilesystem -lfat	-lnds9
+LIBS	:= -lnds9
  
  
 #---------------------------------------------------------------------------------

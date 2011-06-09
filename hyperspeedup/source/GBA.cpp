@@ -29,6 +29,8 @@
 #include "System.h"
 
 
+#include "puzzleorginal_bin.h"
+
 
 extern int framenummer;
 
@@ -1533,7 +1535,8 @@ int CPULoadRom(const char *szFile,bool extram)
 
 
   systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
-
+  
+#ifdef loadindirect
   if(extram)
   {
 	rom = (u8 *)ram_unlock();
@@ -1541,7 +1544,7 @@ int CPULoadRom(const char *szFile,bool extram)
   }
   else
   {
-		romSize = 0x180000; //test normal 0x2000000 current 1/10 oh no only 2 MB
+		romSize = 0x100000; //test normal 0x2000000 current 1/10 oh no only 2 MB
 	
 	int malloctempmulti = 0x80000;
 	
@@ -1571,13 +1574,14 @@ int CPULoadRom(const char *szFile,bool extram)
                   "ROM");
     return 0;
   }
-
+#endif
   workRAM = (u8*)0x02000000;/*(u8 *)calloc(1, 0x40000);
   if(workRAM == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "WRAM");
     return 0;
   }*/
+ #ifdef loadindirect
   u8 *whereToLoad = rom;
   if(cpuIsMultiBoot)
     whereToLoad = workRAM;
@@ -1612,6 +1616,9 @@ int CPULoadRom(const char *szFile,bool extram)
     workRAM = NULL;
     return 0;
   }
+#else
+rom = (u8*)puzzleorginal_bin;
+#endif
   /*u16 *temp = (u16 *)(rom+((romSize+1)&~1));
   int i;
   for(i = (romSize+1)&~1; i < 0x2000000; i+=2) {
@@ -3539,6 +3546,10 @@ void CPUReset()
   // clean io memory
   memset(ioMem, 0, 0x400);
 
+
+
+
+
   DISPCNT  = 0x0000;
   DISPSTAT = 0x0000;
   VCOUNT   = (useBios && !skipBios) ? 0 :0x007E;
@@ -3708,6 +3719,9 @@ void CPUReset()
     map[i].mask = 0;
   }
 
+
+
+
   map[0].address = bios;
   map[0].mask = 0x3FFF;
   map[2].address = workRAM;
@@ -3733,6 +3747,8 @@ void CPUReset()
   map[14].address = flashSaveMemory;
   map[14].mask = 0xFFFF;
 
+
+
   eepromReset();
   flashReset();
   
@@ -3742,7 +3758,7 @@ void CPUReset()
   //CPUUpdateWindow1();
 
   // make sure registers are correctly initialized if not using BIOS
-  if(!useBios) {
+  /*if(!useBios) {
     if(cpuIsMultiBoot)
       BIOS_RegisterRamReset(0xfe);
     else
@@ -3750,7 +3766,7 @@ void CPUReset()
   } else {
     if(cpuIsMultiBoot)
       BIOS_RegisterRamReset(0xfe);
-  }
+  }*/ //ararar
 
   switch(cpuSaveType) {
   case 0: // automatic

@@ -58,7 +58,7 @@ bool disableMessage = false;
 
 
 
-
+extern FILE * pFile;
 
 
 
@@ -8584,7 +8584,7 @@ reg_pair* myregs = (reg_pair*)R;
 
 
 switch(opcode >> 8) {
- case 0x00:
+/* case 0x00:
  case 0x01:
  case 0x02:
  case 0x03:
@@ -9201,7 +9201,7 @@ case 0x28:
        goto unknown_thumb;
      }
    }
-   break;
+   break;*/
  case 0x48:
  case 0x49:
  case 0x4a:
@@ -9401,7 +9401,7 @@ case 0x28:
      myregs[myregsist].I = CPUReadMemoryQuick(address);
    }
    break;
- case 0xa0:
+/* case 0xa0:
  case 0xa1:
  case 0xa2:
  case 0xa3:
@@ -9437,7 +9437,7 @@ case 0x28:
        offset = -offset;
      myregs[13].I += offset;
    }
-   break;
+   break;*/
 #define PUSH_myregs(val, r) \
   if(opcode & (val)) {\
     CPUWriteMemory(address, myregs[(r)].I);\
@@ -9593,7 +9593,7 @@ case 0x28:
 	   //iprintf("%x\n",myregs[myregsist].I);
    }
    break;
- case 0xd0:
+/* case 0xd0:
    // BEQ offset
 #ifdef BKPT_SUPPORT
 		 UPDATE_OLD_myregs
@@ -9843,13 +9843,11 @@ case 0x28:
  case 0xbe:
 #endif
  case 0xbf:
- case 0xde:
+ case 0xde:*/
  default:
  unknown_thumb:
-#ifdef DEV_VERSION
-     Log("Undefined THUMB instruction %04x at %08x\n", opcode, armNextPC-2);
-#endif
+     Log("Undefined THUMB instruction %04x\n", opcode);
+	 while(1);
    break;
 }
 }
-

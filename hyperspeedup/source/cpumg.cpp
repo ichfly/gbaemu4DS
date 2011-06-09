@@ -23,7 +23,7 @@
 #include <nds/arm9/sassert.h>
 #include <stdarg.h>
 
-
+void VblankHandler();
 
 void BIOScall(int op,  s32 *R);
 
@@ -56,7 +56,7 @@ void BIOScall(int op,  s32 *R);
 
 
 
-
+	FILE * pFile;
 
 
 #include "main.h"
@@ -178,6 +178,301 @@ extern s32  __attribute__((section(".itcm"))) exRegs[];
 #define BIOSDBG_SPSR *((volatile u32*)0x027FFD90)
 #define BIOSDBG_R12  *((volatile u32*)0x027FFD94)
 #define BIOSDBG_PC   *((volatile u32*)0x027FFD98)
+
+
+
+
+
+
+/* we use this so that we can do without the ctype library */
+#define is_digit(c)	((c) >= '0' && (c) <= '9')
+
+static int skip_atoi(const char **s)
+{
+	int i=0;
+
+	while (is_digit(**s))
+		i = i*10 + *((*s)++) - '0';
+	return i;
+}
+
+#define ZEROPAD	1		/* pad with zero */
+#define SIGN	2		/* unsigned/signed long */
+#define PLUS	4		/* show plus */
+#define SPACE	8		/* space if plus */
+#define LEFT	16		/* left justified */
+#define SPECIAL	32		/* 0x */
+#define LARGE	64		/* use 'ABCDEF' instead of 'abcdef' */
+
+#define do_div(n,base) ({ \
+int __res; \
+__res = ((unsigned long) n) % (unsigned) base; \
+n = ((unsigned long) n) / (unsigned) base; \
+__res; })
+
+static char * number(char * str, long num, int base, int size, int precision
+	,int type)
+{
+	char c,sign,tmp[66];
+	const char *digits="0123456789abcdefghijklmnopqrstuvwxyz";
+	int i;
+
+	if (type & LARGE)
+		digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	if (type & LEFT)
+		type &= ~ZEROPAD;
+	if (base < 2 || base > 36)
+		return 0;
+	c = (type & ZEROPAD) ? '0' : ' ';
+	sign = 0;
+	if (type & SIGN) {
+		if (num < 0) {
+			sign = '-';
+			num = -num;
+			size--;
+		} else if (type & PLUS) {
+			sign = '+';
+			size--;
+		} else if (type & SPACE) {
+			sign = ' ';
+			size--;
+		}
+	}
+	if (type & SPECIAL) {
+		if (base == 16)
+			size -= 2;
+		else if (base == 8)
+			size--;
+	}
+	i = 0;
+	if (num == 0)
+		tmp[i++]='0';
+	else while (num != 0)
+		tmp[i++] = digits[do_div(num,base)];
+	if (i > precision)
+		precision = i;
+	size -= precision;
+	if (!(type&(ZEROPAD+LEFT)))
+		while(size-->0)
+			*str++ = ' ';
+	if (sign)
+		*str++ = sign;
+	if (type & SPECIAL) {
+		if (base==8)
+			*str++ = '0';
+		else if (base==16) {
+			*str++ = '0';
+			*str++ = digits[33];
+		}
+	}
+	if (!(type & LEFT))
+		while (size-- > 0)
+			*str++ = c;
+	while (i < precision--)
+		*str++ = '0';
+	while (i-- > 0)
+		*str++ = tmp[i];
+	while (size-- > 0)
+		*str++ = ' ';
+	return str;
+}
+
+
+
+int kvsprintf(char *buf, const char *fmt, va_list args)
+{
+	int len;
+	unsigned long num;
+	int i, base;
+	char * str;
+	const char *s;
+
+	int flags;		/* flags to number() */
+
+	int field_width;	/* width of output field */
+	int precision;		/* min. # of digits for integers; max
+				   number of chars for from string */
+	int qualifier;		/* 'h', 'l', or 'L' for integer fields */
+
+	for (str=buf ; *fmt ; ++fmt) {
+		if (*fmt != '%') {
+			*str++ = *fmt;
+			continue;
+		}
+
+		/* process flags */
+		flags = 0;
+		repeat:
+			++fmt;		/* this also skips first '%' */
+			switch (*fmt) {
+				case '-': flags |= LEFT; goto repeat;
+				case '+': flags |= PLUS; goto repeat;
+				case ' ': flags |= SPACE; goto repeat;
+				case '#': flags |= SPECIAL; goto repeat;
+				case '0': flags |= ZEROPAD; goto repeat;
+				}
+
+		/* get field width */
+		field_width = -1;
+		if (is_digit(*fmt))
+			field_width = skip_atoi(&fmt);
+		else if (*fmt == '*') {
+			++fmt;
+			/* it's the next argument */
+			field_width = va_arg(args, int);
+			if (field_width < 0) {
+				field_width = -field_width;
+				flags |= LEFT;
+			}
+		}
+
+		/* get the precision */
+		precision = -1;
+		if (*fmt == '.') {
+			++fmt;
+			if (is_digit(*fmt))
+				precision = skip_atoi(&fmt);
+			else if (*fmt == '*') {
+				++fmt;
+				/* it's the next argument */
+				precision = va_arg(args, int);
+			}
+			if (precision < 0)
+				precision = 0;
+		}
+
+		/* get the conversion qualifier */
+		qualifier = -1;
+		if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L') {
+			qualifier = *fmt;
+			++fmt;
+		}
+
+		/* default base */
+		base = 10;
+
+		switch (*fmt) {
+		case 'c':
+			if (!(flags & LEFT))
+				while (--field_width > 0)
+					*str++ = ' ';
+			*str++ = (unsigned char) va_arg(args, int);
+			while (--field_width > 0)
+				*str++ = ' ';
+			continue;
+
+		case 's':
+			s = va_arg(args, char *);
+			if (!s)
+				s = "<NULL>";
+
+			len = strnlen(s, precision);
+
+			if (!(flags & LEFT))
+				while (len < field_width--)
+					*str++ = ' ';
+			for (i = 0; i < len; ++i)
+				*str++ = *s++;
+			while (len < field_width--)
+				*str++ = ' ';
+			continue;
+
+		case 'p':
+			if (field_width == -1) {
+				field_width = 2*sizeof(void *);
+				flags |= ZEROPAD;
+			}
+			str = number(str,
+				(unsigned long) va_arg(args, void *), 16,
+				field_width, precision, flags);
+			continue;
+
+
+		case 'n':
+			if (qualifier == 'l') {
+				long * ip = va_arg(args, long *);
+				*ip = (str - buf);
+			} else {
+				int * ip = va_arg(args, int *);
+				*ip = (str - buf);
+			}
+			continue;
+
+		case '%':
+			*str++ = '%';
+			continue;
+
+		/* integer number formats - set up the flags and "break" */
+		case 'o':
+			base = 8;
+			break;
+
+		case 'X':
+			flags |= LARGE;
+		case 'x':
+			base = 16;
+			break;
+
+		case 'd':
+		case 'i':
+			flags |= SIGN;
+		case 'u':
+			break;
+
+		default:
+			*str++ = '%';
+			if (*fmt)
+				*str++ = *fmt;
+			else
+				--fmt;
+			continue;
+		}
+		if (qualifier == 'l')
+			num = va_arg(args, unsigned long);
+		else if (qualifier == 'h') {
+			num = (unsigned short) va_arg(args, int);
+			if (flags & SIGN)
+				num = (short) num;
+		} else if (flags & SIGN)
+			num = va_arg(args, int);
+		else
+			num = va_arg(args, unsigned int);
+		str = number(str, num, base, field_width, precision, flags);
+	}
+	*str = '\0';
+	return str-buf;
+}
+
+
+
+
+
+
+
+
+
+
+
+int durchlauf = 0;
+
+
+
+void Logsd(const char *defaultMsg,...)
+{
+char buffer[256];
+	  va_list valist;
+  va_start(valist, defaultMsg);
+  //iprintf("%s",defaultMsg);
+  //while(1);
+  kvsprintf(buffer, defaultMsg, valist); //workaround
+
+	iprintf(buffer);
+    //fputs(buffer, pFile);
+
+  
+  va_end(valist);
+  
+}
 
 void exInit(void (*customHdl)())
 {
@@ -420,7 +715,6 @@ void gbaExceptionHdl()
 
 
 
-
 	int i;
 	u32 instr;
 	u32 sysMode;
@@ -436,19 +730,30 @@ void gbaExceptionHdl()
 	
 
 	
-	exRegs[15] -= 4; //ichfly patch not working on emulators
+	//exRegs[15] -= 4; //ichfly patch not working on emulators
 	
-	Log("%08X\n", exRegs[15]);
+
+	//exRegs[15] += 4;
+		
 	
+	//while(1);
+	
+	  durchlauf++;
+	if(durchlauf == 0x737)while(1);
+	
+	Log("%08X %08X\n", exRegs[15] , durchlauf);
+	//Log("%08X\n", exRegs[0]);
+	if(exRegs[15] < 0x02000000)while(1);
+	if(exRegs[15] > 0x04000000 && !(exRegs[15] & 0x08000000))while(1);
+
 	//debugDump();
-	
-		if(exRegs[15] < 0x02000000)while(1);
-		if(exRegs[15] > 0x04000000 && !(exRegs[15] & 0x08000000))while(1);
+
+
 	
 	if(exRegs[15] & 0x08000000)
 	{
 		//if(exRegs[15] == 0x08000290)while(1);
-		//Log("%08X\n", exRegs[15]);
+		//Logsd("%08X\n", exRegs[15]);
 		//debugDump();
 		BIOSDBG_SPSR |= 0x20;
 		//exRegs[15] -= 4;
@@ -462,27 +767,31 @@ void gbaExceptionHdl()
 	{
 		if(sysMode == 0x17)
 		{
-	 //		Log("-------- DA :\n");
+	 //		Logsd("-------- DA :\n");
 
 			
-			exRegs[15] += 4;
+			//exRegs[15] += 4; //for emu
 			
 			//debugDump();
 			
-			durchgang++;
+			//durchgang++;
+			
+			//iprintf("%08X %X (%08X)\n", exRegs[15],cpuMode,*(u32*)(exRegs[15] - 8));
 			
 			
-			
+				//debugDump();
 			
 			if(cpuMode)
 			{
 				instr = *(u16*)(exRegs[15] - 8);
-				exRegs[15] -= 2;
+				exRegs[15] -= 2; //won't work
+				//BIOSDBG_PC -= 2; 
 			}
 			else
 			{
 				instr = *(u32*)(exRegs[15] - 8);
-				//exRegs[15] -= 4;
+				//exRegs[15] -= 2;
+				//
 			}
 			/*if(cpuMode) instr = (u32)*(u16*)(exRegs[15] - 4);
 			else instr = *(u32*)(exRegs[15] - 4);*/
@@ -496,7 +805,7 @@ void gbaExceptionHdl()
 			{
 				u16 tempforwtf = *(u16*)(exRegs[15] - 2);
 
-				//Log("%08X\n", instr);
+				//Logsd("%08X\n", instr);
 				if(tempforwtf > 0xBE00 && tempforwtf < 0xBE2B)
 				{
 				
@@ -519,15 +828,15 @@ void gbaExceptionHdl()
 			
 				u32 tempforwtf = *(u32*)(exRegs[15] - 4);
 
-				//Log("%08X\n", instr);
+				//Logsd("%08X\n", instr);
 				if((tempforwtf &0xFFF000F0) == 0xE1200070)
 				{
 					exRegs[15] += 4;
 					BIOScall((tempforwtf & 0xFFF00)>>0x8, exRegs);
 				}
-	// 			Log("ARM: %08X\n", instr);
+	// 			Logsd("ARM: %08X\n", instr);
 				emuInstrARM(instr, exRegs);
-	// 			Log("NDS TRACE\n")
+	// 			Logsd("NDS TRACE\n")
 				//exRegs[15] -= 4;
 			}
 			
@@ -557,8 +866,28 @@ void gbaExceptionHdl()
 			exRegs[15] += 4;
 		}
 	}
+
+		//while(1);
 	
 	//Log("%08X\n", exRegs[1]);
+	//Log("%08X\n", exRegs[0]);
+	//while(1);
+	//debugDump();
+	
+	//test mode
+	
+	
+	/*iprintf("test\r\n%x\r\n%x\r\n%x\r\n%x\r\n",BIOSDBG_CP15, BIOSDBG_SPSR, BIOSDBG_R12, BIOSDBG_PC);
+	
+	BIOSDBG_PC = 0;
+	
+	iprintf("%x", BIOSDBG_PC);
+	while(1);*/
+	//test mode end
+	
+	//Log("%08X\n", exRegs[15]);
+	
+	//debugDump();
 	
 	gbaMode();
 	
@@ -573,9 +902,14 @@ void gbaExceptionHdl()
 
 void gbaInit()
 {
+	//pFile = fopen("fat:/gbaemulog.log","w");
 	pu_SetDataCachability(   B8(0,1,0,0,0,0,0,0)); //ichfly todo slowdown !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	pu_SetCodeCachability(   B8(0,1,0,0,0,0,0,0));
 	pu_GetWriteBufferability(B8(0,0,0,0,0,0,0,0));
+	
+	//Logsd ("test %x\r\n",pFile);
+	
+	//fputs ("fopen example\r\n",pFile);
 	
 	// 	puSetGbaIWRAM();
 	pu_SetRegion(5, 0x03000000 | PU_PAGE_32K | 1);	/* gba iwram */ //it is the GBA Cart in the original
@@ -590,6 +924,8 @@ void gbaInit()
 #ifdef releas
 	exInit(gbaExceptionHdl);
 #endif
+
+	iprintf("gbainit done");
 	
 }
 
@@ -665,6 +1001,7 @@ void BIOScall(int op,  s32 *R)
 	  case 0x05:
 	#ifdef DEV_VERSION
 		  Log("VBlankIntrWait:\n");
+		  VblankHandler();
 	#endif
 		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 		while(!(REG_DISPSTAT & DISP_IN_VBLANK));

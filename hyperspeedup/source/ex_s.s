@@ -106,11 +106,9 @@ exMain:
 	ldr	r12, [r12]
 	mcr	p15, 0, r12, c5, c0, 2
 	
-	ldr	sp, =0x027FFD8D	@ on restaure la pile du bios (addresse harcodée parce que le bios est con)
+	@ldr	sp, =0x027FFD8D	@ on restaure la pile du bios (addresse harcodée parce que le bios est con) //ichfly what the hell
 	
-	
-	
-	
+	ldr	sp, =0x027FFD8C	@ on restaure la pile du bios (addresse harcodée parce que le bios est con) //ichfly what the hell
 	
 	
 	
@@ -127,6 +125,10 @@ exMain:
 	
 	
 	ldmia   sp!, {r12, lr}
+	
+	@my test code
+	ldr	lr,=(exRegs + 15 * 4)
+	ldr	lr, [lr]
 		
 	subs    pc, lr, #4
 	

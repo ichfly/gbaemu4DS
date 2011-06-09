@@ -390,7 +390,7 @@ void VblankHandler(void) {
 		{
 			if(lastDISPCNT != DISPCNT)
 			{
-				REG_DISPCNT = (DISPCNT | 0x12010010) & ~0x400; //need 0x10010
+				REG_DISPCNT = (DISPCNT | 0x02010010) & ~0x400; //need 0x10010
 				if((DISPCNT & 7) == 4)bgrouid = bgInit(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
 				else if((DISPCNT & 7) == 3)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
 				else if((DISPCNT & 7) == 5)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
@@ -471,6 +471,8 @@ int main(void) {
 	//set the mode for 2 text layers and two extended background layers
 	//videoSetMode(MODE_5_2D); 
 
+	//defaultExceptionHandler();	//for debug befor gbainit
+
 	//set the first two banks as background memory and the third as sub background memory
 	//D is not used..if you need a bigger background then you will need to map
 	//more vram banks consecutivly (VRAM A-D are all 0x20000 bytes in size)
@@ -484,8 +486,8 @@ int main(void) {
 
 
 //rootenabelde[2] = fatMountSimple  ("sd", &__io_dsisd); //DSi//sems to be inited by fatInitDefault
-fatInitDefault();
-nitroFSInit();
+ //fatInitDefault();
+ //nitroFSInit();
 /*
 #ifdef public	
 	iprintf("Init Fat...\n");
@@ -642,6 +644,9 @@ nitroFSInit();
   systemFrameSkip = frameSkip = 2; 
   //gbBorderOn = 0;
 
+
+
+
   parseDebug = true;
 
   //if(argc == 2) {
@@ -662,14 +667,13 @@ nitroFSInit();
       CPUInit(biosFileName, useBios,extraram);
 	  
 	  	
-		gbaInit();
-	iprintf("gbaInit\n");
+
 	  
       CPUReset();
 	  
+		  
 
 	  if(batteryDir[0] != 0)CPUReadBatteryFile(batteryDir);
-	  
   /*} else {
     cartridgeType = 0;
     strcpy(filename, "gnu_stub");
@@ -691,7 +695,7 @@ int rrrresxfss = 0;
 
   //soundInit();
   
-  	irqSet(IRQ_VBLANK, VblankHandler);
+  	//irqSet(IRQ_VBLANK, VblankHandler); //todo this is not working
 	
 	
 	//irqSet(IRQ_HBLANK, HblankHandler); //todo
@@ -733,18 +737,23 @@ int rrrresxfss = 0;
 	//consoleInitDefault((u16*)SCREEN_BASE_BLOCK_SUB(31), (u16*)CHAR_BASE_BLOCK_SUB(0), 16);
 
 
- 	iprintf("Current CP15 reg: %08X\n",cpuGetCPSR());
+
+
+	iprintf("gbaInit\n");
+		gbaInit();
+ 	//iprintf("Current CP15 reg: %08X\n",cpuGetCPSR());
 	
 	
 	ndsMode();
 	
-	//memcpy((void*)0x2000000,(void*)rom, 0x40000);
+	memcpy((void*)0x2000000,(void*)rom, 0x40000);
 	
 	
-	dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
+	//dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
 	
 	
 	
+	iprintf("everything done (%08X)\n",rom);
 
 	//iprintf("ndsMode %x\n", (u32)rom);
 	
@@ -762,7 +771,8 @@ int rrrresxfss = 0;
 	
 	//if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 	//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-	
+
+
 	cpu_ArmJump((u32)rom, 0);
 	
 	
