@@ -8510,7 +8510,7 @@ if(cond_res) {
       }
     }
     break;    
-  CASE_256(0xa00)
+ /* CASE_256(0xa00)
     {
       // B <offset>
       int offset = opcode & 0x00FFFFFF;
@@ -8564,7 +8564,7 @@ if(cond_res) {
   case 0xe0f:
     // MRC
     break;    
-#endif
+#endif*/
   default:
 #ifdef DEV_VERSION
       Log("Undefined ARM instruction %08x at %08x\n", opcode,
@@ -9575,9 +9575,9 @@ case 0x28:
      // LDM R0~R7!, {Rlist}
      u8 myregsist = (opcode >> 8) & 7;
 	//iprintf("%x\n",myregs[myregsist].I);
-	myregs[myregsist].I -= 4;
+	myregs[myregsist].I -= 4; //ichfly - 4 by me // gess real ds don't need that
      u32 address = myregs[myregsist].I & 0xFFFFFFFC;
-     u32 temp = myregs[myregsist].I + 4*cpuBitsSet[opcode & 0xFF]; //ichfly - 4 by me
+     u32 temp = myregs[myregsist].I + 4*cpuBitsSet[opcode & 0xFF]; 
      int offset = 0;
      // load
      THUMB_LDM_myregs(1, 0);

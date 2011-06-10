@@ -713,7 +713,7 @@ void gbaExceptionHdl()
 {
 
 
-
+	//todo sem the 0x3000000 is copyed to the wrong location 
 
 	int i;
 	u32 instr;
@@ -739,7 +739,7 @@ void gbaExceptionHdl()
 	//while(1);
 	
 	  durchlauf++;
-	if(durchlauf == 0x737)while(1);
+	if(durchlauf == 0x8000)while(1);
 	
 	Log("%08X %08X\n", exRegs[15] , durchlauf);
 	//Log("%08X\n", exRegs[0]);
@@ -756,7 +756,8 @@ void gbaExceptionHdl()
 		//Logsd("%08X\n", exRegs[15]);
 		//debugDump();
 		BIOSDBG_SPSR |= 0x20;
-		//exRegs[15] -= 4;
+		//exRegs[15] -= 8; //for my emu
+		exRegs[15] -= 4; //for real
 		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
 		
 		
@@ -885,7 +886,7 @@ void gbaExceptionHdl()
 	while(1);*/
 	//test mode end
 	
-	//Log("%08X\n", exRegs[15]);
+	Log("%08X\n", exRegs[15]);
 	
 	//debugDump();
 	
