@@ -81,8 +81,8 @@ char* memoryWaitrealram[8] =
 
 void speedtest()
 {	
-	iprintf("\x1b[2J");
-	iprintf("fps %d",framenummer);
+	//iprintf("\x1b[2J");
+	//iprintf("fps %d",framenummer);
 	framenummer = 0;
 }
 
@@ -352,12 +352,14 @@ void VblankHandler(void) {
 		}
 		else
 		{
+			iprintf("%x\r\n",*(u32*)(0x0640403C));
 			if(lastDISPCNT != DISPCNT)
 			{
-				REG_DISPCNT = (DISPCNT | 0x10010) & ~0x400; //need 0x10010
+				REG_DISPCNT = (DISPCNT | 0x02010010) & ~0x400; //need 0x10010
 				if((DISPCNT & 7) == 4)bgrouid = bgInit(3, BgType_Bmp8, BgSize_B8_256x256,0,0); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
 				else if((DISPCNT & 7) == 3)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,0,0);
 				else if((DISPCNT & 7) == 5)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,0,0);
+				iprintf("%08x %08x %08x %08x %08x\n",(DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),REG_DISPCNT/*REG_DISPCNT*/,*(u32*)(0x6014020));
 			}
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
 			{

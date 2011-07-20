@@ -61,9 +61,9 @@ char* memoryWaitrealram[8] =
 
 void speedtest()
 {	
-	iprintf("\x1b[2J");
+	/*iprintf("\x1b[2J");
 	iprintf("fps %d",framenummer);
-	framenummer = 0;
+	framenummer = 0;*/
 }
 
 

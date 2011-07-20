@@ -1987,6 +1987,8 @@ void CPUSoftwareInterrupt()
 
 void CPUSoftwareInterrupt(int comment)
 {
+
+	iprintf("swi %x",comment);
   static bool disableMessage = false;
   if(armState) comment >>= 16;
 #ifdef BKPT_SUPPORT

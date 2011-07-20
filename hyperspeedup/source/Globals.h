@@ -70,7 +70,7 @@ extern u8 *pix;
 extern u8 *oam;
 extern u8 *ioMem;
 
-extern u16 DISPCNT;
+extern volatile u16 DISPCNT;
 extern u16 DISPSTAT;
 extern u16 VCOUNT;
 extern u16 BG0CNT;

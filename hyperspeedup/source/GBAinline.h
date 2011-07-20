@@ -25,6 +25,8 @@
 #include "RTC.h"
 #include "GBA.h"
 
+#include <nds/interrupts.h>
+
 extern bool cpuSramEnabled;
 extern bool cpuFlashEnabled;
 extern bool cpuEEPROMEnabled;
@@ -130,6 +132,11 @@ static inline u32 CPUReadMemory(u32 address)
 		}
 		UPDATE_REG(0x04, DISPSTAT);
 	}
+		if(address == 0x4000200)//ichfly update
+	{
+		IF = (REG_IF & 0x3FFF);
+		UPDATE_REG(0x202, IF);
+	}
     if((address < 0x4000400) && ioReadable[address & 0x3fc]) {
       if(ioReadable[(address & 0x3fc) + 2])
         value = READ32LE(((u32 *)&ioMem[address & 0x3fC]));
@@ -221,7 +228,7 @@ extern u32 myROM[];
 static inline u32 CPUReadHalfWord(u32 address)
 {
 
-//iprintf("hword read: %08x\n",address);
+	//iprintf("hword read: %08x\n",address);
 
 #ifdef DEV_VERSION      
   if(address & 1) {
@@ -261,9 +268,19 @@ static inline u32 CPUReadHalfWord(u32 address)
 	{
 		u16 temp = REG_VCOUNT;
 		u16 temp2 = REG_DISPSTAT;
+		//iprintf("Vcountreal: %08x\n",temp);
 		float help = temp;
-		VCOUNT = help / 1.15350877;
-		u16 help3 = (help + 1) / 1.15350877;
+		u16 help3;
+		if(temp < 192)
+		{
+			VCOUNT = help / 1.2; //1.15350877;
+			help3 = (help + 1) / 1.2; //1.15350877;
+		}
+		else
+		{
+			VCOUNT = ((help - 192) / 1.04411764) + 160; //1.15350877;
+			help3 = ((help - 192) / 1.04411764) + 160; //1.15350877;			
+		}
 		DISPSTAT &= 0xFFFC; //reset h-blanc and V-Blanc
 		if(help3 == VCOUNT) //else it is a extra long V-Line
 		{
@@ -282,6 +299,14 @@ static inline u32 CPUReadHalfWord(u32 address)
 			DISPSTAT &= 0xFFFB;
 		}
 		UPDATE_REG(0x04, DISPSTAT);
+		//iprintf("Vcountreal: %08x\n",temp);
+		//iprintf("DISPSTAT: %08x\n",temp2);
+	}
+	
+	if(address == 0x4000202)//ichfly update
+	{
+		IF = (REG_IF & 0x3FFF);
+		UPDATE_REG(0x202, IF);
 	}
 	
     if((address < 0x4000400) && ioReadable[address & 0x3fe])
@@ -427,6 +452,11 @@ static inline u8 CPUReadByte(u32 address)
 			DISPSTAT &= 0xFFFB;
 		}
 		UPDATE_REG(0x04, DISPSTAT);
+	}
+	if(address == 0x4000200 || address == 0x4000201)//ichfly update
+	{
+		IF = (REG_IF & 0x3FFF);
+		UPDATE_REG(0x202, IF);
 	}
     if((address < 0x4000400) && ioReadable[address & 0x3ff])
       return ioMem[address & 0x3ff];

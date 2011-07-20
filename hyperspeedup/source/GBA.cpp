@@ -1,3 +1,14 @@
+//ichfly test
+
+
+#define loadindirect
+
+
+
+
+
+
+
 // VisualBoyAdvance - Nintendo Gameboy/GameboyAdvance (TM) emulator.
 // Copyright (C) 1999-2003 Forgotten
 // Copyright (C) 2005-2006 Forgotten and the VBA development team
@@ -27,6 +38,8 @@
 #include "Util.h"
 #include "getopt.h"
 #include "System.h"
+#include "woraround.h"
+
 
 
 #include "puzzleorginal_bin.h"
@@ -408,7 +421,7 @@ u32 myROM[] = {
 0x09FFC000,
 0x03007FE0
 };
-
+/*
 variable_desc saveGameStruct[] = {
   { &DISPCNT  , sizeof(u16) },
   { &DISPSTAT , sizeof(u16) },
@@ -527,7 +540,7 @@ variable_desc saveGameStruct[] = {
   { &saveType , sizeof(int) },
   { NULL, 0 } 
 };
-
+*/
 int romSize = 0x200000; //test normal 0x2000000 current 1/10 oh no only 2.4 MB
 
 #ifdef PROFILING
@@ -861,7 +874,7 @@ static bool CPUWriteState(gzFile file)
   
   utilGzWrite(file, &reg[0], sizeof(reg));
 
-  utilWriteData(file, saveGameStruct);
+  //utilWriteData(file, saveGameStruct); //todo
 
   // new to version 0.7.1
   utilWriteInt(file, stopState);
@@ -962,7 +975,7 @@ static bool CPUReadState(gzFile file)
 
   utilGzRead(file, &reg[0], sizeof(reg));
 
-  utilReadData(file, saveGameStruct);
+  //utilReadData(file, saveGameStruct); //todo
 
   if(version < SAVE_GAME_VERSION_3)
     stopState = false;
@@ -1039,7 +1052,7 @@ static bool CPUReadState(gzFile file)
   }
 
   // set pointers!
-  layerEnable = layerSettings & DISPCNT;
+  //layerEnable = layerSettings & DISPCNT;
   
   //CPUUpdateRender();
   //CPUUpdateRenderBuffers(true);
@@ -1548,23 +1561,28 @@ int CPULoadRom(const char *szFile,bool extram)
 	
 	int malloctempmulti = 0x80000;
 	
-	//while(1) 
+	while(1) 
 	{
 		iprintf("gbaemu DS by ichfly\n");
 		iprintf("malloc %i multi: %i\n",romSize,malloctempmulti);
 		
-		//swiWaitForVBlank(); //ichfly change that
+		swiWaitForVBlank(); //ichfly change that
 		iprintf("\x1b[2J");
 		scanKeys();
-		//if (keysDown()&KEY_START) break;
+		if (keysDown()&KEY_START) break;
 		if (keysDown()&KEY_UP) romSize+= malloctempmulti;
 		if (keysDown()&KEY_DOWN && romSize != 0) romSize-=malloctempmulti;
 		if (keysDown()&KEY_RIGHT) malloctempmulti *= 2;
 		if (keysDown()&KEY_LEFT && malloctempmulti != 1) malloctempmulti /= 2;
 	}
-	rom = (u8 *)malloc(romSize + 0x1000); //test normal 0x2000000 current 1/10 oh no only 2 MB
+	workaroundwrite32(((u32)malloc(romSize + 0x1000) >> 12) << 12, (u32*)&rom);
 	
-	rom = (u8*)(((u32)rom >> 12) << 12) ; //alinged 
+	//rom = (u8 *)malloc(romSize + 0x1000); //test normal 0x2000000 current 1/10 oh no only 2 MB
+	
+	
+	//rom = (u8*)(((u32)rom >> 12) << 12) ; //alinged 
+	
+	
   		/*printf("failed %x",(u32)rom);
 		while(1);*/   
 	}
@@ -1586,38 +1604,37 @@ int CPULoadRom(const char *szFile,bool extram)
   if(cpuIsMultiBoot)
     whereToLoad = workRAM;
 
-  if(CPUIsELF(szFile)) {
-    FILE *f = fopen(szFile, "rb");
-    if(!f) {
-      systemMessage(MSG_ERROR_OPENING_IMAGE, N_("Error opening image %s"),
-                    szFile);
-      free(rom);
-      rom = NULL;
-      free(workRAM);
-      workRAM = NULL;
-      return 0;
-    }
-    bool res = elfRead(szFile, romSize, f);
-    if(!res || romSize == 0) {
-      free(rom);
-      rom = NULL;
-      free(workRAM);
-      workRAM = NULL;
-      elfCleanUp();
-      return 0;
-    }
-  } else if(!utilLoad(szFile,
-                      utilIsGBAImage,
-                      whereToLoad,
-                      romSize,extram)) {
-    free(rom);
-    rom = NULL;
-    free(workRAM);
-    workRAM = NULL;
-    return 0;
-  }
+		if(!utilLoad(szFile,
+						  utilIsGBAImage,
+						  whereToLoad,
+						  romSize,extram)) /*{
+		iprintf("b");
+		free(rom);
+		rom = NULL;
+		free(workRAM);
+		workRAM = NULL;
+		return 0;*/
+		FILE *f = fopen(szFile, "r");
+		
+		//fseek(f,0,SEEK_END);
+		//int fileSize = ftell(f);
+		//fclose(f);//fseek(f,0,SEEK_SET);
+
+		//f = fopen(szFile, "r");
+		
+		//if(romSize > fileSize) romSize = fileSize;
+		
+		//int ihhtrv = fread((void*)rom, 1, romSize, f);
+		
+		//fclose(f);
+		
+		//iprintf("a %s %x %x %x",szFile,rom, romSize,ihhtrv);
+		
+		
+  //iprintf("c");
+  //}
 #else
-rom = (u8*)puzzleorginal_bin;
+workaroundwrite32((u32)puzzleorginal_bin,(u32*)&rom);  //rom = (u8*)puzzleorginal_bin;
 #endif
   /*u16 *temp = (u16 *)(rom+((romSize+1)&~1));
   int i;
@@ -2229,8 +2246,8 @@ void CPUCompareVCOUNT()
   if (layerEnableDelay>0)
   {
       layerEnableDelay--;
-      if (layerEnableDelay==1)
-          layerEnable = layerSettings & DISPCNT;
+      if (layerEnableDelay==1){}
+          //layerEnable = layerSettings & DISPCNT;
   }
 
 }
@@ -2570,7 +2587,6 @@ void CPUCheckDMA(int reason, int dmamask)
 
 void CPUUpdateRegister(u32 address, u16 value)
 {
-
   	if(0x60 > address && address > 0x7)
 	{
 			//iprintf("UP16 %x %x\r\n",address,value);
@@ -2585,10 +2601,13 @@ void CPUUpdateRegister(u32 address, u16 value)
   switch(address) {
   case 0x00:
     {
-	DISPCNT = value;
-	//iprintf("%x\r\n",value);
+	//iprintf("DISPCNT1 %x %x\r\n",&DISPCNT,DISPCNT);
+	//DISPCNT = value;
+	workaroundwrit16(value, (u16*)&DISPCNT);
+	//iprintf("DISPCNT1 %x %x\r\n",&DISPCNT,DISPCNT);
 	UPDATE_REG(0x00, DISPCNT);
 	
+
     /*    if ((value & 7) >5)
           DISPCNT = (value &7);
       bool change = ((DISPCNT ^ value) & 0x80) ? true : false;
@@ -2623,6 +2642,8 @@ void CPUUpdateRegister(u32 address, u16 value)
       if(changeBG)
         CPUUpdateRenderBuffers(false);
 		*/
+		//iprintf("DISPCNT2 %x\r\n",DISPCNT);
+		
     }
     break;
   case 0x04:
@@ -3024,11 +3045,16 @@ void CPUUpdateRegister(u32 address, u16 value)
   case 0x200:
     IE = value & 0x3FFF;
     UPDATE_REG(0x200, IE);
-    if ((IME & 1) && (IF & IE) && armIrqEnable)
-      cpuNextEvent = cpuTotalTicks;
+    /*if ((IME & 1) && (IF & IE) && armIrqEnable)
+      cpuNextEvent = cpuTotalTicks;*/
+	  
+	REG_IE = 1 | IE | (REG_IE & 0xFFFF0000); //todo filter the 1
+	
     break;
   case 0x202:
-    IF ^= (value & IF);
+	REG_IF = value;
+	//IF = REG_IF;
+    //IF ^= (value & IF);
     UPDATE_REG(0x202, IF);
     break;
   case 0x204:
@@ -3550,7 +3576,7 @@ void CPUReset()
 
 
 
-  DISPCNT  = 0x0000;
+  //DISPCNT  = 0x0000;
   DISPSTAT = 0x0000;
   VCOUNT   = (useBios && !skipBios) ? 0 :0x007E;
   BG0CNT   = 0x0000;
@@ -3710,7 +3736,7 @@ void CPUReset()
   windowOn = false;
   frameCount = 0;
   saveType = 0;
-  layerEnable = DISPCNT & layerSettings;
+  //layerEnable = DISPCNT & layerSettings;
 
   //CPUUpdateRenderBuffers(true);
   

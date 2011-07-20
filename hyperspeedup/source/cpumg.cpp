@@ -46,7 +46,7 @@ void BIOScall(int op,  s32 *R);
 #include "main.h"
 
 
-
+#include "woraround.h"
 
 
 
@@ -106,7 +106,9 @@ u16 CPUReadHalfWordSigned(u32 addr);
 u8  CPUReadByte (u32 addr);
 
 
-#define DEV_VERSION
+extern "C" void swiIntrWaitc();
+
+//#define DEV_VERSION
 
 
 extern bool disableMessage;
@@ -181,298 +183,8 @@ extern s32  __attribute__((section(".itcm"))) exRegs[];
 
 
 
-
-
-
-/* we use this so that we can do without the ctype library */
-#define is_digit(c)	((c) >= '0' && (c) <= '9')
-
-static int skip_atoi(const char **s)
-{
-	int i=0;
-
-	while (is_digit(**s))
-		i = i*10 + *((*s)++) - '0';
-	return i;
-}
-
-#define ZEROPAD	1		/* pad with zero */
-#define SIGN	2		/* unsigned/signed long */
-#define PLUS	4		/* show plus */
-#define SPACE	8		/* space if plus */
-#define LEFT	16		/* left justified */
-#define SPECIAL	32		/* 0x */
-#define LARGE	64		/* use 'ABCDEF' instead of 'abcdef' */
-
-#define do_div(n,base) ({ \
-int __res; \
-__res = ((unsigned long) n) % (unsigned) base; \
-n = ((unsigned long) n) / (unsigned) base; \
-__res; })
-
-static char * number(char * str, long num, int base, int size, int precision
-	,int type)
-{
-	char c,sign,tmp[66];
-	const char *digits="0123456789abcdefghijklmnopqrstuvwxyz";
-	int i;
-
-	if (type & LARGE)
-		digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	if (type & LEFT)
-		type &= ~ZEROPAD;
-	if (base < 2 || base > 36)
-		return 0;
-	c = (type & ZEROPAD) ? '0' : ' ';
-	sign = 0;
-	if (type & SIGN) {
-		if (num < 0) {
-			sign = '-';
-			num = -num;
-			size--;
-		} else if (type & PLUS) {
-			sign = '+';
-			size--;
-		} else if (type & SPACE) {
-			sign = ' ';
-			size--;
-		}
-	}
-	if (type & SPECIAL) {
-		if (base == 16)
-			size -= 2;
-		else if (base == 8)
-			size--;
-	}
-	i = 0;
-	if (num == 0)
-		tmp[i++]='0';
-	else while (num != 0)
-		tmp[i++] = digits[do_div(num,base)];
-	if (i > precision)
-		precision = i;
-	size -= precision;
-	if (!(type&(ZEROPAD+LEFT)))
-		while(size-->0)
-			*str++ = ' ';
-	if (sign)
-		*str++ = sign;
-	if (type & SPECIAL) {
-		if (base==8)
-			*str++ = '0';
-		else if (base==16) {
-			*str++ = '0';
-			*str++ = digits[33];
-		}
-	}
-	if (!(type & LEFT))
-		while (size-- > 0)
-			*str++ = c;
-	while (i < precision--)
-		*str++ = '0';
-	while (i-- > 0)
-		*str++ = tmp[i];
-	while (size-- > 0)
-		*str++ = ' ';
-	return str;
-}
-
-
-
-int kvsprintf(char *buf, const char *fmt, va_list args)
-{
-	int len;
-	unsigned long num;
-	int i, base;
-	char * str;
-	const char *s;
-
-	int flags;		/* flags to number() */
-
-	int field_width;	/* width of output field */
-	int precision;		/* min. # of digits for integers; max
-				   number of chars for from string */
-	int qualifier;		/* 'h', 'l', or 'L' for integer fields */
-
-	for (str=buf ; *fmt ; ++fmt) {
-		if (*fmt != '%') {
-			*str++ = *fmt;
-			continue;
-		}
-
-		/* process flags */
-		flags = 0;
-		repeat:
-			++fmt;		/* this also skips first '%' */
-			switch (*fmt) {
-				case '-': flags |= LEFT; goto repeat;
-				case '+': flags |= PLUS; goto repeat;
-				case ' ': flags |= SPACE; goto repeat;
-				case '#': flags |= SPECIAL; goto repeat;
-				case '0': flags |= ZEROPAD; goto repeat;
-				}
-
-		/* get field width */
-		field_width = -1;
-		if (is_digit(*fmt))
-			field_width = skip_atoi(&fmt);
-		else if (*fmt == '*') {
-			++fmt;
-			/* it's the next argument */
-			field_width = va_arg(args, int);
-			if (field_width < 0) {
-				field_width = -field_width;
-				flags |= LEFT;
-			}
-		}
-
-		/* get the precision */
-		precision = -1;
-		if (*fmt == '.') {
-			++fmt;
-			if (is_digit(*fmt))
-				precision = skip_atoi(&fmt);
-			else if (*fmt == '*') {
-				++fmt;
-				/* it's the next argument */
-				precision = va_arg(args, int);
-			}
-			if (precision < 0)
-				precision = 0;
-		}
-
-		/* get the conversion qualifier */
-		qualifier = -1;
-		if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L') {
-			qualifier = *fmt;
-			++fmt;
-		}
-
-		/* default base */
-		base = 10;
-
-		switch (*fmt) {
-		case 'c':
-			if (!(flags & LEFT))
-				while (--field_width > 0)
-					*str++ = ' ';
-			*str++ = (unsigned char) va_arg(args, int);
-			while (--field_width > 0)
-				*str++ = ' ';
-			continue;
-
-		case 's':
-			s = va_arg(args, char *);
-			if (!s)
-				s = "<NULL>";
-
-			len = strnlen(s, precision);
-
-			if (!(flags & LEFT))
-				while (len < field_width--)
-					*str++ = ' ';
-			for (i = 0; i < len; ++i)
-				*str++ = *s++;
-			while (len < field_width--)
-				*str++ = ' ';
-			continue;
-
-		case 'p':
-			if (field_width == -1) {
-				field_width = 2*sizeof(void *);
-				flags |= ZEROPAD;
-			}
-			str = number(str,
-				(unsigned long) va_arg(args, void *), 16,
-				field_width, precision, flags);
-			continue;
-
-
-		case 'n':
-			if (qualifier == 'l') {
-				long * ip = va_arg(args, long *);
-				*ip = (str - buf);
-			} else {
-				int * ip = va_arg(args, int *);
-				*ip = (str - buf);
-			}
-			continue;
-
-		case '%':
-			*str++ = '%';
-			continue;
-
-		/* integer number formats - set up the flags and "break" */
-		case 'o':
-			base = 8;
-			break;
-
-		case 'X':
-			flags |= LARGE;
-		case 'x':
-			base = 16;
-			break;
-
-		case 'd':
-		case 'i':
-			flags |= SIGN;
-		case 'u':
-			break;
-
-		default:
-			*str++ = '%';
-			if (*fmt)
-				*str++ = *fmt;
-			else
-				--fmt;
-			continue;
-		}
-		if (qualifier == 'l')
-			num = va_arg(args, unsigned long);
-		else if (qualifier == 'h') {
-			num = (unsigned short) va_arg(args, int);
-			if (flags & SIGN)
-				num = (short) num;
-		} else if (flags & SIGN)
-			num = va_arg(args, int);
-		else
-			num = va_arg(args, unsigned int);
-		str = number(str, num, base, field_width, precision, flags);
-	}
-	*str = '\0';
-	return str-buf;
-}
-
-
-
-
-
-
-
-
-
-
-
 int durchlauf = 0;
 
-
-
-void Logsd(const char *defaultMsg,...)
-{
-char buffer[256];
-	  va_list valist;
-  va_start(valist, defaultMsg);
-  //iprintf("%s",defaultMsg);
-  //while(1);
-  kvsprintf(buffer, defaultMsg, valist); //workaround
-
-	iprintf(buffer);
-    //fputs(buffer, pFile);
-
-  
-  va_end(valist);
-  
-}
 
 void exInit(void (*customHdl)())
 {
@@ -712,9 +424,6 @@ int durchgang = 0;
 void gbaExceptionHdl()
 {
 
-
-	//todo sem the 0x3000000 is copyed to the wrong location 
-
 	int i;
 	u32 instr;
 	u32 sysMode;
@@ -724,6 +433,8 @@ void gbaExceptionHdl()
 	ndsMode();
 	sysMode = cpuGetCPSR() & 0x1F;
 	cpuMode = BIOSDBG_SPSR & 0x20;
+	
+	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80;
 	
 	if(cpuMode) opSize = 2;
 	else opSize = 4;
@@ -738,35 +449,62 @@ void gbaExceptionHdl()
 	
 	//while(1);
 	
-	  durchlauf++;
-	//if(durchlauf == 0x8000)while(1);
+
 	
-	Log("%08X %08X\n", exRegs[15] , durchlauf);
-	//Log("%08X\n", exRegs[0]);
+	//Log("%08X %08X\n", exRegs[15] , BIOSDBG_SPSR);
+	//Log("%08X\n", exRegs[15]);
 	if(exRegs[15] < 0x02000000)while(1);
 	if(exRegs[15] > 0x04000000 && !(exRegs[15] & 0x08000000))while(1);
-
-	//debugDump();
-
-
+	
+	/*if(exRegs[15] > (u32)(rom + 0x200))
+	{
+		//debugDump();
+		Log("%08X\n", exRegs[15]);
+		durchlauf++;
+		if((s32)workaroundread32((u32*)&rom) + 0x458 < exRegs[15] && (s32)workaroundread32((u32*)&rom) + 0x5a4 > exRegs[15])while(1);
+		//debugDump();
+	}*/
 	
 	if(exRegs[15] & 0x08000000)
 	{
 		//if(exRegs[15] == 0x08000290)while(1);
 		//Logsd("%08X\n", exRegs[15]);
 		//debugDump();
-		BIOSDBG_SPSR |= 0x20;
+		
+		//debugDump();
+		
+		//iprintf("\n\r%08X",BIOSDBG_SPSR);
+		
+
+		
+		//suche quelle
+		for(i = 0; i <= 14; i++) {
+			if((exRegs[i] & ~0x1) == (exRegs[15] - 4))
+			{
+				if(exRegs[i] &0x1) BIOSDBG_SPSR |= 0x20;
+				else  BIOSDBG_SPSR &= ~0x20;
+				break;
+			}
+		}
+		
+		
 		//exRegs[15] -= 8; //for my emu
 		//exRegs[15] -= 4; //for nothing
-		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
 		
+		//volatile static u32 temp;
 		
+		//temp = exRegs[15];
+		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)workaroundread32((u32*)&rom);
+		
+		//temp = exRegs[15];
+		//sehen[1] = (u32)rom;
+		//Log("ende %08X %08X %08X \n", sehen[0], sehen[1], sehen[2]);
 		
 	
 	}
 	else
 	{
-		if(sysMode == 0x17)
+		//if(sysMode == 0x17)
 		{
 	 //		Logsd("-------- DA :\n");
 
@@ -832,6 +570,7 @@ void gbaExceptionHdl()
 				//Logsd("%08X\n", instr);
 				if((tempforwtf &0xFFF000F0) == 0xE1200070)
 				{
+					if(durchlauf == 1)while(1);
 					exRegs[15] += 4;
 					BIOScall((tempforwtf & 0xFFF00)>>0x8, exRegs);
 				}
@@ -844,12 +583,12 @@ void gbaExceptionHdl()
 	// 		exRegs[15] += opSize;
 	// 		while(1) { }
 		}
-		else if(sysMode == 0x1B)
+		/*else if(sysMode == 0x1B)
 		{
 			if(cpuMode) instr = (u32)*(u16*)(exRegs[15] - 2);
 			else instr = *(u32*)(exRegs[15] - 4);
 			
-			/* Undefined instruction (debug...) */
+			// Undefined instruction (debug...) 
 			if((!cpuMode && instr == 0xE7F000F0) || (cpuMode && instr == 0xDE00))
 			{
 				Log("Trace... [%s]\n", cpuMode ? "THUMB" : "ARM");
@@ -865,7 +604,7 @@ void gbaExceptionHdl()
 			}
 			
 			exRegs[15] += 4;
-		}
+		}*/ //ichfly not reachable
 	}
 
 		//while(1);
@@ -926,7 +665,7 @@ void gbaInit()
 	exInit(gbaExceptionHdl);
 #endif
 
-	iprintf("gbainit done");
+	iprintf("gbainit done\n\r");
 	
 }
 
@@ -973,21 +712,30 @@ void BIOScall(int op,  s32 *R)
 		break;
 	  case 0x02:
 	#ifdef DEV_VERSION
-		  Log("Halt(not yet)\n");      
+		  Log("Halt: IE %x\n",IE);      
 	#endif    
 		//holdState = true;
 		//holdType = -1;
 		//cpuNextEvent = cpuTotalTicks;
+		
+		
+		//durchlauf = 1;
+		
+		debugDump();
+		
+		VblankHandler();
+		
+		//swiIntrWaitc();
+		
 		break;
 	  case 0x03:
 	#ifdef DEV_VERSION
-		  Log("Stop:\n");      
+		  Log("Stop(not yet)\n");      
 	#endif    
 		//holdState = true;
 		//holdType = -1;
 		//stopState = true;
-		//cpuNextEvent = cpuTotalTicks;
-		swiIntrWait(1,IE);
+		//cpuNextEvent = cpuTotalTicks; 
 		break;
 	  case 0x04:
 	#ifdef DEV_VERSION
@@ -1013,10 +761,14 @@ void BIOScall(int op,  s32 *R)
 		break;
 	  case 0x06:
 		//CPUSoftwareInterrupt();
+#ifdef DEV_VERSION
 		Log("swi 6 (not yet):\n");
+#endif
 		break;
 	  case 0x07:
+#ifdef DEV_VERSION
 		Log("swi 7 (not yet):\n");
+#endif
 		//CPUSoftwareInterrupt();
 		break;
 	  case 0x08:
@@ -1089,12 +841,10 @@ void BIOScall(int op,  s32 *R)
 		// let it go, because we don't really emulate this function
 	  default:
 	#ifdef DEV_VERSION
-		if(systemVerbose & VERBOSE_SWI) {
 		  Log("SWI: %08x (0x%08x,0x%08x,0x%08x)\n", comment,
 			  R[0],
 			  R[1],
 			  R[2]);
-		}
 	#endif
 		
 		if(!disableMessage) {

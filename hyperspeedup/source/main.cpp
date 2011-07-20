@@ -1,6 +1,12 @@
+
+
+
+
+
+
 /*---------------------------------------------------------------------------------
 
-	Basic template code for starting a DS app
+	Basic template code for starting a GBA app <-- this is a joke
 
 ---------------------------------------------------------------------------------*/
 #include <nds.h>
@@ -19,6 +25,7 @@
 
 #include "cpumg.h"
 #include "GBAinline.h"
+#include "woraround.h"
 
 
 #include "main.h"
@@ -59,6 +66,18 @@ typedef struct
 #include <stdarg.h>
 #include <string.h>
 
+
+
+
+
+
+volatile u16 DISPCNT;
+
+
+
+//volatile u16 DISPCNT  = 0x0080;
+
+
 int framenummer;
 
 #define ichflytestkeypossibillity
@@ -72,7 +91,7 @@ int framenummer;
    #define DEFAULT_SECTORS_PAGE 8
 #include "DSi.h"
 
-//#define public
+#define public
 
 char szFile[2048];
 
@@ -113,6 +132,7 @@ void speedtest()
 	iprintf("fps %d",framenummer);
 	framenummer = 0;*/
 }
+
 
 
 
@@ -196,7 +216,7 @@ void dirfree ()
 
 void display ()
 {
-	for(int i = ausgewauhlt - (ausgewauhlt%10); i < dirfeldsize && i < ausgewauhlt - (ausgewauhlt%10) + 10 ; i++)
+	for(int i = ausgewauhlt - (ausgewauhlt%20); i < dirfeldsize && i < ausgewauhlt - (ausgewauhlt%20) + 20 ; i++)
 	{
 		if(i == ausgewauhlt)iprintf("->");
 		else iprintf("  ");
@@ -340,6 +360,7 @@ int frameskip = 10;
 
 int framewtf = 0;
 
+
 int oldmode = 0;
 u16 lastDISPCNT = 0;
 
@@ -365,9 +386,22 @@ void VblankHandler(void) {
 		//*(volatile u32*)0x4000214 = 0x1;
 		//while(1);
 	
-	CPUCheckDMA(1, 0x0f);
+	
+	//iprintf("DISPCNT2 %x\r\n",&DISPCNT);
+
+	
+	//CPUCheckDMA(1, 0x0f);
+	
+	//iprintf("DISPCNT2fly %x %x\r\n",DISPCNT,workaroundread16((u16*)&DISPCNT));
+
+	
 	if(framewtf == frameskip)
 	{
+#ifndef public
+		iprintf("DISPCNT %x\r\n",workaroundread16((u16*)&DISPCNT));
+#endif
+		framewtf = 0;
+		//iprintf("DISPCNT2fly %x %x\r\n",&DISPCNT,workaroundread16((u16*)&DISPCNT));
 		/*for(int iy = 0; iy <0x200 ; iy++)
 		{
 			*(u16 *)(0x07000000 + 2*iy) = *(u16 *)(oam + 2*iy);
@@ -378,24 +412,31 @@ void VblankHandler(void) {
 			
 		}*/
 		
-		
-		if((DISPCNT & 7) < 3)
+		if((workaroundread16((u16*)&DISPCNT) & 7) < 3)
 		{
-			if(lastDISPCNT != DISPCNT)REG_DISPCNT = (DISPCNT | 0x10010); //need 0x10010
+			if(lastDISPCNT != workaroundread16((u16*)&DISPCNT))workaroundwrite32(workaroundread16((u16*)&DISPCNT) | 0x10010, (u32*)&REG_DISPCNT);                                            //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x10010); //need 0x10010
+			//iprintf("%08x %08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x6014020));
 			//dmaCopyWordsAsynch(0,vram,(void*)0x06000000,0x10000);
 			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
-			lastDISPCNT = DISPCNT;
+			lastDISPCNT = workaroundread16((u16*)&DISPCNT);
 		}
 		else
 		{
-			if(lastDISPCNT != DISPCNT)
+#ifndef public
+			iprintf("%x\r\n",*(u32*)(0x0640403C));
+#endif
+			if(lastDISPCNT != workaroundread16((u16*)&DISPCNT))
 			{
-				REG_DISPCNT = (DISPCNT | 0x02010010) & ~0x400; //need 0x10010
-				if((DISPCNT & 7) == 4)bgrouid = bgInit(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
-				else if((DISPCNT & 7) == 3)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
-				else if((DISPCNT & 7) == 5)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				//iprintf("DISPCNT4fly %x\r\n",workaroundread16((u16*)&DISPCNT));
+				workaroundwrite32((workaroundread16((u16*)&DISPCNT) | 0x02010010) & ~0x400,(u32*)&REG_DISPCNT);                                       //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x02010010) & ~0x400; //need 0x10010
+				if((workaroundread16((u16*)&DISPCNT) & 7) == 4)bgrouid = bgInit(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
+				else if((workaroundread16((u16*)&DISPCNT) & 7) == 3)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				else if((workaroundread16((u16*)&DISPCNT) & 7) == 5)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				//iprintf("%08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x07000000),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x6014000));
+				//iprintf("%08x %08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x601403C));
+				//iprintf("a");
 			}
-			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
+			if((workaroundread16((u16*)&DISPCNT) & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
 				for(int iy = 0; iy <160; iy++){
@@ -403,38 +444,49 @@ void VblankHandler(void) {
 					pointertobild+=480;
 				}
 			}	
-			if((DISPCNT & 7) == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
+			if((workaroundread16((u16*)&DISPCNT) & 7) == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
-				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
+				if(BIT(4) & workaroundread16((u16*)&DISPCNT))pointertobild+=0xA000;
 				for(int iy = 0; iy <160; iy++){
 					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 480);
 					pointertobild+=240;
 					//pointertobild+=120;
 				}
 			}
-			if((DISPCNT & 7) == 5) //BG Mode 5 - 160x128 pixels, 32768 colors
+			if((workaroundread16((u16*)&DISPCNT) & 7) == 5) //BG Mode 5 - 160x128 pixels, 32768 colors
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
-				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
+				if(BIT(4) & workaroundread16((u16*)&DISPCNT))pointertobild+=0xA000;
 				for(int iy = 0; iy <128; iy++){
 					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 320);
 					pointertobild+=320;
 				}
 			}
+			//iprintf("b");
+			//iprintf("DISPCNT5fly %x\r\n",workaroundread16((u16*)&DISPCNT));
+			
+			//iprintf("DISPCNT2.5 %x\r\n",workaroundread16((u16*)&DISPCNT));
+			
 			//dmaCopyWordsAsynch(0,vram,(void*)0x06000000,0x14000);
-			dmaCopyWordsAsynch(1,(void*)0x600014000,(void*)0x06404000,0x4000);
+			dmaCopyWordsAsynch(1,(void*)0x06014000,(void*)0x06404000,0x4000);
 			//dmaCopy(vram, bgGetGfxPtr(bgrouid), 240*160);
-			lastDISPCNT = DISPCNT;
+			lastDISPCNT = workaroundread16((u16*)&DISPCNT);
 		}
+		//iprintf("c");
+		/*if(DISPCNT != 0)
+		{
+			iprintf("DISPCNT3 %x\r\n",workaroundread16((u16*)&DISPCNT));
+		}*/
+
 		
-		
-	framewtf = 0;
 	}
 	else
 	{
 		framewtf++;
 	}
+	
+
 	
 		scanKeys();
   
@@ -483,31 +535,39 @@ int main(void) {
 	//bg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
 	consoleDemoInit();
 
-
+	DISPCNT  = 0x0080;
 
 //rootenabelde[2] = fatMountSimple  ("sd", &__io_dsisd); //DSi//sems to be inited by fatInitDefault
  //fatInitDefault();
  //nitroFSInit();
-/*
-#ifdef public	
+
 	iprintf("Init Fat...\n");
     
     if(fatInitDefault()){
         iprintf("Fat OK.\n");
     }else{
         iprintf("Fat Fail.\n");
-        while(1);
+        int i = 0;
+		while(i< 300)
+		{
+			swiWaitForVBlank();
+			i++;
+		}
     }
-#else
 	iprintf("Init Nitro...\n");
 	if(nitroFSInit())
 	iprintf("Nitro OK.\n");
 	else{
         iprintf("Nitro Fail.\n");
-        while(1);
+		int i = 0;
+		while(i< 300)
+		{
+			swiWaitForVBlank();
+			i++;
+		}
+		
     }
-#endif
-*/
+	swiWaitForVBlank();
 
 	//irqInit();
 	
@@ -522,9 +582,12 @@ int main(void) {
 	bool nichtausgewauhlt = true;
 	
 	
+	
 	iprintf("\x1b[2J");
 //main menü
-/*	while(nichtausgewauhlt)
+
+#ifndef loaddirect
+	while(nichtausgewauhlt)
 	{
 		for(int i = 0; i < 3; i++)
 		{
@@ -577,6 +640,7 @@ int main(void) {
 							dirfree();
 							dirfolder(currentdir);
 							ausgewauhlt = 0;
+							break;
 						}
 					}
 				}
@@ -589,9 +653,9 @@ int main(void) {
 		iprintf("\x1b[2J");	
 	}
 	dirfree();
-	*/
+#endif
 	
-	sprintf(szFile,"%s","nitro:/puzzle.gba"); //ichfly test
+	//sprintf(szFile,"%s","nitro:/puzzle.gba"); //ichfly test
 	
 	//swiWaitForVBlank();
 	
@@ -641,7 +705,7 @@ int main(void) {
   
   char buffer[1024];
 
-  systemFrameSkip = frameSkip = 2; 
+  //systemFrameSkip = frameSkip = 2; 
   //gbBorderOn = 0;
 
 
@@ -695,7 +759,6 @@ int rrrresxfss = 0;
 
   //soundInit();
   
-  	//irqSet(IRQ_VBLANK, VblankHandler); //todo this is not working
 	
 	
 	//irqSet(IRQ_HBLANK, HblankHandler); //todo
@@ -703,7 +766,7 @@ int rrrresxfss = 0;
 	//timerStart(0, ClockDivider_1024,  TIMER_FREQ_1024(1),speedtest); // 1 sec
 	
 
-	irqEnable( IRQ_VBLANK);
+	//irqEnable( IRQ_VBLANK);
 	
 	//irqEnable( IRQ_HBLANK);
 	
@@ -736,24 +799,29 @@ int rrrresxfss = 0;
 	//consoleInit() is a lot more flexible but this gets you up and running quick
 	//consoleInitDefault((u16*)SCREEN_BASE_BLOCK_SUB(31), (u16*)CHAR_BASE_BLOCK_SUB(0), 16);
 
-
+	//VblankHandler();
 
 
 	iprintf("gbaInit\n");
+	
+	  	
+	
 		gbaInit();
  	//iprintf("Current CP15 reg: %08X\n",cpuGetCPSR());
 	
 	
 	ndsMode();
 	
-	memcpy((void*)0x2000000,(void*)rom, 0x40000);
+	//memcopy((void*)0x2000000,(void*)rom, 0x40000);
 	
 	
-	//dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
+	dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
 	
 	
 	
-	iprintf("everything done (%08X)\n",rom);
+	iprintf("everything done (%08X)\n\r",rom);
+	
+	irqSet(IRQ_VBLANK, VblankHandler);
 
 	//iprintf("ndsMode %x\n", (u32)rom);
 	

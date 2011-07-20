@@ -61,7 +61,6 @@ u8 *pix = NULL;
 u8 *oam = NULL;
 u8 *ioMem = NULL;
 
-u16 DISPCNT  = 0x0080;
 u16 DISPSTAT = 0x0000;
 u16 VCOUNT   = 0x0000;
 u16 BG0CNT   = 0x0000;

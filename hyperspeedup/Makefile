@@ -30,7 +30,7 @@ NITRODATA	:=	nitrofiles
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork -march=armv5te -mtune=arm946e-s
 
-CFLAGS	:=	-g -Wall -O5\
+CFLAGS	:=	-g -Wall\
  		-fomit-frame-pointer\
 		-ffast-math \
 		$(ARCH)
@@ -45,7 +45,7 @@ LDFLAGS       =       --specs=../tgba_arm9.specs $(ARCH) -Wl,-Map,$(notdir $*.ma
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:= -lnds9
+LIBS	:= -lfilesystem -lfat  -lnds9
  
  
 #---------------------------------------------------------------------------------
