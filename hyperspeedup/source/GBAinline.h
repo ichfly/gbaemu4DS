@@ -228,8 +228,6 @@ extern u32 myROM[];
 static inline u32 CPUReadHalfWord(u32 address)
 {
 
-	//iprintf("hword read: %08x\n",address);
-
 #ifdef DEV_VERSION      
   if(address & 1) {
     if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
@@ -264,7 +262,7 @@ static inline u32 CPUReadHalfWord(u32 address)
     break;
   case 4:
   
-	if(address > 0x4000004 && address < 0x4000008)//ichfly update
+	if(address > 0x4000003 && address < 0x4000009)//ichfly update
 	{
 		u16 temp = REG_VCOUNT;
 		u16 temp2 = REG_DISPSTAT;
@@ -312,6 +310,7 @@ static inline u32 CPUReadHalfWord(u32 address)
     if((address < 0x4000400) && ioReadable[address & 0x3fe])
     {
       value =  READ16LE(((u16 *)&ioMem[address & 0x3fe]));
+	  //iprintf("hword read at %x ret: %08x\n",value,address);
       if (((address & 0x3fe)>0xFF) && ((address & 0x3fe)<0x10E))
       {
         if (((address & 0x3fe) == 0x100) && timer0On)
