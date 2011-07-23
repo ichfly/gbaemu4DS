@@ -652,7 +652,7 @@ void gbaInit()
 	//fputs ("fopen example\r\n",pFile);
 	
 	// 	puSetGbaIWRAM();
-	pu_SetRegion(5, 0x03000000 | PU_PAGE_32K | 1);	/* gba iwram */ //it is the GBA Cart in the original
+	pu_SetRegion(3, 0x03000000 | PU_PAGE_32K | 1);	/* gba iwram */ //it is the GBA Cart in the original
 	pu_SetRegion(6, 0x02000000 | PU_PAGE_16M | 1);    //ram
 	//pu_SetRegion(7, 0x07000000 | PU_PAGE_16M | 1);
 	pu_SetRegion(2, 0x05000000 | PU_PAGE_16M | 1);

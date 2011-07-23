@@ -6,7 +6,7 @@ MEMORY {
 
        rom     : ORIGIN = 0x08000000, LENGTH = 32M
        gbaew   : ORIGIN = 0x02000000, LENGTH = 256k
-       ewram   : ORIGIN = 0x02040000, LENGTH = 4M - 4k - 256k
+       ewram   : ORIGIN = 0x02040000, LENGTH = 16M - 4k - 256k
        dtcm    : ORIGIN = 0x0b000000, LENGTH = 16K
        vectors : ORIGIN = 0x01000000, LENGTH = 256
        itcm    : ORIGIN = 0x01000100, LENGTH = 32K - 256
