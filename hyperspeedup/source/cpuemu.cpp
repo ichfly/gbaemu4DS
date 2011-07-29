@@ -3010,7 +3010,7 @@ void emuInstrARM(u32 opcode, s32 *R)
 
 reg_pair* myregs = (reg_pair*)R;
 	
-  int cond = opcode >> 28;
+  /*int cond = opcode >> 28;  //ichfly cond_res must be true else there is no exeption
   // suggested optimization for frequent cases
   bool cond_res;
   if(cond == 0x0e) {
@@ -3070,7 +3070,7 @@ reg_pair* myregs = (reg_pair*)R;
     }
   }
   
-if(cond_res) {
+if(cond_res) {*/
   switch(((opcode>>16)&0xFF0) | ((opcode>>4)&0x0F)) {
     LOGICAL_DATA_OPCODE_WITHOUT_base(OP_AND,  OP_AND, 0x000);
     LOGICAL_DATA_OPCODE_WITHOUT_base(OP_ANDS, OP_AND, 0x010);
@@ -8572,7 +8572,6 @@ if(cond_res) {
 #endif
     break;
     // END
-  }
 }
 
 }

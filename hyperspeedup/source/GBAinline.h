@@ -27,6 +27,8 @@
 
 #include <nds/interrupts.h>
 
+//#define printreads
+
 extern bool cpuSramEnabled;
 extern bool cpuFlashEnabled;
 extern bool cpuEEPROMEnabled;
@@ -77,8 +79,9 @@ static inline u32 CPUReadMemory(u32 address)
   }
 #endif
   
-  //Logsd("word read: %08x\n",address);
-  
+#ifdef printreads
+  iprintf("word read: %08x\n",address);
+#endif
   
   u32 value;
   switch(address >> 24) {
@@ -105,7 +108,14 @@ static inline u32 CPUReadMemory(u32 address)
     value = READ32LE(((u32 *)&internalRAM[address & 0x7ffC]));
     break;
   case 4:
-	if(address > 0x4000004 && address < 0x4000008)//ichfly update
+  
+	if(address > 0x40000FF && address < 0x4000110)
+	{
+		value = *(u32 *)(address);
+		break;
+	}
+	
+	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
 		//load the original and mix
 		u16 temp = REG_VCOUNT;
@@ -227,9 +237,9 @@ extern u32 myROM[];
 
 static inline u32 CPUReadHalfWord(u32 address)
 {
-
-	//iprintf("hword read: %08x\n",address);
-
+#ifdef printreads
+	iprintf("hword read: %08x\n",address);
+#endif
 #ifdef DEV_VERSION      
   if(address & 1) {
     if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
@@ -264,7 +274,13 @@ static inline u32 CPUReadHalfWord(u32 address)
     break;
   case 4:
   
-	if(address > 0x4000003 && address < 0x4000009)//ichfly update
+	if(address > 0x40000FF && address < 0x4000110)
+	{
+		value = *(u16 *)(address);
+		break;
+	}
+  
+	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
 		u16 temp = REG_VCOUNT;
 		u16 temp2 = REG_DISPSTAT;
@@ -404,9 +420,9 @@ static inline u16 CPUReadHalfWordSigned(u32 address)
 
 static inline u8 CPUReadByte(u32 address)
 {
-
-//iprintf("byte read: %08x\n",address);
-
+#ifdef printreads
+iprintf("byte read: %08x\n",address);
+#endif
 
   switch(address >> 24) {
   case 0:
@@ -427,7 +443,13 @@ static inline u8 CPUReadByte(u32 address)
   case 3:
     return internalRAM[address & 0x7fff];
   case 4:
-  	if(address > 0x4000004 && address < 0x4000008)//ichfly update
+  
+	if(address > 0x40000FF && address < 0x4000110)
+	{
+		return *(u16 *)(address);
+	}
+  
+  	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
 		//load the original and mix
 		u16 temp = REG_VCOUNT;
@@ -522,9 +544,9 @@ static inline u8 CPUReadByte(u32 address)
 
 static inline void CPUWriteMemory(u32 address, u32 value)
 {
-
-    //Logsd("word write: %08x to %08x\n",value,address);
-		  
+#ifdef printreads
+    iprintf("word write: %08x to %08x\n",value,address);
+#endif		  
 		
 
 #ifdef DEV_VERSION
@@ -559,12 +581,11 @@ static inline void CPUWriteMemory(u32 address, u32 value)
     break;
   case 0x04:
     if(address < 0x4000400) {
-	
-	
-	if(0x4000060 > address && address > 0x4000007)
+
+	if((0x4000060 > address && address > 0x4000007) || (address > 0x40000FF && address < 0x4000110)) //timer and lcd
 	{
 			//iprintf("32 %x %x\r\n",address,value);
-		    *(u32 *)((address & 0x3FF) + 0x4000000) = value;
+		    *(u32 *)(address) = value;
 	}
 	else //dont do twice
 	{

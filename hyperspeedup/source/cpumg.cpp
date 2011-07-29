@@ -53,7 +53,7 @@ void BIOScall(int op,  s32 *R);
 #define releas
 
 
-
+#define unsave
 
 
 	FILE * pFile;
@@ -431,7 +431,7 @@ void gbaExceptionHdl()
 	u32 opSize;
 	
 	ndsMode();
-	sysMode = cpuGetCPSR() & 0x1F;
+	//sysMode = cpuGetCPSR() & 0x1F; //ichfly don't need that
 	cpuMode = BIOSDBG_SPSR & 0x20;
 	
 	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80;
@@ -453,8 +453,11 @@ void gbaExceptionHdl()
 	
 	//Log("%08X %08X\n", exRegs[15] , BIOSDBG_SPSR);
 	//Log("%08X\n", exRegs[15]);
+	
+#ifndef unsave
 	if(exRegs[15] < 0x02000000)while(1);
 	if(exRegs[15] > 0x04000000 && !(exRegs[15] & 0x08000000))while(1);
+#endif
 	
 	/*if(exRegs[15] > (u32)(rom + 0x200))
 	{
@@ -523,7 +526,7 @@ void gbaExceptionHdl()
 			if(cpuMode)
 			{
 				instr = *(u16*)(exRegs[15] - 8);
-				exRegs[15] -= 2; //won't work
+				exRegs[15] -= 2;
 				//BIOSDBG_PC -= 2; 
 			}
 			else
@@ -545,7 +548,7 @@ void gbaExceptionHdl()
 				u16 tempforwtf = *(u16*)(exRegs[15] - 2);
 
 				//Logsd("%08X\n", instr);
-				if(tempforwtf > 0xBE00 && tempforwtf < 0xBE2B)
+				if((tempforwtf && 0xFF00) == 0xBE00)
 				{
 				
 					
@@ -570,7 +573,6 @@ void gbaExceptionHdl()
 				//Logsd("%08X\n", instr);
 				if((tempforwtf &0xFFF000F0) == 0xE1200070)
 				{
-					if(durchlauf == 1)while(1);
 					exRegs[15] += 4;
 					BIOScall((tempforwtf & 0xFFF00)>>0x8, exRegs);
 				}
@@ -643,9 +645,14 @@ void gbaExceptionHdl()
 void gbaInit()
 {
 	//pFile = fopen("fat:/gbaemulog.log","w");
-	pu_SetDataCachability(   B8(0,1,0,0,0,0,0,0)); //ichfly todo slowdown !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	pu_SetCodeCachability(   B8(0,1,0,0,0,0,0,0));
-	pu_GetWriteBufferability(B8(0,0,0,0,0,0,0,0));
+	pu_SetDataCachability(   0b00000010); //ichfly todo slowdown !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	pu_SetCodeCachability(   0b00000010);
+	pu_GetWriteBufferability(0b00000000);
+	
+	DC_FlushAll(); //try it
+	
+	
+	IC_InvalidateAll();
 	
 	//Logsd ("test %x\r\n",pFile);
 	
@@ -838,23 +845,35 @@ void BIOScall(int op,  s32 *R)
 		break;
 	  case 0x2A:
 		BIOS_SndDriverJmpTableCopy();
+		break;
 		// let it go, because we don't really emulate this function
+	  case 0x2D: //silent debug call
+		break;
+	  case 0x2F: //debug call all
+		debugDump();
+		break;
 	  default:
-	#ifdef DEV_VERSION
-		  Log("SWI: %08x (0x%08x,0x%08x,0x%08x)\n", comment,
-			  R[0],
-			  R[1],
-			  R[2]);
-	#endif
-		
-		if(!disableMessage) {
-		  systemMessage(MSG_UNSUPPORTED_BIOS_FUNCTION,
-						N_("Unsupported BIOS function %02x. A BIOS file is needed in order to get correct behaviour."),
-						comment);
-		  disableMessage = true;
+		if((comment & 0x30) == 0x30)
+		{
+			iprintf("r%x%08x",(comment & 0xF),R[(comment & 0x30)]);
+		}
+		else
+		{
+			if(!disableMessage) {
+			  systemMessage(MSG_UNSUPPORTED_BIOS_FUNCTION,
+							N_("Unsupported BIOS function %02x. A BIOS file is needed in order to get correct behaviour."),
+							comment);
+			  disableMessage = true;
+			}
 		}
 		break;
 	  }
 }
-
+void switch_to_unprivileged_mode()
+{
+	u32 temp = cpuGetCPSR();
+	temp = temp & ~0x1F;
+	temp = temp |= 0x10;
+	cpuSetCPSR(temp);
+}
 //b

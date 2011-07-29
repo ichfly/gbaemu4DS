@@ -26,6 +26,7 @@
 #include "cpumg.h"
 #include "GBAinline.h"
 #include "woraround.h"
+#include "bios.h"
 
 
 #include "main.h"
@@ -390,10 +391,10 @@ void VblankHandler(void) {
 	//iprintf("DISPCNT2 %x\r\n",&DISPCNT);
 
 	
-	//CPUCheckDMA(1, 0x0f);
+	CPUCheckDMA(1, 0x0f);
 	
 	//iprintf("DISPCNT2fly %x %x\r\n",DISPCNT,workaroundread16((u16*)&DISPCNT));
-
+	//iprintf("%x",workaroundread16((u16*)&DISPCNT));	
 	
 	if(framewtf == frameskip)
 	{
@@ -414,7 +415,17 @@ void VblankHandler(void) {
 		
 		if((workaroundread16((u16*)&DISPCNT) & 7) < 3)
 		{
-			if(lastDISPCNT != workaroundread16((u16*)&DISPCNT))workaroundwrite32(workaroundread16((u16*)&DISPCNT) | 0x10010, (u32*)&REG_DISPCNT);                                            //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x10010); //need 0x10010
+			if(lastDISPCNT != workaroundread16((u16*)&DISPCNT))
+			{
+				//workaroundwrite32(workaroundread16((u16*)&DISPCNT) | 0x10010, (u32*)&REG_DISPCNT);      //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x10010); //need 0x10010
+				
+				u32 dsValue;
+				dsValue  = value & 0xFF87;
+				dsValue |= (value & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
+				dsValue |= (value & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
+				dsValue |= (value & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
+				workaroundwrite32(dsValue, (u32*)&REG_DISPCNT); 
+			}
 			//iprintf("%08x %08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x6014020));
 			//dmaCopyWordsAsynch(0,vram,(void*)0x06000000,0x10000);
 			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
@@ -478,8 +489,6 @@ void VblankHandler(void) {
 		{
 			iprintf("DISPCNT3 %x\r\n",workaroundread16((u16*)&DISPCNT));
 		}*/
-
-		
 	}
 	else
 	{
@@ -554,20 +563,6 @@ int main(void) {
 			i++;
 		}
     }
-	iprintf("Init Nitro...\n");
-	if(nitroFSInit())
-	iprintf("Nitro OK.\n");
-	else{
-        iprintf("Nitro Fail.\n");
-		int i = 0;
-		while(i< 300)
-		{
-			swiWaitForVBlank();
-			i++;
-		}
-		
-    }
-	swiWaitForVBlank();
 
 	//irqInit();
 	
@@ -586,6 +581,8 @@ int main(void) {
 	iprintf("\x1b[2J");
 //main menü
 
+
+
 #ifndef loaddirect
 	while(nichtausgewauhlt)
 	{
@@ -602,6 +599,24 @@ int main(void) {
 			scanKeys();
 			if (keysDown()&KEY_A)
 			{
+				if(ausgewauhlt == 0)
+				{
+					iprintf("Init Nitro...\n");
+					if(nitroFSInit())
+					iprintf("Nitro OK.\n");
+					else{
+						iprintf("Nitro Fail.\n");
+						int i = 0;
+						while(i< 300)
+						{
+							swiWaitForVBlank();
+							i++;
+						}
+						
+					}
+					swiWaitForVBlank();
+				}
+				
 				int ausgewauhlt2 = ausgewauhlt;
 				dirfolder(rootdirnames[ausgewauhlt2]);
 				//menue start
@@ -615,7 +630,7 @@ int main(void) {
 						swiWaitForVBlank();
 						scanKeys();
 						if (keysDown()&KEY_DOWN){ ausgewauhlt++; if(ausgewauhlt == dirfeldsize)ausgewauhlt = 0;  break;}
-						if (keysDown()&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--; break;}
+						if (keysDown()&KEY_UP && ausgewauhlt != 0) { if(ausgewauhlt == 0)ausgewauhlt = dirfeldsize;else {ausgewauhlt--;} break;}
 						if (keysDown()&KEY_A)
 						{
 							if(currentdir == (char*)0)
@@ -804,28 +819,35 @@ int rrrresxfss = 0;
 
 	iprintf("gbaInit\n");
 	
-	  	
-	
 		gbaInit();
  	//iprintf("Current CP15 reg: %08X\n",cpuGetCPSR());
 	
 	
 	ndsMode();
 	
-	//memcopy((void*)0x2000000,(void*)rom, 0x40000);
+	iprintf("back in ds mode but init is done\n");
 	
+	BIOS_RegisterRamReset(0xFF);
+	
+	iprintf("use emulated bios call to reset but we also use our copy hack\n");
+	
+	//memcopy((void*)0x2000000,(void*)rom, 0x40000);
 	
 	dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
 	
+	iprintf("dmaCopy is done\n");
 	
-	
-	iprintf("everything done (%08X)\n\r",rom);
+	iprintf("enter critical part set VblankHandler switch to gba mode and jump to (%08X)\n\r",rom);
 	
 	irqSet(IRQ_VBLANK, VblankHandler);
 
 	//iprintf("ndsMode %x\n", (u32)rom);
 	
 	gbaMode();
+	
+	//switch_to_unprivileged_mode(); //additional init
+	
+	
 	//iprintf("gbaMode\n");
 	
 	//while(1);
@@ -839,8 +861,7 @@ int rrrresxfss = 0;
 	
 	//if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 	//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-
-
+	
 	cpu_ArmJump((u32)rom, 0);
 	
 	
@@ -861,4 +882,4 @@ int rrrresxfss = 0;
   return 0;
 
 }
-//b
+//a

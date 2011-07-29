@@ -25,6 +25,11 @@ DATA		:=	data
 GRAPHICS	:=	gfx  
 NITRODATA	:=	nitrofiles
 
+# These set the information text in the nds file
+GAME_TITLE		:=	GBAemu4ds
+GAME_SUBTITLE1	:=	by ichfly/ichichfly
+GAME_SUBTITLE2	:=	ichfly.github.com/gbaemu4DS/
+
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------

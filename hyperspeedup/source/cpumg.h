@@ -11,10 +11,12 @@
 extern "C" void cpu_ArmJump(u32 address, u32 r1);
 
 void gbaInit();
+void switch_to_unprivileged_mode();
 void gbaMode();
 void ndsMode();
 
 extern "C" u32 cpuGetCPSR();
+extern "C" void cpuSetCPSR(u32 CPSR);
 
 #endif /*__CPU_H__*/
  

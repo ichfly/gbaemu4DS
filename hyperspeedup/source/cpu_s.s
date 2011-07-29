@@ -6,6 +6,11 @@
 	.code 32
 	.arm
 	
+	.global cpuSetCPSR
+cpuSetCPSR:
+	msr cpsr, r0
+	bx lr
+	
 	.global puSetGbaIWRAM
 puSetGbaIWRAM:
 	ldr	r0,=( (0b01110 << 1) | 0x03000000 | 1)	

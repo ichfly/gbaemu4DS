@@ -3180,8 +3180,9 @@ void applyTimer ()
 
 void CPUWriteHalfWord(u32 address, u16 value)
 {
-
-//iprintf("w16 %x %x\r\n",address,value);
+#ifdef printreads
+iprintf("w16 %x %x\r\n",address,value);
+#endif
 
 #ifdef DEV_VERSION
   if(address & 1) {
@@ -3214,6 +3215,13 @@ void CPUWriteHalfWord(u32 address, u16 value)
       WRITE16LE(((u16 *)&internalRAM[address & 0x7ffe]), value);
     break;    
   case 4:
+  
+	if(address > 0x40000FF && address < 0x4000110)
+	{
+		*(u16 *)(address) = value;
+		break;
+	}
+  
   	/*if(0x4000060 > address && address > 0x4000008)
 	{
 			iprintf("16 %x %x\r\n",address,value);
@@ -3290,9 +3298,9 @@ void CPUWriteHalfWord(u32 address, u16 value)
 
 void CPUWriteByte(u32 address, u8 b)
 {
-
-	//iprintf("w8 %x %x\r\n",address,b);
-
+#ifdef printreads
+	iprintf("w8 %x %x\r\n",address,b);
+#endif
   switch(address >> 24) {
   case 2:
 #ifdef BKPT_SUPPORT
@@ -3311,6 +3319,7 @@ void CPUWriteByte(u32 address, u8 b)
       internalRAM[address & 0x7fff] = b;
     break;
   case 4:
+  
     if(address < 0x4000400) {
       switch(address & 0x3FF) {
       case 0x301:
@@ -3363,10 +3372,10 @@ void CPUWriteByte(u32 address, u8 b)
 	//soundEvent(address&0xFF, b);  //ichfly disable sound
 	break;
       default:
-	if(0x4000060 > address && address > 0x4000008)
+	if((0x4000060 > address && address > 0x4000008) || (address > 0x40000FF && address < 0x4000110))
 	{
-			iprintf("8 %x %x\r\n",address,b);
-		    *(u8 *)((address & 0x3FF) + 0x4000000) = b;
+			//iprintf("8 %x %x\r\n",address,b);
+		    *(u8 *)(address) = b;
 	}
 	if(address & 1)
 	{
