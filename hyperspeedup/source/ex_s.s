@@ -69,12 +69,14 @@ exMain:
 	ldr	r0, =0x027FFD90
 
 	@the register r12 and PC @ on commence par les registres "spéciaux": r12 et le pc
-	ldr	r1, =exRegs
-	ldr	r12, [r1, #(12 * 4)]
-	str	r12, [r0, #4]	@ on enregistre R12 dans les infos pour le BIOS (0x027FFD94)
 	
-	ldr	r12, [r1, #(15 * 4)]
-	str	r12, [r0, #8]	@ pareil pour R15 (0x027FFD98)
+	@ ichfly better speed
+	@ldr	r1, =exRegs
+	@ldr	r12, [r1, #(12 * 4)]
+	@str	r12, [r0, #4]	@ on enregistre R12 dans les infos pour le BIOS (0x027FFD94)
+	
+	@ldr	r12, [r1, #(15 * 4)]
+	@str	r12, [r0, #8]	@ pareil pour R15 (0x027FFD98)
 
 	@ restore SPSR @ on restaure les bankés
 	ldr	r1, [r0]	@ charge le SPSR
@@ -124,17 +126,18 @@ exMain:
 	msr     spsr_fsxc, lr	
 	
 	
-	ldmia   sp!, {r12, lr}
+	@ldmia   sp!, {r12, lr}
 	
-	@my test code
-	ldr	lr,=(exRegs + 15 * 4)
-	ldr	lr, [lr]
+	@my speedup code
+	ldr	lr, =exRegs
+	ldr	r12,[lr, #(12 * 4)]
+	ldr	lr, [lr, #(15 * 4)]
 		
 	subs    pc, lr, #4
 	
 	
 	
-
+	.section	.dtcm,"ax",%progbits
 
 _exMain_tmpPu:
 	.word 0

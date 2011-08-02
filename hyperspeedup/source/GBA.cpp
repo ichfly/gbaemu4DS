@@ -3050,12 +3050,14 @@ void CPUUpdateRegister(u32 address, u16 value)
 	  
 	REG_IE = 1 | IE | (REG_IE & 0xFFFF0000); //todo filter the 1
 	
+	anytimejmpfilter = IE;
+	
     break;
   case 0x202:
 	REG_IF = value;
 	//IF = REG_IF;
     //IF ^= (value & IF);
-    UPDATE_REG(0x202, IF);
+    //UPDATE_REG(0x202, IF); //ichfly update at read
     break;
   case 0x204:
     {

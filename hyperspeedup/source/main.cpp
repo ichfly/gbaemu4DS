@@ -420,10 +420,10 @@ void VblankHandler(void) {
 				//workaroundwrite32(workaroundread16((u16*)&DISPCNT) | 0x10010, (u32*)&REG_DISPCNT);      //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x10010); //need 0x10010
 				
 				u32 dsValue;
-				dsValue  = value & 0xFF87;
-				dsValue |= (value & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
-				dsValue |= (value & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
-				dsValue |= (value & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
+				dsValue  = DISPCNT & 0xFF87;
+				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
+				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
+				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
 				workaroundwrite32(dsValue, (u32*)&REG_DISPCNT); 
 			}
 			//iprintf("%08x %08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x6014020));
@@ -837,6 +837,12 @@ int rrrresxfss = 0;
 	
 	iprintf("dmaCopy is done\n");
 	
+	anytimejmpfilter = 0;
+	
+	anytimejmp = (VoidFn)0x3007FFC;
+	
+	iprintf("inited emulated irq system\n");
+	
 	iprintf("enter critical part set VblankHandler switch to gba mode and jump to (%08X)\n\r",rom);
 	
 	irqSet(IRQ_VBLANK, VblankHandler);
@@ -861,6 +867,8 @@ int rrrresxfss = 0;
 	
 	//if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 	//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+	
+	//while(1);
 	
 	cpu_ArmJump((u32)rom, 0);
 	

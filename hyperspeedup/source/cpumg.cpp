@@ -45,10 +45,14 @@ void BIOScall(int op,  s32 *R);
 
 #include "main.h"
 
+#include "armdis.h"
+
 
 #include "woraround.h"
 
+//#define DEV_VERSION
 
+#define patch_VERSION
 
 #define releas
 
@@ -170,6 +174,9 @@ extern "C" void pu_GetWriteBufferability(u32 v);
 u16 gbaIME = 0;
 u16 gbaDISPCNT = 0;
 u16 gbaBGxCNT[4] = {0, 0, 0, 0};
+
+
+char disbuffer[0x2000];
 
 extern "C" void exMain(); 
 
@@ -404,7 +411,7 @@ void puNds()
 	//REG_IME = IME_ENABLE;	//ichfy for test
 }
 
-static inline void debugDump()
+void debugDump()
 {
 // 	Log("dbgDump\n");
 // 	return;
@@ -538,17 +545,12 @@ void gbaExceptionHdl()
 			/*if(cpuMode) instr = (u32)*(u16*)(exRegs[15] - 4);
 			else instr = *(u32*)(exRegs[15] - 4);*/
 			
-			
-			
-
-
-			
 			if(cpuMode)
 			{
 				u16 tempforwtf = *(u16*)(exRegs[15] - 2);
 
 				//Logsd("%08X\n", instr);
-				if((tempforwtf && 0xFF00) == 0xBE00)
+				if(tempforwtf > 0xBE00 && tempforwtf < 0xBE2B)
 				{
 				
 					
@@ -569,15 +571,46 @@ void gbaExceptionHdl()
 			{
 			
 				u32 tempforwtf = *(u32*)(exRegs[15] - 4);
-
-				//Logsd("%08X\n", instr);
-				if((tempforwtf &0xFFF000F0) == 0xE1200070)
+				if((tempforwtf &0xFFF000F0) == 0xE1200070) //wtf ²àà 0xB2 10 E0 E0
 				{
 					exRegs[15] += 4;
 					BIOScall((tempforwtf & 0xFFF00)>>0x8, exRegs);
 				}
-	// 			Logsd("ARM: %08X\n", instr);
+				else
+				if((tempforwtf &0x0F200090) == 0x00200090) //wtf why dos this tigger an exeption it is strh r1,[r0]+2! ²àà 0xB2 10 E0 E0 on gba 0xE0E010B2 so think all strh rx,[ry]+z! do that it is an comand interpreter error 
+				{
+#ifdef patch_VERSION
+					*(u32*)(exRegs[15] - 4) = tempforwtf & ~0x200000;//ther is just a wrong bit so don#t worry
+#else
+					exRegs[15] += 4;
+					emuInstrARM(tempforwtf, exRegs);
+#endif
+				}
+				else
+				{
+				/*u32 offset = exRegs[15] - 8;
+				if(offset > 0x02040000) offset = exRegs[15] - 8 - (s32)workaroundread32((u32*)&rom) + 0x08000000;
+				if(offset == 0x0800311C || offset == 0x08003120)
+				{
+					disArm(offset - 4,disbuffer,DIS_VIEW_ADDRESS);
+					Log(disbuffer);
+					Log("\r\n");
+										disArm(offset,disbuffer,DIS_VIEW_ADDRESS);
+					Log(disbuffer);
+					Log("\r\n");
+										disArm(offset + 4,disbuffer,DIS_VIEW_ADDRESS);
+					Log(disbuffer);
+					Log("\r\n");
+										disArm(offset + 8,disbuffer,DIS_VIEW_ADDRESS);
+					Log(disbuffer);
+					Log("\r\n");
+					
+					debugDump();
+					while(1);
+				}*/
+	 			//Log("ARM: %08X\n", instr);
 				emuInstrARM(instr, exRegs);
+				}
 	// 			Logsd("NDS TRACE\n")
 				//exRegs[15] -= 4;
 			}
@@ -659,7 +692,7 @@ void gbaInit()
 	//fputs ("fopen example\r\n",pFile);
 	
 	// 	puSetGbaIWRAM();
-	pu_SetRegion(3, 0x03000000 | PU_PAGE_32K | 1);	/* gba iwram */ //it is the GBA Cart in the original
+	pu_SetRegion(3, 0x03000000 | PU_PAGE_64K | 1);	/* gba iwram */ //it is the GBA Cart in the original //ichfly for log jumps it is 2 as bit as it should
 	pu_SetRegion(6, 0x02000000 | PU_PAGE_16M | 1);    //ram
 	//pu_SetRegion(7, 0x07000000 | PU_PAGE_16M | 1);
 	pu_SetRegion(2, 0x05000000 | PU_PAGE_16M | 1);
@@ -769,9 +802,19 @@ void BIOScall(int op,  s32 *R)
 	  case 0x06:
 		//CPUSoftwareInterrupt();
 #ifdef DEV_VERSION
-		Log("swi 6 (not yet):\n");
+		Log("div(6):\n");
 #endif
+		{
+			s32 todiv = R[0];
+			s32 by = R[1];
+			R[0] = todiv / by;
+			R[1] = todiv % by;
+			if(R[0] < 0) R[3] = 0 - R[0];  //buggy but this work lol
+			else {R[3] = R[0]; }
+		}
+		
 		break;
+		
 	  case 0x07:
 #ifdef DEV_VERSION
 		Log("swi 7 (not yet):\n");

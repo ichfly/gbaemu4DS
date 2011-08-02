@@ -142,9 +142,9 @@ static inline u32 CPUReadMemory(u32 address)
 		}
 		UPDATE_REG(0x04, DISPSTAT);
 	}
-		if(address == 0x4000200)//ichfly update
+		if(address == 0x4000202)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF);
+		IF = (REG_IF & 0x3FFF & ~(0x1 & anytimejmpfilter)); //VBlanc
 		UPDATE_REG(0x202, IF);
 	}
     if((address < 0x4000400) && ioReadable[address & 0x3fc]) {
@@ -321,14 +321,16 @@ static inline u32 CPUReadHalfWord(u32 address)
 	
 	if(address == 0x4000202)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF);
+		IF = (REG_IF & 0x3FFF & ~(0x1 & anytimejmpfilter)); //VBlanc
 		UPDATE_REG(0x202, IF);
 	}
 	
     if((address < 0x4000400) && ioReadable[address & 0x3fe])
     {
       value =  READ16LE(((u16 *)&ioMem[address & 0x3fe]));
+	  #ifdef printreads
 	  //iprintf("read: %08x ret: %08x\n",address,value);
+	  #endif
       if (((address & 0x3fe)>0xFF) && ((address & 0x3fe)<0x10E))
       {
         if (((address & 0x3fe) == 0x100) && timer0On)
@@ -476,9 +478,9 @@ iprintf("byte read: %08x\n",address);
 		}
 		UPDATE_REG(0x04, DISPSTAT);
 	}
-	if(address == 0x4000200 || address == 0x4000201)//ichfly update
+	if(address == 0x4000202 || address == 0x4000203)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF);
+		IF = (REG_IF & 0x3FFF & ~(0x1 & anytimejmpfilter)); //VBlanc
 		UPDATE_REG(0x202, IF);
 	}
     if((address < 0x4000400) && ioReadable[address & 0x3ff])

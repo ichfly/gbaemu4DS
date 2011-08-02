@@ -35,6 +35,8 @@ extern "C" void swiHalt(void);
 #include "Port.h"
 #include "agbprint.h"
 
+#include "armdis.h"
+
 
 void CPUWriteMemory(u32 addr, u32 value);
 void CPUWriteHalfWord(u32 addr, u16 value);
@@ -43,6 +45,10 @@ void CPUWriteByte (u32 addr, u8  value);
 u32 CPUReadMemory(u32 addr);
 u16 CPUReadHalfWordSigned(u32 addr);
 u8  CPUReadByte (u32 addr);
+
+extern char disbuffer[0x2000];
+
+extern void debugDump();
 
 
 #define DEV_VERSION
@@ -8566,10 +8572,26 @@ if(cond_res) {*/
     break;    
 #endif*/
   default:
-#ifdef DEV_VERSION
-      Log("Undefined ARM instruction %08x at %08x\n", opcode,
-          armNextPC-4);
-#endif
+      Log("Undefined ARM instruction %08x\n", opcode);
+	
+	u32 offset = myregs[15].I - 8;
+	if(offset > 0x02040000) offset = myregs[15].I - 8 - (u32)rom + 0x08000000;
+	disArm(offset - 4,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");
+	disArm(offset,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");
+	disArm(offset + 4,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");
+	disArm(offset + 8,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");	
+	debugDump();
+	while(1);
+   break;
+	
     break;
     // END
 }
@@ -9846,7 +9868,23 @@ case 0x28:
  default:
  unknown_thumb:
      Log("Undefined THUMB instruction %04x\n", opcode);
-	 while(1);
+	 
+	 u32 offset = myregs[15].I - 8;
+	if(offset > 0x02040000) offset = myregs[15].I - 8 - (u32)rom + 0x08000000;
+	disThumb(offset - 4,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");
+	disThumb(offset,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");
+	disThumb(offset + 4,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");
+	disThumb(offset + 8,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");	
+	debugDump();
+	while(1);
    break;
 }
 }
