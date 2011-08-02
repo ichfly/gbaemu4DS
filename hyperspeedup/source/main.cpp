@@ -398,7 +398,7 @@ void VblankHandler(void) {
 	if(framewtf == frameskip)
 	{
 #ifndef public
-		iprintf("DISPCNT %x\r\n",DISPCNT);
+		iprintf("DISPCNT %x %x\r\n",DISPCNT,REG_DISPCNT);
 #endif
 		framewtf = 0;
 		//iprintf("DISPCNT2fly %x %x\r\n",&DISPCNT,workaroundread16((u16*)&DISPCNT));
@@ -412,7 +412,7 @@ void VblankHandler(void) {
 			
 		}*/
 		
-		if(DISPCNT & 7 < 3)
+		if((DISPCNT & 7) < 3)
 		{
 			if(lastDISPCNT != DISPCNT)
 			{
@@ -441,20 +441,26 @@ void VblankHandler(void) {
 				//workaroundwrite32((workaroundread16((u16*)&DISPCNT) | 0x02010010) & ~0x400,(u32*)&REG_DISPCNT);
 				
 				u32 dsValue;
-				dsValue  = DISPCNT & 0xFF87;
+				dsValue  = DISPCNT & 0xFB87;
 				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
 				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
 				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
 				REG_DISPCNT = dsValue; //workaroundwrite32(dsValue, (u32*)&REG_DISPCNT);
                                        //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x02010010) & ~0x400; //need 0x10010
-				if(DISPCNT & 7 == 4)bgrouid = bgInit(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
-				else if(DISPCNT & 7 == 3)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
-				else if(DISPCNT & 7 == 5)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				if((DISPCNT & 7) == 4)
+				
+				{
+					iprintf("DISPCNTf %x %x\r\n",DISPCNT,REG_DISPCNT);
+					bgrouid = bgInit(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
+					iprintf("DISPCNTf %x %x\r\n",DISPCNT,REG_DISPCNT);
+				}
+				else if((DISPCNT & 7) == 3)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				else if((DISPCNT & 7) == 5)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
 				//iprintf("%08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x07000000),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x6014000));
 				//iprintf("%08x %08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x601403C));
 				//iprintf("a");
 			}
-			if(DISPCNT & 7 == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
+			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
 				for(int iy = 0; iy <160; iy++){
@@ -462,7 +468,7 @@ void VblankHandler(void) {
 					pointertobild+=480;
 				}
 			}	
-			if(DISPCNT & 7 == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
+			if((DISPCNT & 7) == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
 				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
@@ -472,7 +478,7 @@ void VblankHandler(void) {
 					//pointertobild+=120;
 				}
 			}
-			if(DISPCNT & 7 == 5) //BG Mode 5 - 160x128 pixels, 32768 colors
+			if((DISPCNT & 7) == 5) //BG Mode 5 - 160x128 pixels, 32768 colors
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
 				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
