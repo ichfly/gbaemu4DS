@@ -38,7 +38,6 @@
 #include "Util.h"
 #include "getopt.h"
 #include "System.h"
-#include "woraround.h"
 
 
 
@@ -1575,7 +1574,7 @@ int CPULoadRom(const char *szFile,bool extram)
 		if (keysDown()&KEY_RIGHT) malloctempmulti *= 2;
 		if (keysDown()&KEY_LEFT && malloctempmulti != 1) malloctempmulti /= 2;
 	}
-	workaroundwrite32(((u32)malloc(romSize + 0x1000) >> 12) << 12, (u32*)&rom);
+	rom = (u8*)((u32)((u32)malloc(romSize + 0x1000) >> 12) << 12);
 	
 	//rom = (u8 *)malloc(romSize + 0x1000); //test normal 0x2000000 current 1/10 oh no only 2 MB
 	
@@ -2603,7 +2602,7 @@ void CPUUpdateRegister(u32 address, u16 value)
     {
 	//iprintf("DISPCNT1 %x %x\r\n",&DISPCNT,DISPCNT);
 	//DISPCNT = value;
-	workaroundwrit16(value, (u16*)&DISPCNT);
+	DISPCNT = value;//workaroundwrit16(value, (u16*)&DISPCNT);
 	//iprintf("DISPCNT1 %x %x\r\n",&DISPCNT,DISPCNT);
 	UPDATE_REG(0x00, DISPCNT);
 	

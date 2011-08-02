@@ -48,7 +48,6 @@ void BIOScall(int op,  s32 *R);
 #include "armdis.h"
 
 
-#include "woraround.h"
 
 //#define DEV_VERSION
 
@@ -504,7 +503,7 @@ void gbaExceptionHdl()
 		//volatile static u32 temp;
 		
 		//temp = exRegs[15];
-		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)workaroundread32((u32*)&rom);
+		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
 		
 		//temp = exRegs[15];
 		//sehen[1] = (u32)rom;
