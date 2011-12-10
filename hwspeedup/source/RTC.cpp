@@ -35,6 +35,9 @@
 #include <nds/arm9/trig_lut.h>
 #include <nds/arm9/sassert.h>
 
+
+#include "GBAinline.h" //ichfly
+
 enum RTCSTATE { IDLE, COMMAND, DATA, READDATA };
 
 typedef struct {
@@ -77,7 +80,7 @@ u16 rtcRead(u32 address)
     }
   }
   
-  return READ16LE((&rom[address & 0x1FFFFFE]));
+  return CPUReadHalfWordQuick(address);//READ16LE((&rom[address & 0x1FFFFFE]));
 }
 
 static u8 toBCD(u8 value)

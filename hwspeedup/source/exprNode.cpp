@@ -31,8 +31,29 @@
 
 extern char *yytext;
 
-#define debuggerReadMemory(addr) \
-  READ32LE((&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
+u32 debuggerReadMemory(u32 addr);
+
+/*u32 debuggerReadMemory(u32 addr) //ichfly here rom reader more times defined
+{
+	if(map[((addr)>>mapseekoffs) & mapander].status == 0) // 0 = full loaded
+	{
+		return READ32LE((u32*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+	}
+	else
+	{
+		if(map[((addr)>>mapseekoffs) & mapander].status == 1) //1 = load in progress
+		{
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 4); //sorry you need to wait :(
+			return READ32LE((u32*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+		}
+		if(map[((addr)>>mapseekoffs) & mapander].status == 2) //2 = not loaded
+		{
+			dmastartloadin(addr);
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 4); //sorry you need to wait :(
+			return READ32LE((u32*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+		}
+	}
+}*/
 
 void *exprNodeCleanUpList[100];
 int exprNodeCleanUpCount = 0;

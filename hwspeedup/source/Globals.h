@@ -21,6 +21,7 @@
 #define VBA_GLOBALS_H
 
 #include "GBA.h"
+#include "r4i.h"
 
 #define VERBOSE_SWI                  1
 #define VERBOSE_UNALIGNED_MEMORY     2
@@ -32,6 +33,50 @@
 #define VERBOSE_DMA3               128
 #define VERBOSE_UNDEFINED          256
 #define VERBOSE_AGBPRINT           512
+
+
+//old
+//#define mapsize 0x100
+
+//#define mapseekoffs 20
+
+//#define mapander 0xFF
+
+//#define cucksize 0xFFFFF//cuckender rename it
+
+//#define MEM80bufferslots 0x2
+
+//#define MEM80bufferslotssize 0x100000
+
+//new 
+
+//#define mapsize 0x400 //mirrow in GBA.h change that also to the same else ther are problemes
+
+//#define mapseekoffs 18
+
+//#define mapander 0x3FF
+
+//#define cucksize 0x3FFFF//cuckender rename it
+
+//#define MEM80bufferslots 0x8
+
+//#define MEM80bufferslotssize 0x40000
+
+#define mapsize 0x8000 //mirrow in GBA.h change that also to the same else ther are problemes
+
+#define mapseekoffs 13
+
+#define mapander 0x7FFF
+
+#define cucksize 0x1FFF //cuckender rename it
+
+#define MEM80bufferslots 0x100
+
+#define MEM80bufferslotssize 0x2000
+
+
+
+
 
 extern reg_pair reg[45];
 extern bool ioReadable[0x400];

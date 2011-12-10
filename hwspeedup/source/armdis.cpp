@@ -33,14 +33,78 @@ struct Opcodes {
   char *mnemonic;
 };
 
-#define debuggerReadMemory(addr) \
-  READ32LE(((u32*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
+//#define debuggerReadMemory(addr) \
+//  READ32LE(((u32*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
+u32 debuggerReadMemory(u32 addr) //ichfly here rom reader
+{
+	if(map[((addr)>>mapseekoffs) & mapander].status == 0) // 0 = full loaded
+	{
+		return READ32LE((u32*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+	}
+	else
+	{
+		if(map[((addr)>>mapseekoffs) & mapander].status == 1) //1 = load in progress
+		{
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 4); //sorry you need to wait :(
+			return READ32LE((u32*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+		}
+		if(map[((addr)>>mapseekoffs) & mapander].status == 2) //2 = not loaded
+		{
+			dmastartloadin(addr);
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 4); //sorry you need to wait :(
+			return READ32LE((u32*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+		}
+	}
+}
 
-#define debuggerReadHalfWord(addr) \
-  READ16LE(((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
+//#define debuggerReadHalfWord(addr) \
+//  READ16LE(((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
+u16 debuggerReadHalfWord(u32 addr) //ichfly here rom reader
+{
+	if(map[((addr)>>mapseekoffs) & mapander].status == 0) // 0 = full loaded
+	{
+		return READ16LE((u16*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+	}
+	else
+	{
+		if(map[((addr)>>mapseekoffs) & mapander].status == 1) //1 = load in progress
+		{
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 2); //sorry you need to wait :(
+			return READ16LE((u16*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+		}
+		if(map[((addr)>>mapseekoffs) & mapander].status == 2) //2 = not loaded
+		{
+			dmastartloadin(addr);
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 2); //sorry you need to wait :(
+			return READ16LE((u16*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+		}
+	}
+}
 
-#define debuggerReadByte(addr) \
-  map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]
+
+//#define debuggerReadByte(addr) \
+//  map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]
+u8 debuggerReadByte(u32 addr) //ichfly here rom reader
+{
+	if(map[((addr)>>mapseekoffs) & mapander].status == 0) // 0 = full loaded
+	{
+		return map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask];
+	}
+	else
+	{
+		if(map[((addr)>>mapseekoffs) & mapander].status == 1) //1 = load in progress
+		{
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 1); //sorry you need to wait :(
+			return map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask];
+		}
+		if(map[((addr)>>mapseekoffs) & mapander].status == 2) //2 = not loaded
+		{
+			dmastartloadin(addr);
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 1); //sorry you need to wait :(
+			return map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask];
+		}
+	}
+}
 
 const char hdig[] = "0123456789abcdef";
 

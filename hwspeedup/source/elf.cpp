@@ -25,8 +25,30 @@
 #include "elf.h"
 #include "NLS.h"
 
-#define elfReadMemory(addr) \
-  READ32LE((&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
+//#define elfReadMemory(addr) \
+//  READ32LE((&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
+
+u32 elfReadMemory(u32 addr) //ichfly here rom reader
+{
+	if(map[((addr)>>mapseekoffs) & mapander].status == 0) // 0 = full loaded
+	{
+		return READ32LE((u32*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+	}
+	else
+	{
+		if(map[((addr)>>mapseekoffs) & mapander].status == 1) //1 = load in progress
+		{
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 4); //sorry you need to wait :(
+			return READ32LE((u32*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+		}
+		if(map[((addr)>>mapseekoffs) & mapander].status == 2) //2 = not loaded
+		{
+			dmastartloadin(addr);
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 4); //sorry you need to wait :(
+			return READ32LE((u32*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+		}
+	}
+}
 
 #define DW_TAG_array_type             0x01
 #define DW_TAG_enumeration_type       0x04
@@ -2659,9 +2681,9 @@ bool elfReadProgram(ELFHeader *eh, u8 *data, int& size, bool parseDebug)
     } else {
       if(READ32LE(&ph->paddr) >= 0x8000000 &&
          READ32LE(&ph->paddr) <= 0x9ffffff) {
-        memcpy(&rom[READ32LE(&ph->paddr) & 0x1ffffff],
+        /*memcpy(elfReadMemory(READ32LE(&ph->paddr))&rom[READ32LE(&ph->paddr) & 0x1ffffff],
                data + READ32LE(&ph->offset),
-               READ32LE(&ph->filesz));
+               READ32LE(&ph->filesz));*/ //ichfly that can't work 
         size += READ32LE(&ph->filesz);
       }
     }
@@ -2709,10 +2731,10 @@ bool elfReadProgram(ELFHeader *eh, u8 *data, int& size, bool parseDebug)
       } else {
         if(READ32LE(&sh[i]->addr) >= 0x8000000 &&
            READ32LE(&sh[i]->addr) <= 0x9ffffff) {
-          memcpy(&rom[READ32LE(&sh[i]->addr) & 0x1ffffff],
+          /*memcpy(elfReadMemory(READ32LE(&ph->paddr))/*&rom[READ32LE(&ph->paddr) & 0x1ffffff]*//*,
                  data + READ32LE(&sh[i]->offset),
                  READ32LE(&sh[i]->size));
-          size += READ32LE(&sh[i]->size);
+          size += READ32LE(&sh[i]->size);*/ //ichfly that can't work
         }
       }      
     }

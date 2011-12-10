@@ -6,6 +6,9 @@
 #include <nds.h>
 #include <stdio.h>
 
+
+#include "file_browse.h"
+
 #include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
@@ -32,7 +35,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-int framenummer;
+int framenummer = 0;
 
 
 #include <nds/disc_io.h>
@@ -42,149 +45,57 @@ int framenummer;
    #define DEFAULT_SECTORS_PAGE 8
 #include "DSi.h"
 
+
+#define PAGE_2M		(0b10100 << 1)
+#define MAXPATHLEN 256
+
 //#define public
 
-#define loaddirect
+//#define loaddirect
 
 
-char szFile[2048];
 
-char filename[2048];
-char biosFileName[2048];
-char captureDir[2048];
-char saveDir[2048];
-char batteryDir[2048];
+
+
+//copy protection
+
+#include <nds/arm9/dldi.h>
+
+// The only built in driver
+extern DLDI_INTERFACE _io_dldi_stub;
+
+
+
+
+
+
+
+
+
 struct EmulatedSystem emulator;
 
-char* rootdirnames [3] = {"nitro:/","fat:/","sd:/"};
-bool rootenabelde[3];
+char biosPath[MAXPATHLEN * 2];
 
-int ausgewauhlt = 0;
+char savePath[MAXPATHLEN * 2];
 
-char* currentdir =  (char*)0;
-
-int seite = 0;
-
-int dirfeldsize = 0;
-char** names; //stupid i know but i don't know a better way
-u32* dirfeldsizes;
+char szFile[MAXPATHLEN * 2];
 
 
-int bg = 0;
 
 char* memoryWaitrealram[8] =
   { "10 and 6","8 and 6","6 and 6","18 and 6","10 and 4","8 and 4","6 and 4","18 and 4" };
 
+extern "C" u32 cpuSetramreg(u32 inp);
 
 
 
 
 void speedtest()
 {	
-	//iprintf("\x1b[2J");
-	//iprintf("fps %d",framenummer);
+	iprintf("\x1b[2J");
+	iprintf("fps %d",framenummer);
 	framenummer = 0;
 }
-
-
-
-
-bool dirfolder (char* folder)
-{	
-		DIR *pdir;
-		struct dirent *pent;
-		struct stat statbuf;
-
-		pdir=opendir(folder);
-
-		if (pdir){
-			
-			while ((pent=readdir(pdir))!=NULL) {
-	    		stat(pent->d_name,&statbuf);
-	    		if(strcmp(".", pent->d_name) == 0)
-	        		continue;
-				void* temp = malloc((dirfeldsize + 1)*4);
-				memcpy( (void *)temp , (void *)dirfeldsizes , (dirfeldsize)*4);
-				//iprintf ("%x\n", (u32)dirfeldsizes);
-				if(dirfeldsize > 2) free(dirfeldsizes); //memory leak
-				dirfeldsizes = (u32*)temp;
-				char** temp2 = (char**)malloc((dirfeldsize + 1)*4);
-				//iprintf ("%x\n", (u32)temp2);
-				memcpy( (void *)temp2 , (void *)names , (dirfeldsize)*4);
-				if(dirfeldsize > 2)free(names); //memory leak
-				names = temp2;
-				//iprintf ("%x\n", (u32)temp2);
-				//iprintf ("%x\n", (u32)names);
-	    		if(S_ISDIR(statbuf.st_mode))
-				{
-	        		*(u32*)(dirfeldsize + dirfeldsizes) = 0xFFFFFFFF;
-					//iprintf("%s <dir>%d %d\n ", pent->d_name,dirfeldsize,*(u32*)(dirfeldsize + dirfeldsizes));
-				}
-	    		if(!(S_ISDIR(statbuf.st_mode)))
-				{
-					*(u32*)(dirfeldsize + dirfeldsizes) = statbuf.st_size;
-					//iprintf ("%d\n", *(u32*)(dirfeldsize + dirfeldsizes));
-					//iprintf("%s %ld\n", pent->d_name, statbuf.st_size);
-	        	}
-				*(char**)((u32)names + dirfeldsize * 4) = (char*)malloc(strlen(pent->d_name) + 2);
-				sprintf(*(char**)((u32)names + dirfeldsize * 4),"%s",pent->d_name);
-				dirfeldsize++;
-				//while(1);
-				//iprintf ("%d\n", dirfeldsize);
-				//free(temp2);
-				//free(temp);
-			}
-			closedir(pdir);
-		} else {
-			//iprintf ("opendir() failure; terminating\n");
-			return false;
-		}
-	/*for(int i = 0; i < dirfeldsize; i++)
-	{
-		//iprintf ("%d\n", *(u32*)((u32)dirfeldsizes + i * 4));
-		iprintf ("%x\n", (char**)((u32)names + i * 4));
-	}
-	iprintf ("%d\n",dirfeldsize);*/
-	return true;
-
-}
-
-
-
-void dirfree ()
-{
-	for(int i = 0; i < dirfeldsize - 1; i++)
-	{
-		iprintf ("%x\n", *(u32*)((u32)names + i * 4));
-		free(*(char**)((u32)names + i * 4));
-	}
-	//while(1);
-	free(names);
-	if(dirfeldsize > 2)free(dirfeldsizes); //malloc return 0x341 when i free that but why
-	dirfeldsize = 0;
-}
-
-
-
-void display ()
-{
-	for(int i = ausgewauhlt - (ausgewauhlt%10); i < dirfeldsize && i < ausgewauhlt - (ausgewauhlt%10) + 10 ; i++)
-	{
-		if(i == ausgewauhlt)iprintf("->");
-		else iprintf("  ");
-
-		if(*(u32*)(i + dirfeldsizes) == 0xFFFFFFFF)iprintf("%s <dir>\n", *(char**)((u32)names + i * 4));
-		else iprintf("%s (%ld)\n", *(char**)((u32)names + i * 4), *(u32*)(dirfeldsizes + i));
-	}
-}
-
-static inline u16 swap16(u16 v)
-{
-  return (v<<8)|(v>>8);
-}
-
-#define READ16LE(x) \
-  swap16(*((u16 *)(x)))
 
 
 /*
@@ -307,7 +218,6 @@ In BG modes 4,5, one Frame may be displayed (selected by DISPCNT Bit 4), the oth
 
 
 
-int bgrouid;
 
 
 
@@ -317,7 +227,6 @@ int frameskip = 10;
 
 int framewtf = 0;
 
-int oldmode = 0;
 u16 lastDISPCNT = 0;
 
 //---------------------------------------------------------------------------------
@@ -341,7 +250,18 @@ void VblankHandler(void) {
 		}*/
 		if((DISPCNT & 7) < 3)
 		{
-			if(lastDISPCNT != DISPCNT)REG_DISPCNT = (DISPCNT | 0x10010); //need 0x10010
+			//if(lastDISPCNT != DISPCNT)REG_DISPCNT = (DISPCNT | 0x10010); //need 0x10010 //the old
+			if(lastDISPCNT != DISPCNT) //we don't need to waste power
+			{
+				u32 dsValue; //new better way
+				if((DISPCNT & 7) == 0)dsValue  = DISPCNT & 0xFF87; //this is a filter //fast to check this this way BG 0123
+				else if((DISPCNT & 7) == 1)dsValue  = DISPCNT & 0xF787; //BG 012-
+				else if((DISPCNT & 7) == 2)dsValue  = DISPCNT & 0xFC87; //BG --23
+				//dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */ //no more needed
+				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
+				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
+				REG_DISPCNT = dsValue; 
+			}
 			dmaCopyWordsAsynch(0,vram,(void*)0x06000000,0x10000);
 			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
 			/*	for(int iy = 0; iy <0x4000 ; iy++)
@@ -352,20 +272,28 @@ void VblankHandler(void) {
 		}
 		else
 		{
-			iprintf("%x\r\n",*(u32*)(0x0640403C));
 			if(lastDISPCNT != DISPCNT)
 			{
-				REG_DISPCNT = (DISPCNT | 0x02010010) & ~0x400; //need 0x10010
-				if((DISPCNT & 7) == 4)bgrouid = bgInit(3, BgType_Bmp8, BgSize_B8_256x256,0,0); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
-				else if((DISPCNT & 7) == 3)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,0,0);
-				else if((DISPCNT & 7) == 5)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,0,0);
-				iprintf("%08x %08x %08x %08x %08x\n",(DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),REG_DISPCNT/*REG_DISPCNT*/,*(u32*)(0x6014020));
+				//REG_DISPCNT = (DISPCNT | 0x02010010) & ~0x400; //need 0x10010
+				u32 dsValue; //new better way
+				dsValue  =DISPCNT & 0xF087;//DISPCNT & 0xFB87; //old disable BG2 new disable all exeption BG2 newer not so good mode all no exeption
+				//dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */ //no more needed
+				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
+				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
+				REG_DISPCNT = dsValue;
+
+				iprintf("%x",dsValue);
+
+
+				if((DISPCNT & 7) == 4)  bgInit(3, BgType_Bmp8, BgSize_B8_256x256,0,0); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
+				else /*if((DISPCNT & 7) == 3)*/ bgInit(3, BgType_Bmp16, BgSize_B16_256x256,0,0);
+				//else if((DISPCNT & 7) == 5) bgInit(3, BgType_Bmp16, BgSize_B16_256x256,0,0);
 			}
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
 			{
 				u8 *pointertobild = (u8 *)(vram);
 				for(int iy = 0; iy <160; iy++){
-					dmaCopy( (void*)pointertobild, bgGetGfxPtr(bgrouid)+256*(iy), 480);
+					dmaCopy( (void*)pointertobild, (void*)0x06000000+512*(iy), 480);
 					pointertobild+=480;
 				}
 			}	
@@ -374,7 +302,7 @@ void VblankHandler(void) {
 				u8 *pointertobild = (u8 *)(vram);
 				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 				for(int iy = 0; iy <160; iy++){
-					dmaCopy( (void*)pointertobild, bgGetGfxPtr(bgrouid)+128*(iy), 240);
+					dmaCopy( (void*)pointertobild, (void*)0x06000000+256*(iy), 240);
 					pointertobild+=240;
 				}
 			}
@@ -383,7 +311,7 @@ void VblankHandler(void) {
 				u8 *pointertobild = (u8 *)(vram);
 				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 				for(int iy = 0; iy <128; iy++){
-					dmaCopy( (void*)pointertobild, bgGetGfxPtr(bgrouid)+256*(iy), 320);
+					dmaCopy( (void*)pointertobild, (void*)0x06000000+512*(iy), 320);
 					pointertobild+=320;
 				}
 			}
@@ -417,11 +345,17 @@ void VblankHandler(void) {
 
 
 
+
+
 //---------------------------------------------------------------------------------
 int main(void) {
 //---------------------------------------------------------------------------------
 	//set the mode for 2 text layers and two extended background layers
 	//videoSetMode(MODE_5_2D); 
+
+	powerOff(POWER_3D_CORE | POWER_MATRIX); //3D use power so that is not needed
+
+	soundDisable(); //sound use power
 
 	//set the first two banks as background memory and the third as sub background memory
 	//D is not used..if you need a bigger background then you will need to map
@@ -433,13 +367,24 @@ int main(void) {
 	//bg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
 	consoleDemoInit();
 
+  biosPath[0] = 0;
+  savePath[0] = 0;
 
+  cpuSetramreg( PAGE_2M | 0x02000000 | 1);
 
 //rootenabelde[2] = fatMountSimple  ("sd", &__io_dsisd); //DSi//sems to be inited by fatInitDefault
-#ifndef loaddirect
-fatInitDefault();
-nitroFSInit();
-#endif
+
+if(!fatInitDefault())
+{
+	iprintf("fatInit Fail.\n");
+    while(1);
+}
+/*if(!nitroFSInit())
+{
+	iprintf("Nitro Fail.\n");
+    while(1);
+}*/
+
 /*
 #ifdef public	
 	iprintf("Init Fat...\n");
@@ -461,8 +406,24 @@ nitroFSInit();
 #endif
 */
 
+if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0x4E))
+{
+		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+		iprintf("Warning: you try to run gbaemu DS on %s gbaemu may not work\n press A to continue and ignore this",_io_dldi_stub.friendlyName);
+	while(1) {
+		scanKeys();
+		if (keysDown()&KEY_A) break;
+		swiWaitForVBlank();
+	}
+}
+
+
 	irqInit();
 	
+	rand();
+	srand ( time(NULL) );
+	rand();
+
 
 //main menü ende aber bleibe im while
 
@@ -478,77 +439,13 @@ nitroFSInit();
 //main menü
 
 #ifndef loaddirect
-	while(nichtausgewauhlt)
-	{
-		for(int i = 0; i < 3; i++)
-		{
-			if(i == ausgewauhlt) printf("->");
-			else printf("  ");
-			printf(rootdirnames[i]);
-			printf("\n");
-		}
-		while(nichtausgewauhlt)
-		{
-			swiWaitForVBlank();
-			scanKeys();
-			if (keysDown()&KEY_A)
-			{
-				int ausgewauhlt2 = ausgewauhlt;
-				dirfolder(rootdirnames[ausgewauhlt2]);
-				//menue start
-				
-				while(nichtausgewauhlt)
-				{
-					iprintf("\x1b[2J");
-					display();
-					while(nichtausgewauhlt)
-					{
-						swiWaitForVBlank();
-						scanKeys();
-						if (keysDown()&KEY_DOWN){ ausgewauhlt++; if(ausgewauhlt == dirfeldsize)ausgewauhlt = 0;  break;}
-						if (keysDown()&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--; break;}
-						if (keysDown()&KEY_A)
-						{
-							if(currentdir == (char*)0)
-							{
-								currentdir = (char*)malloc(strlen(rootdirnames[ausgewauhlt2]) + strlen(*(char**)((u32)names + ausgewauhlt * 4)) + 4);
-								sprintf(currentdir,"%s%s",rootdirnames[ausgewauhlt2],*(char**)((u32)names + ausgewauhlt * 4));
-							}
-							else
-							{
-								char* currentdirtemp = (char*)malloc(strlen(currentdir) + strlen(*(char**)((u32)names + ausgewauhlt * 4)) + 4);
-								sprintf(currentdirtemp,"%s/%s",currentdir,*(char**)((u32)names + ausgewauhlt * 4));								
-								//free(currentdir);
-								currentdir = currentdirtemp;
-							}
-							if(!(*(u32*)(dirfeldsizes + ausgewauhlt) == 0xFFFFFFFF))
-							{
-								sprintf(szFile,"%s",currentdir);
-								free(currentdir);
-								nichtausgewauhlt = false;
-							}
-							//iprintf(currentdir);
-							dirfree();
-							dirfolder(currentdir);
-							ausgewauhlt = 0;
-						}
-					}
-				}
-				//menue ende
-				//break;
-			}
-			if (keysDown()&KEY_DOWN && ausgewauhlt != 2){ ausgewauhlt++; break;}
-			if (keysDown()&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--; break;}
-		}
-		iprintf("\x1b[2J");	
-	}
-	dirfree();
+strcpy (szFile, (char*)browseForFile("").c_str()); //workaround  szFile = (char*)browseForFile("").c_str();
 #endif
 	bool extraram =false; 
 	if(!REG_DSIMODE) extraram = ram_init(DETECT_RAM); 
 	//extraram = true; //testtest
 		while(1) {
-		iprintf("gbaemu DS by ichfly\n");
+		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
 		iprintf("fps 60/%i\n",frameskip + 1);
 		
 		swiWaitForVBlank();
@@ -564,7 +461,7 @@ nitroFSInit();
 	{
 		int clock = 0;
 		while(1) {
-		iprintf("gbaemu DS by ichfly\n");
+		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
 		iprintf("\nSlot-2 ram %s detected\nSize:%d\n",ram_type_string(),ram_size());
 		iprintf("clock:%s\n\n",memoryWaitrealram[clock]);
 		
@@ -578,15 +475,10 @@ nitroFSInit();
 		REG_EXMEMCNT = (REG_EXMEMCNT | (clock << 2));
 	}
 
-
-
-  captureDir[0] = 0;
-  saveDir[0] = 0;
-  batteryDir[0] = 0;
   
-  char buffer[1024];
+  //char buffer[1024];
 
-  systemFrameSkip = frameSkip = 2; 
+  //systemFrameSkip = frameSkip = 2; 
   //gbBorderOn = 0;
 
   parseDebug = true;
@@ -596,6 +488,8 @@ nitroFSInit();
   //while(1);
     bool failed = false;
    
+//printf("%x %x\r\n",szFile,*(u32*)szFile);
+
       failed = !CPULoadRom(szFile,extraram);
 	  
 	  if(failed)
@@ -603,14 +497,16 @@ nitroFSInit();
 		printf("CPULoadRom failed");
 		while(1);
 	  }
-	  	//iprintf("Hello World2!");
+
+	  
        emulator = GBASystem;
 
-      CPUInit(biosFileName, useBios,extraram);
-      CPUReset();
-	  
+      if(biosPath[0] != 0)CPUInit(biosPath, true,extraram);
+	  else { CPUInit(biosPath, false,extraram); }
 
-	  if(batteryDir[0] != 0)CPUReadBatteryFile(batteryDir);
+
+      CPUReset();  
+	  if(savePath[0] != 0)CPUReadBatteryFile(savePath);
 	  
   /*} else {
     cartridgeType = 0;
@@ -632,10 +528,11 @@ int rrrresxfss = 0;
 */
 
   //soundInit();
-  
-  	irqSet(IRQ_VBLANK, VblankHandler);
-	
+	  irqSet(IRQ_VBLANK, VblankHandler);
+
 	timerStart(0, ClockDivider_1024,  TIMER_FREQ_1024(1),speedtest); // 1 sec
+
+	//iprintf("Hello World2!");
   
   while(true) {
      /* if(debugger && emulator.emuHasDebugger)
@@ -651,4 +548,4 @@ int rrrresxfss = 0;
   return 0;
 
 }
-//b
+//a

@@ -17,6 +17,7 @@
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 #include "GBA.h"
+#include "Globals.h"
 
 #ifdef BKPT_SUPPORT
 int  oldreg[17];
@@ -24,7 +25,7 @@ char oldbuffer[10];
 #endif
 
 reg_pair reg[45];
-memoryMap map[256];
+memoryMap map[mapsize];
 bool ioReadable[0x400];
 bool N_FLAG = 0;
 bool C_FLAG = 0;

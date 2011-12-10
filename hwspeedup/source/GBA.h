@@ -22,6 +22,8 @@
 
 #include "System.h"
 
+#define mapsize 0x8000 //mirrow in Globals.h change that also to the same else ther are problemes
+
 #define SAVE_GAME_VERSION_1 1
 #define SAVE_GAME_VERSION_2 2
 #define SAVE_GAME_VERSION_3 3
@@ -36,6 +38,8 @@
 typedef struct {
   u8 *address;
   u32 mask;
+  u32 loaded;
+  u32 status;
 } memoryMap;
 
 typedef union {
@@ -69,7 +73,7 @@ typedef union {
 } reg_pair;
 
 #ifndef NO_GBA_MAP
-extern memoryMap map[256];
+extern memoryMap map[mapsize];
 #endif
 
 extern reg_pair reg[45];

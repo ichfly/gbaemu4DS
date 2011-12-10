@@ -44,14 +44,10 @@ extern int timer3Ticks;
 extern int timer3ClockReload;
 extern int cpuTotalTicks;
 
-#define CPUReadByteQuick(addr) \
-  map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]
+u8 CPUReadByteQuick(u32 addr); //ichfly now in r4i.cpp
+u16 CPUReadHalfWordQuick(u32 addr);//ichfly now in r4i.cpp
+u32 CPUReadMemoryQuick(u32 addr);//ichfly now in r4i.cpp
 
-#define CPUReadHalfWordQuick(addr) \
-  READ16LE(((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
-
-#define CPUReadMemoryQuick(addr) \
-  READ32LE(((u32*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
 
 static inline u32 CPUReadMemory(u32 address)
 {
@@ -119,7 +115,7 @@ static inline u32 CPUReadMemory(u32 address)
   case 10:
   case 11:
   case 12:
-    value = READ32LE(((u32 *)&rom[address&0x1FFFFFC]));
+    value = CPUReadMemoryQuick(address);//READ32LE(((u32 *)&rom[address&0x1FFFFFC])); //ichfly here rom reader
     break;    
   case 13:
     if(cpuEEPROMEnabled)
@@ -258,7 +254,7 @@ static inline u32 CPUReadHalfWord(u32 address)
     if(address == 0x80000c4 || address == 0x80000c6 || address == 0x80000c8)
       value = rtcRead(address);
     else
-      value = READ16LE(((u16 *)&rom[address & 0x1FFFFFE]));
+      value = CPUReadHalfWordQuick(address);//READ16LE(((u16 *)&rom[address & 0x1FFFFFE])); //ichfly here rom reader
     break;    
   case 13:
     if(cpuEEPROMEnabled)
@@ -345,7 +341,7 @@ static inline u8 CPUReadByte(u32 address)
   case 10:
   case 11:
   case 12:
-    return rom[address & 0x1FFFFFF];        
+    return CPUReadByteQuick(address);//rom[address & 0x1FFFFFF];  //ichfly here rom reader       
   case 13:
     if(cpuEEPROMEnabled)
       return eepromRead(address);

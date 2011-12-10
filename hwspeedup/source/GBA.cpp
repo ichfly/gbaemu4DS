@@ -32,7 +32,7 @@
 
 extern int framenummer;
 
-#define loaddirect
+//#define loaddirect
 
 #ifdef loaddirect
 #include "puzzeloriginal_bin.h"
@@ -1532,16 +1532,18 @@ void CPUCleanUp()
 
 int CPULoadRom(const char *szFile,bool extram)
 {
-  if(rom != NULL) {
+
+//printf("%x %x\r\n",szFile,*(u32*)szFile);
+  /*if(rom != NULL) {
     CPUCleanUp();
-  }
+  }*/
 
 
   systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
 
 #ifndef loaddirect
 
-  if(extram)
+  /*if(extram)
   {
 	rom = (u8 *)ram_unlock();
 	romSize = ram_size();
@@ -1553,7 +1555,7 @@ int CPULoadRom(const char *szFile,bool extram)
 	int malloctempmulti = 0x80000;
 	
 	while(1) {
-		iprintf("gbaemu DS by ichfly\n");
+		iprintf("gbaemu DS for r4i gold (3DS) by ichfly\n");
 		iprintf("malloc %i multi: %i\n",romSize,malloctempmulti);
 		
 		swiWaitForVBlank();
@@ -1567,14 +1569,14 @@ int CPULoadRom(const char *szFile,bool extram)
 	}
 	rom = (u8 *)malloc(romSize); //test normal 0x2000000 current 1/10 oh no only 2 MB
   		/*printf("failed %x",(u32)rom);
-		while(1);*/   
+		while(1);*//*   
 	}
 		
   if(rom == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "ROM");
     return 0;
-  }
+  }*/
 
 #endif
 
@@ -1584,9 +1586,9 @@ int CPULoadRom(const char *szFile,bool extram)
                   "WRAM");
     return 0;
   }
-
+//printf("%x %x\r\n",szFile,*(u32*)szFile);
 #ifndef loaddirect
-  u8 *whereToLoad = rom;
+  /*u8 *whereToLoad = rom;
   if(cpuIsMultiBoot)
     whereToLoad = workRAM;
 
@@ -1619,7 +1621,8 @@ int CPULoadRom(const char *szFile,bool extram)
     free(workRAM);
     workRAM = NULL;
     return 0;
-  }
+  }*/
+    r4iopen(szFile);
 #endif
 #ifdef loaddirect
   rom = (u8*)puzzeloriginal_bin;
@@ -3504,12 +3507,12 @@ void CPUInit(const char *biosFileName, bool useBiosFile,bool extram)
   for(i = 0x304; i < 0x400; i++)
     ioReadable[i] = false;
 
-  if(romSize < 0x1fe2000) {
+/*  if(romSize < 0x1fe2000) {  //ichfly here rom reader
     *((u16 *)&rom[0x1fe209c]) = 0xdffa; // SWI 0xFA
     *((u16 *)&rom[0x1fe209e]) = 0x4770; // BX LR
   } else {
     agbPrintEnable(false);
-  }
+  }*/
 }
 
 void CPUReset()
@@ -3639,8 +3642,10 @@ void CPUReset()
       armIrqEnable = false;  
     } else {
       reg[13].I = 0x03007F00;
+
       reg[15].I = 0x08000000;
-      reg[16].I = 0x00000000;
+	  //printf("test bios %x",reg[15].I);
+	  reg[16].I = 0x00000000;
       reg[R13_IRQ].I = 0x03007FA0;
       reg[R13_SVC].I = 0x03007FE0;
       armIrqEnable = true;      
@@ -3709,11 +3714,14 @@ void CPUReset()
 
   //CPUUpdateRenderBuffers(true);
   
-  for(int i = 0; i < 256; i++) {
+printf("test bios %x %x %x %x\r\n",(u32)&reg[15],&map[0].address,reg[15].I,&map[((0xFFFFFFFF)>>mapseekoffs) & mapander].address,&map[mapsize].address);
+
+  for(int i = 0; i < mapsize; i++) {
     map[i].address = (u8 *)&dummyAddress;
     map[i].mask = 0;
+	map[i].status = 0; //full loaded
   }
-
+/* //the old the new is async and each map is 1 MB
   map[0].address = bios;
   map[0].mask = 0x3FFF;
   map[2].address = workRAM;
@@ -3738,10 +3746,69 @@ void CPUReset()
   map[12].mask = 0x1FFFFFF;
   map[14].address = flashSaveMemory;
   map[14].mask = 0xFFFF;
-
-  eepromReset();
+*/
+  for(int iy = 0; iy <0x3FFF ; iy+=MEM80bufferslotssize)
+  {
+	map[((0x00000000 + iy)>>mapseekoffs) & mapander].address = bios;
+	map[((0x00000000 + iy)>>mapseekoffs) & mapander].mask = 0x3FFF;
+  }
+  for(int iy = 0; iy <0x3FFFF ; iy+=MEM80bufferslotssize)
+  {
+	map[((0x02000000 + iy)>>mapseekoffs) & mapander].address = workRAM;
+	map[((0x02000000 + iy)>>mapseekoffs) & mapander].mask = 0x3FFFF;
+  }
+  for(int iy = 0; iy <0x7FFF ; iy+=MEM80bufferslotssize)
+  {
+	map[((0x03000000 + iy)>>mapseekoffs) & mapander].address = internalRAM;
+	map[((0x03000000 + iy)>>mapseekoffs) & mapander].mask = 0x7FFF;
+  }
+  for(int iy = 0; iy <0x3FF ; iy+=MEM80bufferslotssize)
+  {
+	map[((0x04000000 + iy)>>mapseekoffs) & mapander].address = ioMem;
+	map[((0x04000000 + iy)>>mapseekoffs) & mapander].mask = 0x3FF;
+  }
+  for(int iy = 0; iy <0x3FF ; iy+=MEM80bufferslotssize)
+  {
+	map[((0x05000000 + iy)>>mapseekoffs) & mapander].address = paletteRAM;
+	map[((0x05000000 + iy)>>mapseekoffs) & mapander].mask = 0x3FF;
+  }
+  for(int iy = 0; iy <0x1FFFF ; iy+=MEM80bufferslotssize)
+  {
+	map[((0x06000000 + iy)>>mapseekoffs) & mapander].address = vram;	
+	map[((0x06000000 + iy)>>mapseekoffs) & mapander].mask = 0x1FFFF;
+  }
+  for(int iy = 0; iy <0x3FF ; iy+=MEM80bufferslotssize)
+  {
+	map[((0x07000000 + iy)>>mapseekoffs) & mapander].address = oam;
+	map[((0x07000000 + iy)>>mapseekoffs) & mapander].mask = 0x3FF;
+  }
+  /*
+  map[0x80].address = rom;
+  map[8].mask = 0x1FFFFFF;
+  map[9].address = rom;
+  map[9].mask = 0x1FFFFFF;  
+  map[10].address = rom;
+  map[10].mask = 0x1FFFFFF;
+  map[12].address = rom;
+  map[12].mask = 0x1FFFFFF;*/
+  
+  for(int iy = 0; iy <0x1FFFFFF * 3 ; iy+=MEM80bufferslotssize)
+  {
+	 map[((0x08000000 + iy)>>mapseekoffs) & mapander].address = 0;
+	 map[((0x08000000 + iy)>>mapseekoffs) & mapander].mask = cucksize;
+	 map[((0x08000000 + iy)>>mapseekoffs) & mapander].status = 2; //not loaded
+  }
+  for(int iy = 0; iy <0xFFFF ; iy+=MEM80bufferslotssize)
+  {
+	map[((0x0E000000 + iy)>>mapseekoffs) & mapander].address = flashSaveMemory;
+	map[((0x0E000000 + iy)>>mapseekoffs) & mapander].mask = 0xFFFF;
+  }
+printf("test2 bios %x\r\n",reg[15].I);
+eepromReset();
   flashReset();
   
+
+
   //soundReset(); //ichfly sound
 
   //CPUUpdateWindow0();
@@ -3757,6 +3824,8 @@ void CPUReset()
     if(cpuIsMultiBoot)
       BIOS_RegisterRamReset(0xfe);
   }
+
+
 
   switch(cpuSaveType) {
   case 0: // automatic
@@ -3808,8 +3877,9 @@ void CPUReset()
     break;
   } 
 
-  ARM_PREFETCH;
 
+
+  ARM_PREFETCH;
   systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
 
   cpuDmaHack = false;
@@ -3960,7 +4030,6 @@ swiDelay(0x2000000);
 
       if ((armNextPC & 0x0803FFFF) == 0x08020000)
         busPrefetchCount=0x100;
-
       if(armState) {
 #include "arm-new.h"
       } else {

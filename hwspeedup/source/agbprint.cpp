@@ -26,8 +26,30 @@
 #define debuggerWriteHalfWord(addr, value) \
   WRITE16LE((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask], (value))
 
-#define debuggerReadHalfWord(addr) \
-  READ16LE(((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
+//ichfly newmap
+/*#define debuggerReadHalfWord(addr) \
+  READ16LE(((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))*/
+u16 debuggerReadHalfWord(u16 addr) //ichfly here rom reader
+{
+	if(map[((addr)>>mapseekoffs) & mapander].status == 0) // 0 = full loaded
+	{
+		return READ16LE((u16*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+	}
+	else
+	{
+		if(map[((addr)>>mapseekoffs) & mapander].status == 1) //1 = load in progress
+		{
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 2); //sorry you need to wait :(
+			return READ16LE((u16*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+		}
+		if(map[((addr)>>mapseekoffs) & mapander].status == 2) //2 = not loaded
+		{
+			dmastartloadin(addr);
+			while(map[((addr)>>mapseekoffs) & mapander].loaded + dmagetloaded() < addr + 2); //sorry you need to wait :(
+			return READ16LE((u16*)&map[((addr)>>mapseekoffs) & mapander].address[(addr) & map[((addr)>>mapseekoffs) & mapander].mask]);
+		}
+	}
+}
 
 static bool agbPrintEnabled = false;
 static bool agbPrintProtect = false;
@@ -82,7 +104,7 @@ void agbPrintFlush()
     return;
   }
 
-  u8 *data = &rom[address];
+  u8 *data = &rom[address]; //ichfly here rom reader todo not working
 
   while(get != put) {
     char c = data[get++];

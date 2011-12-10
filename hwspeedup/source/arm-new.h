@@ -2383,6 +2383,8 @@
     }\
     break;
 
+
+
   u32 opcode = cpuPrefetch[0];
   cpuPrefetch[0] = cpuPrefetch[1];
 
@@ -2402,6 +2404,9 @@
 
   armNextPC = reg[15].I;
   reg[15].I += 4;
+
+
+
   ARM_PREFETCH_NEXT;
 
   int cond = opcode >> 28;
