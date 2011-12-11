@@ -27,6 +27,9 @@ void VblankHandler();
 
 void BIOScall(int op,  s32 *R);
 
+extern "C" void cpu_SetCP15Cnt(u32 v);
+extern "C" u32 cpu_GetCP15Cnt();
+
 
 #include <filesystem.h>
 #include "GBA.h"
@@ -46,17 +49,6 @@ void BIOScall(int op,  s32 *R);
 #include "main.h"
 
 #include "armdis.h"
-
-
-
-//#define DEV_VERSION
-
-#define patch_VERSION
-
-#define releas
-
-
-#define unsave
 
 
 	FILE * pFile;
@@ -118,7 +110,7 @@ extern bool disableMessage;
 
 
 
-
+void gbaExceptionHdl();
 
 
 
@@ -177,26 +169,35 @@ u16 gbaBGxCNT[4] = {0, 0, 0, 0};
 
 char disbuffer[0x2000];
 
-extern "C" void exMain(); 
+//extern "C" void exMain(); 
 
-extern void __attribute__((section(".itcm"))) (*exHandler)();
-extern s32  __attribute__((section(".itcm"))) exRegs[];
+extern void __attribute__((section(".dtcm"))) (*exHandler)();
+extern void __attribute__((section(".dtcm"))) (*exHandlerswi)();
+extern s32  __attribute__((section(".dtcm"))) exRegs[];
+extern s32  __attribute__((section(".dtcm"))) BIOSDBG_SPSR;
 
-#define BIOSDBG_CP15 *((volatile u32*)0x027FFD8C)
-#define BIOSDBG_SPSR *((volatile u32*)0x027FFD90)
-#define BIOSDBG_R12  *((volatile u32*)0x027FFD94)
-#define BIOSDBG_PC   *((volatile u32*)0x027FFD98)
+//#define BIOSDBG_CP15 *((volatile u32*)0x027FFD8C)
+//#define BIOSDBG_SPSR *((volatile u32*)0x027FFD90)
+//#define BIOSDBG_R12  *((volatile u32*)0x027FFD94)
+//#define BIOSDBG_PC   *((volatile u32*)0x027FFD98)
 
 
 
 int durchlauf = 0;
 
 
+void exInitswisystem(void (*customswiHdl)())
+{
+	exHandlerswi = customswiHdl;
+}
+
 void exInit(void (*customHdl)())
 {
-	EXCEPTION_VECTOR = exMain;
+	//EXCEPTION_VECTOR = exMain; //no more needed
 	exHandler = customHdl;
 }
+
+
 /*
 void Write32(u32 address, u32 value)
 {
@@ -344,77 +345,12 @@ void emuInstrTHUMB(u16 instr, s32 *regs);
 
 #define B8(h,g,f,e,d,c,b,a) ((a)|((b)<<1)|((c)<<2)|((d)<<3)|((e)<<4)|((f)<<5)|((g)<<6)|((h)<<7))
 
-void puGba()
-{
-	/* NDS PU REGIONS: 
-	0: io + vram
-	1: bios
-	2: alternate vector base
-	3: DTCM
-	4: ITCM
-	5: new 0x300000 (old gba slot)
-	6: non cacheable main ram
-	7: cacheable main ram
-	*/
-	
-	
-	//REG_IME = IME_DISABLE;
-	
-	//DC_FlushRange((void*)0x02000000, 4 * 1024 * 1024); //slowdown and is not realy needed
-	//pu_SetDataCachability(   B8(0,0,0,0,0,0,1,0)); //ichfly todo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	//pu_SetCodeCachability(   B8(0,0,0,0,0,0,1,0));
-	//pu_GetWriteBufferability(B8(0,0,0,0,0,0,0,0));
-	
-	//pu_SetRegion(0, 0x00000000 | PU_PAGE_4G | 1);	/* fond */ //ichfly wtf
-	//pu_SetRegion(1, 0x04000000 | PU_PAGE_16M | 1);	/* io */
-	
-	//pu_SetDataPermissions(0x36333303);
-	//pu_SetCodePermissions(0x36636303);
-	
-	pu_SetCodePermissions(0x33333360);
-	
-	pu_SetDataPermissions(0x33333360);
-
-	//REG_IME = IME_ENABLE;	//lol don't enable this
-	
-	
-}
-
-void puNds()
-{
-	/* NDS PU REGIONS: 
-	0: io + vram
-	1: bios
-	2: alternate vector base
-	3: DTCM
-	4: ITCM
-	5: new 0x300000 (old gba slot)
-	6: non cacheable main ram
-	7: cacheable main ram
-	*/
-	
-	
-	pu_SetDataPermissions(0x33333363);
-	pu_SetCodePermissions(0x33333363);
-	
-
-	
-	//pu_SetRegion(6, 0x02000000 | PU_PAGE_16M  | 1);	/* main ram */ //why
-	//pu_SetRegion(7, 0x02000000 | PU_PAGE_4M  | 1);	/* main rams */
-	//pu_SetRegion(0, 0x04000000 | PU_PAGE_64M | 1);	/* io + vram */
-	
-	/*pu_SetDataCachability(   B8(1,0,0,0,0,0,1,0)); //ichfly todo
-	pu_SetCodeCachability(   B8(1,0,0,0,0,0,1,0));
-	pu_GetWriteBufferability(B8(1,0,0,0,0,0,0,0));*/
-	
-	//REG_IME = IME_ENABLE;	//ichfy for test
-}
-
 void debugDump()
 {
 // 	Log("dbgDump\n");
 // 	return;
 	
+
 	int i;
 	for(i = 0; i <= 15; i++) {
 		Log("R%d=%X ", i, exRegs[i]);
@@ -423,259 +359,34 @@ void debugDump()
 	for(i = 0; i < 4; i++) {
 		Log("+%02X: %08X %08X %08X\n", i*3*4, ((u32*)exRegs[13])[i*3], ((u32*)exRegs[13])[i*3+1], ((u32*)exRegs[13])[i*3+2]);
 	}
+	Log("SPSR %08x CPSR %08x\n",BIOSDBG_SPSR,cpuGetCPSR());
 }
 
 int durchgang = 0;
 
-void gbaExceptionHdl()
-{
-
-	int i;
-	u32 instr;
-	u32 sysMode;
-	u32 cpuMode;
-	u32 opSize;
-	
-	ndsMode();
-	//sysMode = cpuGetCPSR() & 0x1F; //ichfly don't need that
-	cpuMode = BIOSDBG_SPSR & 0x20;
-	
-	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80;
-	
-	if(cpuMode) opSize = 2;
-	else opSize = 4;
-	
-
-	
-	//exRegs[15] -= 4; //ichfly patch not working on emulators
-	
-
-	//exRegs[15] += 4;
-		
-	
-	//while(1);
-	
-
-	
-	//Log("%08X %08X\n", exRegs[15] , BIOSDBG_SPSR);
-	//Log("%08X\n", exRegs[15]);
-	
-#ifndef unsave
-	if(exRegs[15] < 0x02000000)while(1);
-	if(exRegs[15] > 0x04000000 && !(exRegs[15] & 0x08000000))while(1);
-#endif
-	
-	/*if(exRegs[15] > (u32)(rom + 0x200))
-	{
-		//debugDump();
-		Log("%08X\n", exRegs[15]);
-		durchlauf++;
-		if((s32)workaroundread32((u32*)&rom) + 0x458 < exRegs[15] && (s32)workaroundread32((u32*)&rom) + 0x5a4 > exRegs[15])while(1);
-		//debugDump();
-	}*/
-	
-	if(exRegs[15] & 0x08000000)
-	{
-		//if(exRegs[15] == 0x08000290)while(1);
-		//Logsd("%08X\n", exRegs[15]);
-		//debugDump();
-		
-		//debugDump();
-		
-		//iprintf("\n\r%08X",BIOSDBG_SPSR);
-		
-
-		
-		//suche quelle
-		for(i = 0; i <= 14; i++) {
-			if((exRegs[i] & ~0x1) == (exRegs[15] - 4))
-			{
-				if(exRegs[i] &0x1) BIOSDBG_SPSR |= 0x20;
-				else  BIOSDBG_SPSR &= ~0x20;
-				break;
-			}
-		}
-		
-		
-		//exRegs[15] -= 8; //for my emu
-		//exRegs[15] -= 4; //for nothing
-		
-		//volatile static u32 temp;
-		
-		//temp = exRegs[15];
-		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
-		
-		//temp = exRegs[15];
-		//sehen[1] = (u32)rom;
-		//Log("ende %08X %08X %08X \n", sehen[0], sehen[1], sehen[2]);
-		
-	
-	}
-	else
-	{
-		//if(sysMode == 0x17)
-		{
-	 //		Logsd("-------- DA :\n");
-
-			
-			//exRegs[15] += 4; //for emu
-			
-			//debugDump();
-			
-			//durchgang++;
-			
-			//iprintf("%08X %X (%08X)\n", exRegs[15],cpuMode,*(u32*)(exRegs[15] - 8));
-			
-			
-				//debugDump();
-			
-			if(cpuMode)
-			{
-				instr = *(u16*)(exRegs[15] - 8);
-				exRegs[15] -= 2;
-				//BIOSDBG_PC -= 2; 
-			}
-			else
-			{
-				instr = *(u32*)(exRegs[15] - 8);
-				//exRegs[15] -= 2;
-				//
-			}
-			/*if(cpuMode) instr = (u32)*(u16*)(exRegs[15] - 4);
-			else instr = *(u32*)(exRegs[15] - 4);*/
-			
-			if(cpuMode)
-			{
-				u16 tempforwtf = *(u16*)(exRegs[15] - 2);
-
-				//Logsd("%08X\n", instr);
-				if(tempforwtf > 0xBE00 && tempforwtf < 0xBE2B)
-				{
-				
-					
-					exRegs[15] += 4;
-					//debugDump();
-					BIOScall(tempforwtf,  exRegs);
-					
-					
-					
-					//while(1);
-					//debugDump();
-				}
-				else emuInstrTHUMB(instr, exRegs);
-				//exRegs[15] -= 2;
-				
-			}
-			else
-			{
-			
-				u32 tempforwtf = *(u32*)(exRegs[15] - 4);
-				if((tempforwtf &0xFFF000F0) == 0xE1200070) //wtf ²àà 0xB2 10 E0 E0
-				{
-					exRegs[15] += 4;
-					BIOScall((tempforwtf & 0xFFF00)>>0x8, exRegs);
-				}
-				else
-				if((tempforwtf &0x0F200090) == 0x00200090) //wtf why dos this tigger an exeption it is strh r1,[r0]+2! ²àà 0xB2 10 E0 E0 on gba 0xE0E010B2 so think all strh rx,[ry]+z! do that it is an comand interpreter error 
-				{
-#ifdef patch_VERSION
-					*(u32*)(exRegs[15] - 4) = tempforwtf & ~0x200000;//ther is just a wrong bit so don#t worry
-#else
-					exRegs[15] += 4;
-					emuInstrARM(tempforwtf, exRegs);
-#endif
-				}
-				else
-				{
-				/*u32 offset = exRegs[15] - 8;
-				if(offset > 0x02040000) offset = exRegs[15] - 8 - (s32)workaroundread32((u32*)&rom) + 0x08000000;
-				if(offset == 0x0800311C || offset == 0x08003120)
-				{
-					disArm(offset - 4,disbuffer,DIS_VIEW_ADDRESS);
-					Log(disbuffer);
-					Log("\r\n");
-										disArm(offset,disbuffer,DIS_VIEW_ADDRESS);
-					Log(disbuffer);
-					Log("\r\n");
-										disArm(offset + 4,disbuffer,DIS_VIEW_ADDRESS);
-					Log(disbuffer);
-					Log("\r\n");
-										disArm(offset + 8,disbuffer,DIS_VIEW_ADDRESS);
-					Log(disbuffer);
-					Log("\r\n");
-					
-					debugDump();
-					while(1);
-				}*/
-	 			//Log("ARM: %08X\n", instr);
-				emuInstrARM(instr, exRegs);
-				}
-	// 			Logsd("NDS TRACE\n")
-				//exRegs[15] -= 4;
-			}
-			
-	// 		exRegs[15] += opSize;
-	// 		while(1) { }
-		}
-		/*else if(sysMode == 0x1B)
-		{
-			if(cpuMode) instr = (u32)*(u16*)(exRegs[15] - 2);
-			else instr = *(u32*)(exRegs[15] - 4);
-			
-			// Undefined instruction (debug...) 
-			if((!cpuMode && instr == 0xE7F000F0) || (cpuMode && instr == 0xDE00))
-			{
-				Log("Trace... [%s]\n", cpuMode ? "THUMB" : "ARM");
-			}
-			else if((!cpuMode && instr == 0xE7F000F1) || (cpuMode && instr == 0xDE01))
-			{
-				debugDump();
-			}
-			else
-			{
-				Log("Unhandled und. except. (%08X)\n", instr);
-				//while(1)swiWaitForVBlank();
-			}
-			
-			exRegs[15] += 4;
-		}*/ //ichfly not reachable
-	}
-
-		//while(1);
-	
-	//Log("%08X\n", exRegs[1]);
-	//Log("%08X\n", exRegs[0]);
-	//while(1);
-	//debugDump();
-	
-	//test mode
-	
-	
-	/*iprintf("test\r\n%x\r\n%x\r\n%x\r\n%x\r\n",BIOSDBG_CP15, BIOSDBG_SPSR, BIOSDBG_R12, BIOSDBG_PC);
-	
-	BIOSDBG_PC = 0;
-	
-	iprintf("%x", BIOSDBG_PC);
-	while(1);*/
-	//test mode end
-	
-	//Log("%08X\n", exRegs[15]);
-	
-	//debugDump();
-	
-	gbaMode();
-	
-	//if(*(u16*)(exRegs[15] - 2) == 0xBE05) while(1);
-			//swiDelay(0x2000000); --
-	//swiDelay(0x20000);
-	
-	//if(exRegs[15] < 0x02000000)while(1) { ; } //i was funny hahahahaha
-
-}
-
-
 void gbaInit()
 {
+
+	/*
+	Region 0 - IO registers	0x04000000 PAGE_64M
+	Region 1 - System ROM 0xFFFF0000 PAGE_32K   
+	--> Standard Palettes 0x05000000  (2KByte DS) (1KByte gba)  PAGE_16M
+	Region 2 - alternate vector base 0x00000000 PAGE_4K
+	Region 3 - DS Accessory (GBA Cart) / DSi switchable iwram 0x08000000 PAGE_16M (0x03000000 PAGE_8M DSi) 
+	--> Shared WRAM (32KByte) 0x03000000 PU_PAGE_16M
+	Region 4 - ITCM 0x01000000 PAGE_32K
+	Region 5 - DTCM 0x0b000000 PAGE_16K
+	Region 6 - non cacheable main ram 0x02000000 PAGE_16M
+	--> same to secure that everything works
+	Region 7 - cacheable main ram 0x02000000 PAGE_4M
+	--> VRAM/OAM 0x06000000 PU_PAGE_32M
+
+
+	
+
+	*/
+
+
 	//pFile = fopen("fat:/gbaemulog.log","w");
 	pu_SetDataCachability(   0b00000010); //ichfly todo slowdown !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	pu_SetCodeCachability(   0b00000010);
@@ -691,10 +402,11 @@ void gbaInit()
 	//fputs ("fopen example\r\n",pFile);
 	
 	// 	puSetGbaIWRAM();
-	pu_SetRegion(3, 0x03000000 | PU_PAGE_64K | 1);	/* gba iwram */ //it is the GBA Cart in the original //ichfly for log jumps it is 2 as bit as it should
+
+	pu_SetRegion(3, 0x03000000 | PU_PAGE_16M | 1);	/* gba iwram */ //it is the GBA Cart in the original //ichfly for log jumps it is 2 as bit as it should
 	pu_SetRegion(6, 0x02000000 | PU_PAGE_16M | 1);    //ram
 	//pu_SetRegion(7, 0x07000000 | PU_PAGE_16M | 1);
-	pu_SetRegion(2, 0x05000000 | PU_PAGE_16M | 1);
+	pu_SetRegion(1, 0x05000000 | PU_PAGE_16M | 1);
 	pu_SetRegion(7, 0x06000000 | PU_PAGE_32M | 1);	//todo swap
 	//pu_SetRegion(2, 0x05000000 | PU_PAGE_64M | 1);
 	//pu_SetRegion(3, 0x00000000 | PU_PAGE_32M | 1);
@@ -704,40 +416,29 @@ void gbaInit()
 	exInit(gbaExceptionHdl);
 #endif
 
+	exInitswisystem(gbaswieulatedbios);
+
 	iprintf("gbainit done\n\r");
 	
 }
 
-void gbaMode()
+void gbaswieulatedbios()
 {
-#ifndef releas
-	exInit(gbaExceptionHdl);
-#endif
-	puGba();
-	
+	//Log("\n\rswi\n\r");
+	//debugDump();
+
+//while(1);
+
+	//Log("%08X S\n", exRegs[15]);
+
+	u16 tempforwtf = *(u16*)(exRegs[15] - 2);
+	BIOScall(tempforwtf,  exRegs);
+
+		gbaMode();
+	//while(1);
 }
 
-void ndsExceptionHdl()
-{
-	u32 mode = cpuGetCPSR() & 0x1F;
-	u32 instrset = BIOSDBG_SPSR & 0x20;
-	
-	if(mode == 0x17) Log("NDS DATA ABORT\n");
-	else if(mode == 0x1B) Log("NDS UNDEFINED INSTRUCTION\n");
-	else Log("NDS STRANGE EXCEPTION !\n");
-	Log("SAVED PC = %08X (%s)\n", exRegs[15], instrset ? "THUMB" : "ARM");
-	if(instrset) Log("FAILED INSTR = %04X\n", *(u16*)(exRegs[15] - (mode == 0x17 ? 4 : 2)));
-	else Log("FAILED INSTR = %08X\n", *(u32*)(exRegs[15] - (mode == 0x17 ? 8 : 4)));
-	while(1) { ; }
-}
 
-void ndsMode()
-{
-	puNds();
-#ifndef releas
-	exInit(ndsExceptionHdl);
-#endif
-}
 void BIOScall(int op,  s32 *R)
 {
 	int comment = op & 0x003F;
@@ -760,7 +461,7 @@ void BIOScall(int op,  s32 *R)
 		
 		//durchlauf = 1;
 		
-		debugDump();
+		//debugDump();
 		
 		VblankHandler();
 		
@@ -897,7 +598,7 @@ void BIOScall(int op,  s32 *R)
 	  default:
 		if((comment & 0x30) == 0x30)
 		{
-			iprintf("r%x%08x",(comment & 0xF),R[(comment & 0x30)]);
+			iprintf("r%x %08x",(comment & 0xF),R[(comment & 0x30)]);
 		}
 		else
 		{
@@ -918,4 +619,589 @@ void switch_to_unprivileged_mode()
 	temp = temp |= 0x10;
 	cpuSetCPSR(temp);
 }
+
+void emulateedbiosstart()
+{
+	cpu_SetCP15Cnt(cpu_GetCP15Cnt() &~BIT(13));
+}
+
+void downgreadcpu()
+{
+	cpu_SetCP15Cnt(cpu_GetCP15Cnt() | BIT(15));
+}
+
+
+ __attribute__((section(".itcm"))) inline void puGba()
+{
+	/* NDS PU REGIONS: 
+	0: io + vram
+	1: bios
+	2: alternate vector base
+	3: DTCM
+	4: ITCM
+	5: new 0x300000 (old gba slot)
+	6: non cacheable main ram
+	7: cacheable main ram
+	*/
+	
+	
+	//REG_IME = IME_DISABLE;
+	
+	//DC_FlushRange((void*)0x02000000, 4 * 1024 * 1024); //slowdown and is not realy needed
+	//pu_SetDataCachability(   B8(0,0,0,0,0,0,1,0)); //ichfly todo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	//pu_SetCodeCachability(   B8(0,0,0,0,0,0,1,0));
+	//pu_GetWriteBufferability(B8(0,0,0,0,0,0,0,0));
+	
+	//pu_SetRegion(0, 0x00000000 | PU_PAGE_4G | 1);	/* fond */ //ichfly wtf
+	//pu_SetRegion(1, 0x04000000 | PU_PAGE_16M | 1);	/* io */
+	//pu_SetDataPermissions(0x36333303);
+	//pu_SetCodePermissions(0x36636303);
+	
+	pu_SetCodePermissions(0x33333330);
+	
+	pu_SetDataPermissions(0x33333330);
+
+	//REG_IME = IME_ENABLE;	//lol don't enable this
+	
+	
+}
+ __attribute__((section(".itcm"))) inline void puNds()
+{
+	/* NDS PU REGIONS: 
+	0: io + vram
+	1: bios
+	2: alternate vector base
+	3: DTCM
+	4: ITCM
+	5: new 0x300000 (old gba slot)
+	6: non cacheable main ram
+	7: cacheable main ram
+	*/
+	
+	
+	pu_SetDataPermissions(0x33333333);
+	pu_SetCodePermissions(0x33333333);
+	
+
+	
+	//pu_SetRegion(6, 0x02000000 | PU_PAGE_16M  | 1);	/* main ram */ //why
+	//pu_SetRegion(7, 0x02000000 | PU_PAGE_4M  | 1);	/* main rams */
+	//pu_SetRegion(0, 0x04000000 | PU_PAGE_64M | 1);	/* io + vram */
+	
+	/*pu_SetDataCachability(   B8(1,0,0,0,0,0,1,0)); //ichfly todo
+	pu_SetCodeCachability(   B8(1,0,0,0,0,0,1,0));
+	pu_GetWriteBufferability(B8(1,0,0,0,0,0,0,0));*/
+	
+	//REG_IME = IME_ENABLE;	//ichfy for test
+}
+
+
+
+
+
+void ndsExceptionHdl()
+{
+	u32 mode = cpuGetCPSR() & 0x1F;
+	u32 instrset = BIOSDBG_SPSR & 0x20;
+	if(mode == 0x17)
+	{
+		u32 codeAddress = exRegs[15] - 8;
+		if (	(codeAddress > 0x02000000 && codeAddress < 0x02400000) ||
+		(codeAddress > (u32)0x01000000 && codeAddress < (u32)(0x01000000 + 32768)) )
+		{
+			Log("NDS DATA ABORT AT %08X\n",getExceptionAddress( codeAddress, instrset));
+		}
+		else
+		{
+			Log("NDS DATA ABORT\n");
+		}
+	}
+	else if(mode == 0x1B) Log("NDS UNDEFINED INSTRUCTION\n");
+	else Log("NDS STRANGE EXCEPTION !\n");
+	Log("SAVED PC = %08X (%s)\n", exRegs[15], instrset ? "THUMB" : "ARM");
+	debugDump();
+	/*if(instrset) Log("FAILED INSTR = %04X\n", *(u16*)(exRegs[15] - (mode == 0x17 ? 4 : 2)));
+	else Log("FAILED INSTR = %08X\n", *(u32*)(exRegs[15] - (mode == 0x17 ? 8 : 4)));*/ //ichfly don't like that
+	while(1) { ; }
+}
+
+
+ __attribute__((section(".itcm")))inline void ndsModeinline()
+{
+	puNds();
+#ifndef releas
+	exInit(ndsExceptionHdl);
+#endif
+}
+
+void ndsMode()
+{
+	puNds();
+#ifndef releas
+	exInit(ndsExceptionHdl);
+#endif
+}
+
+
+ __attribute__((section(".itcm"))) void gbaExceptionHdl()
+{
+
+	//debugDump();
+
+//Log("test\r\n");
+
+	int i;
+	u32 instr;
+	u32 sysMode;
+	u32 cpuMode;
+	
+	ndsModeinline();
+	//sysMode = cpuGetCPSR() & 0x1F; //ichfly don't need that
+	cpuMode = BIOSDBG_SPSR & 0x20;
+	
+	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80;
+	
+	/*u32 opSize;
+	if(cpuMode) opSize = 2;
+	else opSize = 4;*/
+	
+	 /*if(cpuMode)Log("%08X %08X\n", exRegs[15],BIOSDBG_SPSR);
+	 else
+	 {
+		Log("%08X %08X\n", exRegs[15],BIOSDBG_SPSR);
+	 }*/
+	
+	//exRegs[15] -= 4; //ichfly patch not working on emulators
+	
+
+	//exRegs[15] += 4;
+		
+	
+	//while(1);
+	
+
+	
+	//Log("%08X %08X\n", exRegs[15] , BIOSDBG_SPSR);
+	
+	//debugDump();
+
+	
+#ifndef unsave
+	if(exRegs[15] < 0x02000000 || exRegs[15] > 0x04000000 && !(exRegs[15] & 0x08000000))
+	{
+		Log("gba jumped to an unknown region\n");
+		debugDump();
+		while(1);
+	}
+#endif
+	
+	/*if(exRegs[15] > (u32)(rom + 0x200))
+	{
+		//debugDump();
+		Log("%08X\n", exRegs[15]);
+		durchlauf++;
+		if((s32)workaroundread32((u32*)&rom) + 0x458 < exRegs[15] && (s32)workaroundread32((u32*)&rom) + 0x5a4 > exRegs[15])while(1);
+		//debugDump();
+	}*/
+	
+	if(exRegs[15] & 0x08000000)
+	{
+		//if(exRegs[15] == 0x08000290)while(1);
+		//Logsd("%08X\n", exRegs[15]);
+		//debugDump();
+		
+		//debugDump();
+		
+		//iprintf("\n\r%08X",BIOSDBG_SPSR);
+		
+
+		
+		//suche quelle
+		/*for(i = 0; i <= 14; i++) {
+			if((exRegs[i] & ~0x1) == (exRegs[15] - 4))
+			{
+				if(exRegs[i] &0x1) BIOSDBG_SPSR |= 0x20;
+				else  BIOSDBG_SPSR &= ~0x20;
+				break;
+			}
+		}*/ //ichfly check if needed
+		
+		
+		//exRegs[15] -= 8; //for my emu
+		//exRegs[15] -= 4; //for nothing
+		
+		//volatile static u32 temp;
+		
+		//temp = exRegs[15];
+		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
+		
+		//temp = exRegs[15];
+		//sehen[1] = (u32)rom;
+		//Log("ende %08X %08X %08X \n", sehen[0], sehen[1], sehen[2]);
+		
+	
+	}
+	else
+	{
+	 //		Logsd("-------- DA :\n");
+
+			
+			//exRegs[15] += 4; //for emu
+			
+			//debugDump();
+			
+			//durchgang++;
+			
+			//iprintf("%08X %X (%08X)\n", exRegs[15],cpuMode,*(u32*)(exRegs[15] - 8));
+			
+			
+				//debugDump();
+			
+			/*if(cpuMode) instr = (u32)*(u16*)(exRegs[15] - 4);
+			else instr = *(u32*)(exRegs[15] - 4);*/
+			
+			if(cpuMode)
+			{
+				instr = *(u16*)(exRegs[15] - 8);
+				exRegs[15] -= 2;
+#ifdef BREAKswisupport
+				u16 tempforwtf = *(u16*)(exRegs[15] - 2);
+
+				//Logsd("%08X\n", instr);
+				if(tempforwtf > 0xBE00 && tempforwtf < 0xBE2B)
+				{
+				
+					
+					exRegs[15] += 4;
+					//debugDump();
+					BIOScall(tempforwtf,  exRegs);
+					
+					
+					
+					//while(1);
+					//debugDump();
+				}
+				else
+#endif
+				{
+					emuInstrTHUMB(instr, exRegs);
+				}
+				//exRegs[15] -= 2;
+				
+			}
+			else
+			{
+				instr = *(u32*)(exRegs[15] - 8);
+				u32 tempforwtf = *(u32*)(exRegs[15] - 4);
+#ifdef BREAKswisupport
+				if((tempforwtf &0xFFF000F0) == 0xE1200070) //wtf ²àà 0xB2 10 E0 E0
+				{
+					exRegs[15] += 4;
+					BIOScall((tempforwtf & 0xFFF00)>>0x8, exRegs);
+				}
+				else
+#endif
+				if((tempforwtf &0x0F200090) == 0x00200090) //wtf why dos this tigger an exeption it is strh r1,[r0]+2! ²àà 0xB2 10 E0 E0 on gba 0xE0E010B2 so think all strh rx,[ry]+z! do that it is an comand interpreter error 
+				{
+					*(u32*)(exRegs[15] - 4) = tempforwtf & ~0x200000;//ther is just a wrong bit so don't worry patch it to strh r1,[r0]+2
+				}
+				else
+				{
+				/*u32 offset = exRegs[15] - 8;
+				if(offset > 0x02040000) offset = exRegs[15] - 8 - (s32)workaroundread32((u32*)&rom) + 0x08000000;
+				if(offset == 0x0800311C || offset == 0x08003120)
+				{
+					disArm(offset - 4,disbuffer,DIS_VIEW_ADDRESS);
+					Log(disbuffer);
+					Log("\r\n");
+										disArm(offset,disbuffer,DIS_VIEW_ADDRESS);
+					Log(disbuffer);
+					Log("\r\n");
+										disArm(offset + 4,disbuffer,DIS_VIEW_ADDRESS);
+					Log(disbuffer);
+					Log("\r\n");
+										disArm(offset + 8,disbuffer,DIS_VIEW_ADDRESS);
+					Log(disbuffer);
+					Log("\r\n");
+					
+					debugDump();
+					while(1);
+				}*/
+	 			//Log("ARM: %08X\n", instr);
+				emuInstrARM(instr, exRegs);
+				}
+	// 			Logsd("NDS TRACE\n")
+				//exRegs[15] -= 4;
+			}
+			
+	// 		exRegs[15] += opSize;
+	// 		while(1) { }
+		/*else if(sysMode == 0x1B)
+		{
+			if(cpuMode) instr = (u32)*(u16*)(exRegs[15] - 2);
+			else instr = *(u32*)(exRegs[15] - 4);
+			
+			// Undefined instruction (debug...) 
+			if((!cpuMode && instr == 0xE7F000F0) || (cpuMode && instr == 0xDE00))
+			{
+				Log("Trace... [%s]\n", cpuMode ? "THUMB" : "ARM");
+			}
+			else if((!cpuMode && instr == 0xE7F000F1) || (cpuMode && instr == 0xDE01))
+			{
+				debugDump();
+			}
+			else
+			{
+				Log("Unhandled und. except. (%08X)\n", instr);
+				//while(1)swiWaitForVBlank();
+			}
+			
+			exRegs[15] += 4;
+		}*/ //ichfly not reachable
+	}
+
+		//while(1);
+	
+	//Log("%08X\n", exRegs[1]);
+	//Log("%08X\n", exRegs[0]);
+	//while(1);
+	//debugDump();
+	
+	//test mode
+	
+	
+	/*iprintf("test\r\n%x\r\n%x\r\n%x\r\n%x\r\n",BIOSDBG_CP15, BIOSDBG_SPSR, BIOSDBG_R12, BIOSDBG_PC);
+	
+	BIOSDBG_PC = 0;
+	
+	iprintf("%x", BIOSDBG_PC);
+	while(1);*/
+	//test mode end
+	
+	//Log("%08X\n", exRegs[15]);
+	
+	//debugDump();
+	
+//Log("exit");
+
+
+
+	 /*if(cpuMode)Log("%08X %08X\n", exRegs[15],BIOSDBG_SPSR);
+	 else
+	 {
+		Log("%08X %08X\n", exRegs[15],BIOSDBG_SPSR);
+	 }*/
+
+	gbaMode();
+	
+	//if(*(u16*)(exRegs[15] - 2) == 0xBE05) while(1);
+			//swiDelay(0x2000000); --
+	//swiDelay(0x20000);
+	
+	//if(exRegs[15] < 0x02000000)while(1) { ; } //i was funny hahahahaha
+
+}
+
+
+
+
+
+#ifndef releas
+ __attribute__((section(".itcm"))) void gbaMode()
+{
+
+	exInit(gbaExceptionHdl);
+	puGba();
+	
+}
+ void gbaMode2()
+{
+	exInit(gbaExceptionHdl);
+	puGba();	
+}
+#endif
+
+ #ifdef releas
+
+void gbaMode2()
+{
+	puGba();	
+}
+  __attribute__((section(".itcm"))) inline void gbaMode()
+{
+	puGba();	
+}
+#endif
+
+
+//extern things
+
+//---------------------------------------------------------------------------------
+u32 getExceptionAddress( u32 opcodeAddress, u32 thumbState) {
+//---------------------------------------------------------------------------------
+
+	int Rf, Rb, Rd, Rn, Rm;
+
+	if (thumbState) {
+		// Thumb
+
+		unsigned short opcode = *(unsigned short *)opcodeAddress ;
+		// ldr r,[pc,###]			01001ddd ffffffff
+		// ldr r,[r,r]				0101xx0f ffbbbddd
+		// ldrsh					0101xx1f ffbbbddd
+		// ldr r,[r,imm]			011xxfff ffbbbddd
+		// ldrh						1000xfff ffbbbddd
+		// ldr r,[sp,###]			1001xddd ffffffff
+		// push						1011x10l llllllll
+		// ldm						1100xbbb llllllll
+
+
+		if ((opcode & 0xF800) == 0x4800) {
+			// ldr r,[pc,###]
+			s8 offset = opcode & 0xff;
+			return exRegs[15] + offset;
+		} else if ((opcode & 0xF200) == 0x5000) {
+			// ldr r,[r,r]
+			Rb = (opcode >> 3) & 0x07 ;
+			Rf = (opcode >> 6) & 0x07 ;
+			return exRegs[Rb] + exRegs[Rf];
+
+		} else if ((opcode & 0xF200) == 0x5200) {
+			// ldrsh
+			Rb = (opcode >> 3) & 0x07;
+			Rf = (opcode >> 6) & 0x03;
+			return exRegs[Rb] + exRegs[Rf];
+
+		} else if ((opcode & 0xE000) == 0x6000) {
+			// ldr r,[r,imm]
+			Rb = (opcode >> 3) & 0x07;
+			Rf = (opcode >> 6) & 0x1F ;
+			return exRegs[Rb] + (Rf << 2);
+		} else if ((opcode & 0xF000) == 0x8000) {
+			// ldrh
+			Rb = (opcode >> 3) & 0x07 ;
+			Rf = (opcode >> 6) & 0x1F ;
+			return exRegs[Rb] + (Rf << 2);
+		} else if ((opcode & 0xF000) == 0x9000) {
+			// ldr r,[sp,#imm]
+			s8 offset = opcode & 0xff;
+			return exRegs[13] + offset;
+		} else if ((opcode & 0xF700) == 0xB500) {
+			// push/pop
+			return exRegs[13];
+		} else if ((opcode & 0xF000) == 0xC000) {
+			// ldm/stm
+			Rd = (opcode >> 8) & 0x07;
+			return exRegs[Rd];
+		}
+	} else {
+		// arm32
+		unsigned long opcode = *(unsigned long *)opcodeAddress ;
+
+		// SWP			xxxx0001 0x00nnnn dddd0000 1001mmmm
+		// STR/LDR		xxxx01xx xxxxnnnn ddddffff ffffffff
+		// STRH/LDRH	xxxx000x x0xxnnnn dddd0000 1xx1mmmm
+		// STRH/LDRH	xxxx000x x1xxnnnn ddddffff 1xx1ffff
+		// STM/LDM		xxxx100x xxxxnnnn llllllll llllllll
+
+		if ((opcode & 0x0FB00FF0) == 0x01000090) {
+			// SWP
+			Rn = (opcode >> 16) & 0x0F;
+			return exRegs[Rn];
+		} else if ((opcode & 0x0C000000) == 0x04000000) {
+			// STR/LDR
+			Rn = (opcode >> 16) & 0x0F;
+			if (opcode & 0x02000000) {
+				// Register offset
+				Rm = opcode & 0x0F;
+				if (opcode & 0x01000000) {
+					unsigned short shift = (unsigned short)((opcode >> 4) & 0xFF) ;
+					// pre indexing
+					long Offset = ARMShift(exRegs[Rm],shift);
+					// add or sub the offset depending on the U-Bit
+					return exRegs[Rn] + ((opcode & 0x00800000)?Offset:-Offset);
+				} else {
+					// post indexing
+					return exRegs[Rn];
+				}
+			} else {
+				// Immediate offset
+				unsigned long Offset = (opcode & 0xFFF) ;
+				if (opcode & 0x01000000) {
+					// pre indexing
+					// add or sub the offset depending on the U-Bit
+					return exRegs[Rn] + ((opcode & 0x00800000)?Offset:-Offset);
+				} else {
+					// post indexing
+					return exRegs[Rn];
+				}
+			}
+		} else if ((opcode & 0x0E400F90) == 0x00000090) {
+			// LDRH/STRH with register Rm
+			Rn = (opcode >> 16) & 0x0F;
+			Rd = (opcode >> 12) & 0x0F;
+			Rm = opcode & 0x0F;
+			unsigned short shift = (unsigned short)((opcode >> 4) & 0xFF);
+			long Offset = ARMShift(exRegs[Rm],shift);
+			// add or sub the offset depending on the U-Bit
+			return exRegs[Rn] + ((opcode & 0x00800000)?Offset:-Offset);
+		} else if ((opcode & 0x0E400F90) == 0x00400090) {
+			// LDRH/STRH with immediate offset
+			Rn = (opcode >> 16) & 0x0F;
+			Rd = (opcode >> 12) & 0x0F;
+			unsigned long Offset = (opcode & 0xF) | ((opcode & 0xF00)>>8) ;
+			// add or sub the offset depending on the U-Bit
+			return exRegs[Rn] + ((opcode & 0x00800000)?Offset:-Offset) ;
+		} else if ((opcode & 0x0E000000) == 0x08000000) {
+			// LDM/STM
+			Rn = (opcode >> 16) & 0x0F;
+			return exRegs[Rn];
+		}
+	}
+	return 0;
+}
+
+
+//---------------------------------------------------------------------------------
+unsigned long ARMShift(unsigned long value,unsigned char shift) {
+//---------------------------------------------------------------------------------
+	// no shift at all
+	if (shift == 0x0B) return value ;
+	int index ;
+	if (shift & 0x01) {
+		// shift index is a register
+		index = exRegs[(shift >> 4) & 0x0F];
+	} else {
+		// constant shift index
+		index = ((shift >> 3) & 0x1F) ;
+	} ;
+	int i ;
+	bool isN ;
+	switch (shift & 0x06) {
+		case 0x00:
+			// logical left
+			return (value << index) ;
+		case 0x02:
+			// logical right
+			return (value >> index) ;
+		case 0x04:
+			// arithmetical right
+			isN = (value & 0x80000000) ;
+			value = value >> index ;
+			if (isN) {
+				for (i=31;i>31-index;i--) {
+					value = value | (1 << i) ;
+				} ;
+			} ;
+			return value ;
+		case 0x06:
+			// rotate right
+			index = index & 0x1F;
+			value = (value >> index) | (value << (32-index));
+			return value;
+	};
+	return value;
+}
+
+
 //b

@@ -1556,7 +1556,8 @@ int CPULoadRom(const char *szFile,bool extram)
   }
   else
   {
-		romSize = 0x100000; //test normal 0x2000000 current 1/10 oh no only 2 MB
+	  romSize = 0x00280000;
+	/*romSize = 0x100000; //test normal 0x2000000 current 1/10 oh no only 2 MB //no more needed default is 2,5 MB
 	
 	int malloctempmulti = 0x80000;
 	
@@ -1575,7 +1576,8 @@ int CPULoadRom(const char *szFile,bool extram)
 		if (keysDown()&KEY_LEFT && malloctempmulti != 1) malloctempmulti /= 2;
 	}
 	rom = (u8*)((u32)((u32)malloc(romSize + 0x1000) >> 12) << 12);
-	
+	*/
+
 	//rom = (u8 *)malloc(romSize + 0x1000); //test normal 0x2000000 current 1/10 oh no only 2 MB
 	
 	
@@ -1583,13 +1585,8 @@ int CPULoadRom(const char *szFile,bool extram)
 	
 	
   		/*printf("failed %x",(u32)rom);
-		while(1);*/   
-	}
-		
-  if(rom == NULL) {
-    systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
-                  "ROM");
-    return 0;
+		while(1);*/
+		rom = (u8 *)0x02180000;
   }
 #endif
   workRAM = (u8*)0x02000000;/*(u8 *)calloc(1, 0x40000);
@@ -1633,7 +1630,7 @@ int CPULoadRom(const char *szFile,bool extram)
   //iprintf("c");
   //}
 #else
-workaroundwrite32((u32)puzzleorginal_bin,(u32*)&rom);  //rom = (u8*)puzzleorginal_bin;
+rom = (u8*)puzzleorginal_bin;  //rom = (u8*)puzzleorginal_bin;
 #endif
   /*u16 *temp = (u16 *)(rom+((romSize+1)&~1));
   int i;
@@ -3182,7 +3179,7 @@ void applyTimer ()
 void CPUWriteHalfWord(u32 address, u16 value)
 {
 #ifdef printreads
-iprintf("w16 %x %x\r\n",address,value);
+iprintf("w16 %04x to %08x\r\n",value,address);
 #endif
 
 #ifdef DEV_VERSION
@@ -3300,7 +3297,7 @@ iprintf("w16 %x %x\r\n",address,value);
 void CPUWriteByte(u32 address, u8 b)
 {
 #ifdef printreads
-	iprintf("w8 %x %x\r\n",address,b);
+	iprintf("w8 %02x to %08x\r\n",b,address);
 #endif
   switch(address >> 24) {
   case 2:

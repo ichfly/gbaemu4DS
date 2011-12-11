@@ -39,9 +39,6 @@ extern s32  __attribute__((section(".itcm"))) exRegs[]; //automatisierung
 
 #define log(...) iprintf(__VA_ARGS__)
 
-#define DEV_VERSION //ichfly todo
-
-
 s16 sineTable[256] = {
   (s16)0x0000, (s16)0x0192, (s16)0x0323, (s16)0x04B5, (s16)0x0645, (s16)0x07D5, (s16)0x0964, (s16)0x0AF1,
   (s16)0x0C7C, (s16)0x0E05, (s16)0x0F8C, (s16)0x1111, (s16)0x1294, (s16)0x1413, (s16)0x158F, (s16)0x1708,

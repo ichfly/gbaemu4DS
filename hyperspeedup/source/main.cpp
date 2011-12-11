@@ -28,12 +28,24 @@
 #include "bios.h"
 
 
+
+#include "file_browse.h"
+
+#define MAXPATHLEN 256 
+
+#include <nds.h>
+
+
 #include "main.h"
 
 #define UPDATE_REG(address, value)\
   {\
     WRITE16LE(((u16 *)&ioMem[address]),value);\
   }\
+
+char biosPath[MAXPATHLEN * 2];
+
+char savePath[MAXPATHLEN * 2];
 
 typedef struct
 {
@@ -68,12 +80,23 @@ typedef struct
 
 
 
+//copy protection
+
+#include <nds/arm9/dldi.h>
+
+// The only built in driver
+extern DLDI_INTERFACE _io_dldi_stub;
 
 
+
+//#define loaddirect
+
+void emulateedbiosstart();
 
 volatile u16 DISPCNT;
 
 
+void downgreadcpu();
 
 //volatile u16 DISPCNT  = 0x0080;
 
@@ -93,7 +116,7 @@ int framenummer;
 
 #define public
 
-char szFile[2048];
+char* szFile;
 
 char filename[2048];
 char biosFileName[2048];
@@ -121,7 +144,7 @@ int bg = 0;
 char* memoryWaitrealram[8] =
   { "10 and 6","8 and 6","6 and 6","18 and 6","10 and 4","8 and 4","6 and 4","18 and 4" };
 
-
+extern "C" void testasm(u32* feld);
 
 
 
@@ -387,7 +410,7 @@ void VblankHandler(void) {
 		//while(1);
 	
 	
-	//iprintf("DISPCNT2 %x\r\n",&DISPCNT);
+	//iprintf("DISPCNT %x\r\n",DISPCNT);
 
 	
 	CPUCheckDMA(1, 0x0f);
@@ -397,9 +420,9 @@ void VblankHandler(void) {
 	
 	if(framewtf == frameskip)
 	{
-#ifndef public
-		iprintf("DISPCNT %x %x\r\n",DISPCNT,REG_DISPCNT);
-#endif
+//#ifndef public
+		//iprintf("DISPCNT %x %x\r\n",DISPCNT,REG_DISPCNT);
+//#endif
 		framewtf = 0;
 		//iprintf("DISPCNT2fly %x %x\r\n",&DISPCNT,workaroundread16((u16*)&DISPCNT));
 		/*for(int iy = 0; iy <0x200 ; iy++)
@@ -414,6 +437,7 @@ void VblankHandler(void) {
 		
 		if((DISPCNT & 7) < 3)
 		{
+			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
 			if(lastDISPCNT != DISPCNT)
 			{
 				//workaroundwrite32(workaroundread16((u16*)&DISPCNT) | 0x10010, (u32*)&REG_DISPCNT);      //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x10010); //need 0x10010
@@ -427,13 +451,12 @@ void VblankHandler(void) {
 			}
 			//iprintf("%08x %08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x6014020));
 			//dmaCopyWordsAsynch(0,vram,(void*)0x06000000,0x10000);
-			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
 			lastDISPCNT = DISPCNT;
 		}
 		else
 		{
 #ifndef public
-			iprintf("%x\r\n",*(u32*)(0x0640403C));
+			//iprintf("%x\r\n",*(u32*)(0x0640403C));
 #endif
 			if(lastDISPCNT != DISPCNT)
 			{
@@ -450,12 +473,12 @@ void VblankHandler(void) {
 				if((DISPCNT & 7) == 4)
 				
 				{
-					iprintf("DISPCNTf %x %x\r\n",DISPCNT,REG_DISPCNT);
-					bgrouid = bgInit(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
-					iprintf("DISPCNTf %x %x\r\n",DISPCNT,REG_DISPCNT);
+					//iprintf("DISPCNTf %x %x\r\n",DISPCNT,REG_DISPCNT);
+					bgrouid = bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
+					//iprintf("DISPCNTf %x %x\r\n",DISPCNT,REG_DISPCNT);
 				}
-				else if((DISPCNT & 7) == 3)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
-				else if((DISPCNT & 7) == 5)bgrouid = bgInit(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				else if((DISPCNT & 7) == 3)bgrouid = bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				else if((DISPCNT & 7) == 5)bgrouid = bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
 				//iprintf("%08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x07000000),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x6014000));
 				//iprintf("%08x %08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x601403C));
 				//iprintf("a");
@@ -464,7 +487,7 @@ void VblankHandler(void) {
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
 				for(int iy = 0; iy <160; iy++){
-					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 480);
+					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
 					pointertobild+=480;
 				}
 			}	
@@ -473,7 +496,7 @@ void VblankHandler(void) {
 				u8 *pointertobild = (u8 *)(0x6000000);
 				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 				for(int iy = 0; iy <160; iy++){
-					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 480);
+					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 240);
 					pointertobild+=240;
 					//pointertobild+=120;
 				}
@@ -483,7 +506,7 @@ void VblankHandler(void) {
 				u8 *pointertobild = (u8 *)(0x6000000);
 				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 				for(int iy = 0; iy <128; iy++){
-					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 320);
+					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
 					pointertobild+=320;
 				}
 			}
@@ -563,8 +586,22 @@ int main(void) {
  //fatInitDefault();
  //nitroFSInit();
 
+if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0x4E))
+{
+		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+		iprintf("Warning: you try to run gbaemu DS on %s gbaemu may not work\n press A to continue and ignore this",_io_dldi_stub.friendlyName);
+	while(1) {
+		scanKeys();
+		if (keysDown()&KEY_A) break;
+		swiWaitForVBlank();
+	}
+}
+
 	iprintf("Init Fat...\n");
     
+
+
+
     if(fatInitDefault()){
         iprintf("Fat OK.\n");
     }else{
@@ -597,7 +634,9 @@ int main(void) {
 
 
 #ifndef loaddirect
-	while(nichtausgewauhlt)
+
+	szFile = (char*)browseForFile("").c_str();
+	/*while(nichtausgewauhlt)
 	{
 		for(int i = 0; i < 3; i++)
 		{
@@ -680,7 +719,7 @@ int main(void) {
 		}
 		iprintf("\x1b[2J");	
 	}
-	dirfree();
+	dirfree();*/
 #endif
 	
 	//sprintf(szFile,"%s","nitro:/puzzle.gba"); //ichfly test
@@ -691,18 +730,18 @@ int main(void) {
 	bool extraram =false; 
 	//if(!REG_DSIMODE) extraram = ram_init(DETECT_RAM); 
 	//extraram = true; //testtest
-		//while(1) 
-	/*	{
-		iprintf("gbaemu DS by ichfly\n");
+	while(1) 
+	{
+		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
 		iprintf("fps 60/%i\n",frameskip + 1);
 		
-		//swiWaitForVBlank(); //ichfly change that
+		swiWaitForVBlank(); //ichfly change that
 		iprintf("\x1b[2J");
 		scanKeys();
-		//if (keysDown()&KEY_A) break;
+		if (keysDown()&KEY_A) break;
 		if (keysDown()&KEY_UP) frameskip++;
 		if (keysDown()&KEY_DOWN && frameskip != 0) frameskip--;
-	}*/
+	}
 	
 
 	
@@ -829,26 +868,21 @@ int rrrresxfss = 0;
 
 	//VblankHandler();
 
-
-	iprintf("gbaInit\n");
-	
-		gbaInit();
- 	//iprintf("Current CP15 reg: %08X\n",cpuGetCPSR());
-	
-	
-	ndsMode();
 	
 	iprintf("back in ds mode but init is done\n");
 	
-	BIOS_RegisterRamReset(0xFF);
+	//BIOS_RegisterRamReset(0xFF);
 	
 	iprintf("use emulated bios call to reset but we also use our copy hack\n");
 	
 	//memcopy((void*)0x2000000,(void*)rom, 0x40000);
 	
+	
 	dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
 	
 	iprintf("dmaCopy is done\n");
+	
+
 	
 	anytimejmpfilter = 0;
 	
@@ -857,24 +891,37 @@ int rrrresxfss = 0;
 	iprintf("inited emulated irq system\n");
 	
 	iprintf("enter critical part set VblankHandler switch to gba mode and jump to (%08X)\n\r",rom);
-	
-	irqSet(IRQ_VBLANK, VblankHandler);
+
 
 	//iprintf("ndsMode %x\n", (u32)rom);
 	
-	gbaMode();
+	//iprintf("gbaInit\n");
+	
+	emulateedbiosstart();
+	//iprintf("a");
+	
+	
+	gbaInit();
+ 	//iprintf("Current CP15 reg: %08X\n",cpuGetCPSR());
+	
+	
+	irqSet(IRQ_VBLANK, VblankHandler);
+	
+	ndsMode();
+	
+	gbaMode2();
+
+
+	//downgreadcpu(); // break compatibility to PU
 	
 	//switch_to_unprivileged_mode(); //additional init
-	
-	
-	//iprintf("gbaMode\n");
-	
-	//while(1);
-	
+		
 	//ndsMode();
 	//iprintf("cpuJump\n");
 	
 	//while(1)swiWaitForVBlank();
+	
+	//swiWaitForVBlank();
 
 	//cpu_ArmJump((u32)0x2000000, 0);
 	
@@ -883,6 +930,8 @@ int rrrresxfss = 0;
 	
 	//while(1);
 	
+	//printf("test");
+
 	cpu_ArmJump((u32)rom, 0);
 	
 	

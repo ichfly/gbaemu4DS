@@ -25,9 +25,9 @@
 #include "RTC.h"
 #include "GBA.h"
 
-#include <nds/interrupts.h>
+#include "ichflysettings.h"
 
-//#define printreads
+#include <nds/interrupts.h>
 
 extern bool cpuSramEnabled;
 extern bool cpuFlashEnabled;
@@ -67,9 +67,70 @@ void Logsd(const char *defaultMsg,...);
 #define CPUReadMemoryQuick(addr) \
   READ32LE(((u32*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
 
-static inline u32 CPUReadMemory(u32 address)
-{
 
+static u32 CPUReadMemoryreal(u32 address);
+
+__attribute__((section(".itcm"))) static inline u32 CPUReadMemory(u32 address)
+ {
+	return CPUReadMemoryreal(address);
+ }
+
+static u32 CPUReadHalfWordreal(u32 address);
+
+__attribute__((section(".itcm"))) static inline u32 CPUReadHalfWord(u32 address)
+ {
+	return CPUReadMemoryreal(address);
+ }
+static u8 CPUReadBytereal(u32 address);
+
+__attribute__((section(".itcm"))) static inline u8 CPUReadByte(u32 address)
+ {
+	return CPUReadBytereal(address);
+ }
+
+
+__attribute__((section(".itcm"))) static inline void updateVC()
+{
+		u16 temp = REG_VCOUNT;
+		u16 temp2 = REG_DISPSTAT;
+		//iprintf("Vcountreal: %08x\n",temp);
+		float help = temp;
+		u16 help3;
+		if(temp < 192)
+		{
+			VCOUNT = help * (1./1.2); //1.15350877;
+			//help3 = (help + 1) * (1./1.2); //1.15350877;  // ichfly todo it is to slow
+		}
+		else
+		{
+			VCOUNT = ((help - 192) * (1./ 1.04411764)) + 160; //1.15350877;
+			//help3 = ((help - 191) *  (1./ 1.04411764)) + 160; //1.15350877;  // ichfly todo it is to slow			
+		}
+		DISPSTAT &= 0xFFFC; //reset h-blanc and V-Blanc
+		//if(help3 == VCOUNT) //else it is a extra long V-Line // ichfly todo it is to slow
+		//{
+			DISPSTAT |= (temp2 & 0x2); //temporary patch
+		//}
+		if(VCOUNT > 160 && VCOUNT != 227)DISPSTAT |= 1;//V-Blanc
+		UPDATE_REG(0x06, VCOUNT);
+		if(VCOUNT == (DISPSTAT >> 8)) //update by V-Count Setting
+		{
+			DISPSTAT |= 4;
+			if(DISPSTAT & 0x20) {
+			  IF |= 4;
+			  UPDATE_REG(0x202, IF);
+			}
+		  } else {
+			DISPSTAT &= 0xFFFB;
+		}
+		UPDATE_REG(0x04, DISPSTAT);
+		//iprintf("Vcountreal: %08x\n",temp);
+		//iprintf("DISPSTAT: %08x\n",temp2);
+}
+
+
+ static inline u32 CPUReadMemoryreal(u32 address) //ichfly not inline is faster because it is smaler
+{
 #ifdef DEV_VERSION
   if(address & 3) {  
     if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
@@ -80,7 +141,7 @@ static inline u32 CPUReadMemory(u32 address)
 #endif
   
 #ifdef printreads
-  iprintf("word read: %08x\n",address);
+  iprintf("r32 %08x\n",address);
 #endif
   
   u32 value;
@@ -117,30 +178,7 @@ static inline u32 CPUReadMemory(u32 address)
 	
 	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
-		//load the original and mix
-		u16 temp = REG_VCOUNT;
-		u16 temp2 = REG_DISPSTAT;
-		float help = temp;
-		VCOUNT = help / 1.15350877;
-		u16 help3 = (help + 1) / 1.15350877;
-		DISPSTAT &= 0xFFFC; //reset h-blanc and V-Blanc
-		if(help3 == VCOUNT) //else it is a extra long V-Line
-		{
-			DISPSTAT |= (temp2 & 0x2);
-		}
-		if(VCOUNT > 160 && VCOUNT != 227)DISPSTAT |= 1;//V-Blanc
-		UPDATE_REG(0x06, VCOUNT);
-		if(VCOUNT == (DISPSTAT >> 8)) //update by V-Count Setting
-		{
-			DISPSTAT |= 4;
-			if(DISPSTAT & 0x20) {
-			  IF |= 4;
-			  UPDATE_REG(0x202, IF);
-			}
-		  } else {
-			DISPSTAT &= 0xFFFB;
-		}
-		UPDATE_REG(0x04, DISPSTAT);
+		updateVC();
 	}
 		if(address == 0x4000202)//ichfly update
 	{
@@ -190,7 +228,7 @@ static inline u32 CPUReadMemory(u32 address)
     // default
   default:
   unreadable:
-  while(1);
+  //while(1);
 #ifdef DEV_VERSION
 
       log("Illegal word read: %08x at %08x\n", address, armMode ?
@@ -235,10 +273,10 @@ static inline u32 CPUReadMemory(u32 address)
 
 extern u32 myROM[];
 
-static inline u32 CPUReadHalfWord(u32 address)
+static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
-	iprintf("hword read: %08x\n",address);
+	iprintf("r16 %04x\n",address);
 #endif
 #ifdef DEV_VERSION      
   if(address & 1) {
@@ -282,41 +320,7 @@ static inline u32 CPUReadHalfWord(u32 address)
   
 	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
-		u16 temp = REG_VCOUNT;
-		u16 temp2 = REG_DISPSTAT;
-		//iprintf("Vcountreal: %08x\n",temp);
-		float help = temp;
-		u16 help3;
-		if(temp < 192)
-		{
-			VCOUNT = help / 1.2; //1.15350877;
-			help3 = (help + 1) / 1.2; //1.15350877;
-		}
-		else
-		{
-			VCOUNT = ((help - 192) / 1.04411764) + 160; //1.15350877;
-			help3 = ((help - 192) / 1.04411764) + 160; //1.15350877;			
-		}
-		DISPSTAT &= 0xFFFC; //reset h-blanc and V-Blanc
-		if(help3 == VCOUNT) //else it is a extra long V-Line
-		{
-			DISPSTAT |= (temp2 & 0x2);
-		}
-		if(VCOUNT > 160 && VCOUNT != 227)DISPSTAT |= 1;//V-Blanc
-		UPDATE_REG(0x06, VCOUNT);
-		if(VCOUNT == (DISPSTAT >> 8)) //update by V-Count Setting
-		{
-			DISPSTAT |= 4;
-			if(DISPSTAT & 0x20) {
-			  IF |= 4;
-			  UPDATE_REG(0x202, IF);
-			}
-		  } else {
-			DISPSTAT &= 0xFFFB;
-		}
-		UPDATE_REG(0x04, DISPSTAT);
-		//iprintf("Vcountreal: %08x\n",temp);
-		//iprintf("DISPSTAT: %08x\n",temp2);
+		updateVC();
 	}
 	
 	if(address == 0x4000202)//ichfly update
@@ -328,9 +332,6 @@ static inline u32 CPUReadHalfWord(u32 address)
     if((address < 0x4000400) && ioReadable[address & 0x3fe])
     {
       value =  READ16LE(((u16 *)&ioMem[address & 0x3fe]));
-	  #ifdef printreads
-	  //iprintf("read: %08x ret: %08x\n",address,value);
-	  #endif
       if (((address & 0x3fe)>0xFF) && ((address & 0x3fe)<0x10E))
       {
         if (((address & 0x3fe) == 0x100) && timer0On)
@@ -420,10 +421,10 @@ static inline u16 CPUReadHalfWordSigned(u32 address)
   return value;
 }
 
-static inline u8 CPUReadByte(u32 address)
+static inline u8 CPUReadBytereal(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
-iprintf("byte read: %08x\n",address);
+iprintf("r8 %02x\n",address);
 #endif
 
   switch(address >> 24) {
@@ -453,30 +454,7 @@ iprintf("byte read: %08x\n",address);
   
   	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
-		//load the original and mix
-		u16 temp = REG_VCOUNT;
-		u16 temp2 = REG_DISPSTAT;
-		float help = temp;
-		VCOUNT = help / 1.15350877;
-		u16 help3 = (help + 1) / 1.15350877;
-		DISPSTAT &= 0xFFFC; //reset h-blanc and V-Blanc
-		if(help3 == VCOUNT) //else it is a extra long V-Line
-		{
-			DISPSTAT |= (temp2 & 0x2);
-		}
-		if(VCOUNT > 160 && VCOUNT != 227)DISPSTAT |= 1;//V-Blanc
-		UPDATE_REG(0x06, VCOUNT);
-		if(VCOUNT == (DISPSTAT >> 8)) //update by V-Count Setting
-		{
-			DISPSTAT |= 4;
-			if(DISPSTAT & 0x20) {
-			  IF |= 4;
-			  UPDATE_REG(0x202, IF);
-			}
-		  } else {
-			DISPSTAT &= 0xFFFB;
-		}
-		UPDATE_REG(0x04, DISPSTAT);
+		updateVC();
 	}
 	if(address == 0x4000202 || address == 0x4000203)//ichfly update
 	{
@@ -544,10 +522,10 @@ iprintf("byte read: %08x\n",address);
   }
 }
 
-static inline void CPUWriteMemory(u32 address, u32 value)
+static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
-    iprintf("word write: %08x to %08x\n",value,address);
+    iprintf("w32 %08x to %08x\n",value,address);
 #endif		  
 		
 
