@@ -451,9 +451,7 @@ void BIOScall(int op,  s32 *R)
 		BIOS_RegisterRamReset();
 		break;
 	  case 0x02:
-	#ifdef DEV_VERSION
-		  Log("Halt: IE %x\n",IE);      
-	#endif    
+		  Log("Halt: IE %x\n",IE);        
 		//holdState = true;
 		//holdType = -1;
 		//cpuNextEvent = cpuTotalTicks;
@@ -463,26 +461,22 @@ void BIOScall(int op,  s32 *R)
 		
 		//debugDump();
 		
-		VblankHandler();
+		//VblankHandler();
 		
 		//swiIntrWaitc();
 		
 		break;
 	  case 0x03:
-	#ifdef DEV_VERSION
-		  Log("Stop(not yet)\n");      
-	#endif    
+		  Log("Stop(not yet)\n");         
 		//holdState = true;
 		//holdType = -1;
 		//stopState = true;
 		//cpuNextEvent = cpuTotalTicks; 
 		break;
 	  case 0x04:
-	#ifdef DEV_VERSION
 		  Log("IntrWait: 0x%08x,0x%08x\n",
 			  R[0],
 			  R[1]);      
-	#endif
 	
 		swiIntrWait(R[0],R[1]);
 		//CPUSoftwareInterrupt();
@@ -490,36 +484,17 @@ void BIOScall(int op,  s32 *R)
 	  case 0x05:
 	#ifdef DEV_VERSION
 		  Log("VBlankIntrWait:\n");
-		  VblankHandler();
+		  //VblankHandler(); //todo
 	#endif
 		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-		//CPUSoftwareInterrupt();
-		//swiWaitForVBlank(); //is not working every time
 		
-		//Log("exit:\n");
 		break;
 	  case 0x06:
-		//CPUSoftwareInterrupt();
-#ifdef DEV_VERSION
-		Log("div(6):\n");
-#endif
-		{
-			s32 todiv = R[0];
-			s32 by = R[1];
-			R[0] = todiv / by;
-			R[1] = todiv % by;
-			if(R[0] < 0) R[3] = 0 - R[0];  //buggy but this work lol
-			else {R[3] = R[0]; }
-		}
-		
+		BIOS_Div();
 		break;
-		
 	  case 0x07:
-#ifdef DEV_VERSION
-		Log("swi 7 (not yet):\n");
-#endif
-		//CPUSoftwareInterrupt();
+		BIOS_DivARM();
 		break;
 	  case 0x08:
 		BIOS_Sqrt();

@@ -144,7 +144,15 @@ int bg = 0;
 char* memoryWaitrealram[8] =
   { "10 and 6","8 and 6","6 and 6","18 and 6","10 and 4","8 and 4","6 and 4","18 and 4" };
 
+
+
+
+
+
 extern "C" void testasm(u32* feld);
+extern "C" void cpu_SetCP15Cnt(u32 v);
+extern "C" u32 cpu_GetCP15Cnt();
+extern "C" u32 pu_Enable();
 
 
 
@@ -869,9 +877,12 @@ int rrrresxfss = 0;
 	//VblankHandler();
 
 	
-	iprintf("back in ds mode but init is done\n");
-	
-	//BIOS_RegisterRamReset(0xFF);
+
+	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu to write to the internalRAM
+
+	BIOS_RegisterRamReset(0xFF);
+
+	pu_Enable();
 	
 	iprintf("use emulated bios call to reset but we also use our copy hack\n");
 	
