@@ -47,6 +47,7 @@ extern	char savePath[MAXPATHLEN * 2];
 
 extern	char biosPath[MAXPATHLEN * 2];
 
+extern	char szFile[MAXPATHLEN * 2];
 
 char temppath[MAXPATHLEN * 2];
 
@@ -231,7 +232,7 @@ void printgbainfo (const char* filename)  {
 
 
 
-string browseForFile (const string& extension) {
+void browseForFile (const string& extension) {
 	int pressed = 0;
 	int screenOffset = 0;
 	int fileOffset = 0;
@@ -332,8 +333,10 @@ string browseForFile (const string& extension) {
 			{
 				if(ausgewauhlt == 0)
 				{
-					// Return the chosen file
-					return entry->name;
+						getcwd (szFile, MAXPATHLEN);
+						pathLen = strlen (szFile);
+						strcpy (szFile + pathLen, entry->name.c_str());
+						return;
 				}
 				else
 				{

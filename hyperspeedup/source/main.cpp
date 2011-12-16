@@ -47,6 +47,8 @@ char biosPath[MAXPATHLEN * 2];
 
 char savePath[MAXPATHLEN * 2];
 
+char szFile[MAXPATHLEN * 2];
+
 typedef struct
 {
 	u32 entryPoint;
@@ -115,14 +117,6 @@ int framenummer;
 #include "DSi.h"
 
 #define public
-
-char* szFile;
-
-char filename[2048];
-char biosFileName[2048];
-char captureDir[2048];
-char saveDir[2048];
-char batteryDir[2048];
 struct EmulatedSystem emulator;
 
 char* rootdirnames [3] = {"nitro:/","fat:/","sd:/"};
@@ -428,6 +422,7 @@ void VblankHandler(void) {
 	
 	if(framewtf == frameskip)
 	{
+		while(dmaBusy(3)); // ichfly wait for dma 3
 //#ifndef public
 		//iprintf("DISPCNT %x %x\r\n",DISPCNT,REG_DISPCNT);
 //#endif
@@ -572,6 +567,10 @@ void VblankHandler(void) {
 
 //---------------------------------------------------------------------------------
 int main(void) {
+
+  biosPath[0] = 0;
+  savePath[0] = 0;
+
 //---------------------------------------------------------------------------------
 	//set the mode for 2 text layers and two extended background layers
 	//videoSetMode(MODE_5_2D); 
@@ -643,7 +642,7 @@ if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0
 
 #ifndef loaddirect
 
-	szFile = (char*)browseForFile("").c_str();
+	browseForFile("");
 	/*while(nichtausgewauhlt)
 	{
 		for(int i = 0; i < 3; i++)
@@ -732,7 +731,13 @@ if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0
 	
 	//sprintf(szFile,"%s","nitro:/puzzle.gba"); //ichfly test
 	
-	//swiWaitForVBlank();
+	scanKeys();
+
+	while(keysDownRepeat()&KEY_A)
+	{
+		scanKeys();
+		swiWaitForVBlank();
+	}
 	
 	
 	bool extraram =false; 
@@ -743,12 +748,13 @@ if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0
 		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
 		iprintf("fps 60/%i\n",frameskip + 1);
 		
-		swiWaitForVBlank(); //ichfly change that
+		swiWaitForVBlank();
 		iprintf("\x1b[2J");
 		scanKeys();
-		if (keysDown()&KEY_A) break;
-		if (keysDown()&KEY_UP) frameskip++;
-		if (keysDown()&KEY_DOWN && frameskip != 0) frameskip--;
+		int isdaas = keysDownRepeat();
+		if (isdaas&KEY_A) break;
+		if (isdaas&KEY_UP) frameskip++;
+		if (isdaas&KEY_DOWN && frameskip != 0) frameskip--;
 	}
 	
 
@@ -771,14 +777,6 @@ if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0
 		}
 		REG_EXMEMCNT = (REG_EXMEMCNT | (clock << 2));
 	}*/
-
-
-
-  captureDir[0] = 0;
-  saveDir[0] = 0;
-  batteryDir[0] = 0;
-  
-  char buffer[1024];
 
   //systemFrameSkip = frameSkip = 2; 
   //gbBorderOn = 0;
@@ -803,7 +801,7 @@ if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0
 	  	//iprintf("Hello World2!");
        emulator = GBASystem;
 
-      CPUInit(biosFileName, useBios,extraram);
+      CPUInit(biosPath, useBios,extraram);
 	  
 	  	
 
@@ -812,7 +810,7 @@ if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0
 	  
 		  
 
-	  if(batteryDir[0] != 0)CPUReadBatteryFile(batteryDir);
+	  if(savePath[0] != 0)CPUReadBatteryFile(savePath);
   /*} else {
     cartridgeType = 0;
     strcpy(filename, "gnu_stub");

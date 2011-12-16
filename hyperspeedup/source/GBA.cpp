@@ -4,9 +4,7 @@
 #define loadindirect
 
 
-
-
-
+//#define DEV_VERSION
 
 
 // VisualBoyAdvance - Nintendo Gameboy/GameboyAdvance (TM) emulator.
@@ -1541,21 +1539,14 @@ void CPUCleanUp()
 
 int CPULoadRom(const char *szFile,bool extram)
 {
-  if(rom != NULL) {
+  /*if(rom != NULL) {
     CPUCleanUp();
-  }
+  }*/
 
 
   systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
   
 #ifdef loadindirect
-  if(extram)
-  {
-	rom = (u8 *)ram_unlock();
-	romSize = ram_size();
-  }
-  else
-  {
 	  romSize = 0x00280000;
 	/*romSize = 0x100000; //test normal 0x2000000 current 1/10 oh no only 2 MB //no more needed default is 2,5 MB
 	
@@ -1587,7 +1578,6 @@ int CPULoadRom(const char *szFile,bool extram)
   		/*printf("failed %x",(u32)rom);
 		while(1);*/
 		rom = (u8 *)0x02180000;
-  }
 #endif
   workRAM = (u8*)0x02000000;/*(u8 *)calloc(1, 0x40000);
   if(workRAM == NULL) {
@@ -1603,14 +1593,18 @@ int CPULoadRom(const char *szFile,bool extram)
 		if(!utilLoad(szFile,
 						  utilIsGBAImage,
 						  whereToLoad,
-						  romSize,extram)) /*{
+						  romSize,extram))
+		{
+			return 0;
+		}
+						  /*{
 		iprintf("b");
 		free(rom);
 		rom = NULL;
 		free(workRAM);
 		workRAM = NULL;
 		return 0;*/
-		FILE *f = fopen(szFile, "r");
+		//FILE *f = fopen(szFile, "r");
 		
 		//fseek(f,0,SEEK_END);
 		//int fileSize = ftell(f);
@@ -1655,19 +1649,19 @@ rom = (u8*)puzzleorginal_bin;  //rom = (u8*)puzzleorginal_bin;
     return 0;
   }*/
   paletteRAM = (u8 *)0x05000000;//calloc(1,0x400);
-  if(paletteRAM == NULL) {
+  /*if(paletteRAM == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "PRAM");
     CPUCleanUp();
     return 0;
-  }      
+  }*/      
   vram = (u8 *)0x06000000;//calloc(1, 0x20000);
-  if(vram == NULL) {
+  /*if(vram == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "VRAM");
     CPUCleanUp();
     return 0;
-  }      
+  }*/      
   oam = (u8 *)0x07000000;/*calloc(1, 0x400); //ichfly test
   if(oam == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
@@ -1967,7 +1961,7 @@ void CPUSoftwareInterrupt(int comment)
           reg[0].I,
           reg[1].I,
           reg[2].I,
-          VCOUNT);
+          REG_VCOUNT);
     }
 #endif
     CPUSoftwareInterrupt();
@@ -1990,7 +1984,7 @@ void CPUSoftwareInterrupt(int comment)
 #ifdef DEV_VERSION
     if(systemVerbose & VERBOSE_SWI) {
       log("Halt: (VCOUNT = %2d)\n",
-          VCOUNT);      
+          REG_VCOUNT);      
     }
 #endif    
     holdState = true;
@@ -2001,7 +1995,7 @@ void CPUSoftwareInterrupt(int comment)
 #ifdef DEV_VERSION
     if(systemVerbose & VERBOSE_SWI) {
       log("Stop: (VCOUNT = %2d)\n",
-          VCOUNT);      
+          REG_VCOUNT);      
     }
 #endif    
     holdState = true;
@@ -2015,7 +2009,7 @@ void CPUSoftwareInterrupt(int comment)
       log("IntrWait: 0x%08x,0x%08x (VCOUNT = %2d)\n",
           reg[0].I,
           reg[1].I,
-          VCOUNT);      
+          REG_VCOUNT);      
     }
 #endif
     CPUSoftwareInterrupt();
@@ -2024,7 +2018,7 @@ void CPUSoftwareInterrupt(int comment)
 #ifdef DEV_VERSION
     if(systemVerbose & VERBOSE_SWI) {
       log("VBlankIntrWait: (VCOUNT = %2d)\n", 
-          VCOUNT);      
+          REG_VCOUNT);      
     }
 #endif
     CPUSoftwareInterrupt();
@@ -2188,7 +2182,7 @@ void CPUSoftwareInterrupt(int comment)
     if(systemVerbose & VERBOSE_SWI) {
       log("SoundBiasSet: 0x%08x (VCOUNT = %2d)\n",
           reg[0].I,
-          VCOUNT);      
+          REG_VCOUNT);      
     }
 #endif    
     //if(reg[0].I) //ichfly sound todo
@@ -2204,14 +2198,11 @@ void CPUSoftwareInterrupt(int comment)
     // let it go, because we don't really emulate this function
   default:
 #ifdef DEV_VERSION
-    if(systemVerbose & VERBOSE_SWI) {
-      log("SWI: %08x at %08x (0x%08x,0x%08x,0x%08x,VCOUNT = %2d)\n", comment,
-          armState ? armNextPC - 4: armNextPC -2,
+      log("SWI: %08x (0x%08x,0x%08x,0x%08x,VCOUNT = %2d)\n", comment,
           reg[0].I,
           reg[1].I,
           reg[2].I,
-          VCOUNT);
-    }
+          REG_VCOUNT);
 #endif
     
     if(!disableMessage) {
@@ -2247,8 +2238,8 @@ void CPUCompareVCOUNT()
   }
 
 }
-
-void doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32)
+//        doDMA(dma1Source, dma1Dest, sourceIncrement, destIncrement,DM1CNT_L ? DM1CNT_L : 0x4000, DM1CNT_H & 0x0400);
+/*void doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
 {
   int sm = s >> 24;
   int dm = d >> 24;
@@ -2324,6 +2315,76 @@ void doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32)
   }
 
   cpuDmaTicksToUpdate += totalTicks;
+
+}*/
+//
+void doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
+{
+
+  if(transfer32) {
+    s &= 0xFFFFFFFC;
+    if(s < 0x02000000 && (reg[15].I >> 24)) {
+      while(c != 0) {
+        CPUWriteMemory(d, 0);
+        d += di;
+        c--;
+      }
+    } else {
+      while(c != 0) {
+        cpuDmaLast = CPUReadMemory(s);
+        CPUWriteMemory(d, cpuDmaLast);
+        d += di;
+        s += si;
+        c--;
+      }
+    }
+  } else {
+    s &= 0xFFFFFFFE;
+    si = (int)si >> 1;
+    di = (int)di >> 1;
+    if(s < 0x02000000 && (reg[15].I >> 24)) {
+      while(c != 0) {
+        CPUWriteHalfWord(d, 0);
+        d += di;
+        c--;
+      }
+    } else {
+      while(c != 0) {
+        cpuDmaLast = CPUReadHalfWord(s);
+        CPUWriteHalfWord(d, cpuDmaLast);
+        cpuDmaLast |= (cpuDmaLast<<16);
+        d += di;
+        s += si;
+        c--;
+      }
+    }
+  }
+
+}
+//        doDMA(dma1Source, dma1Dest, sourceIncrement, destIncrement,DM1CNT_L ? DM1CNT_L : 0x4000, DM1CNT_H & 0x0400);
+void doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
+{
+	if(si == 0 || di == 0 || s < 0x02000000 || d < 0x02000000 || (d & ~0xFFFFFF) == 0x04000000 || (s & ~0xFFFFFF) == 0x04000000 || s > 0x0E000000 || d > 0x0E000000)
+	{
+		doDMAslow(s, d, si, di, c, transfer32); //some checks
+	}
+	else
+	{
+		if(s & 0x08000000)
+		{
+			s = (u32)(rom +  (s & 0x01FFFFFF));
+		}
+		while(dmaBusy(3)); // ichfly wait for dma 3
+		DMA3_SRC = s;
+		DMA3_DEST = d;
+
+		int tmpzahl = DMA_ENABLE | c;
+		if(transfer32)tmpzahl |= DMA_32_BIT;
+		if(di == -4) tmpzahl |= DMA_DST_DEC;
+		if(si == -4) tmpzahl |= DMA_SRC_DEC;
+		DMA3_CR = tmpzahl;
+		//iprintf("%x,%x,%x",s,d,tmpzahl);
+	}
 
 }
 

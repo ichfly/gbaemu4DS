@@ -24,7 +24,7 @@
 
 #include <string>
 
-std::string browseForFile (const std::string& extension);
+void browseForFile (const std::string& extension);
 
 
 
