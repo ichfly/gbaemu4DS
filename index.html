@@ -60,16 +60,12 @@
 <p><a href="http://www.mediafire.com/?ccdrs23cq2be74u">rev.10 hyper speed up only</a></p>
 <p><a href="http://www.mediafire.com/?58wbw2svusi9qn2">hwspeedup beta 1</a></p>
 <p><a href="http://www.mediafire.com/?2qb4gqs191fo414">r5 fix 4 hwspeedup and arm9</a></p>
-<p>1.patch your gba files (only if you use the hyper Version)</p>
-<p>2.copy the gba files to your flashcard</p>
-<p>3.dldi patch the nds file for your flashcard (most flashcard do this on the fly so you may don't need that step)</p>
-<p>4.copy the nds file to your flashcard</p>
-<p>5.Start the nds file</p>
-<p>6.select fat:/</p>
-<p>7.select a gba file</p>
-<p>8.set the malloc size that work (the size that is there at the start works normaly)</p>
-<p>9. press start</p>
-<p>10.the gba game should start</p>
+<p>1.copy the gba files to your flashcard</p>
+<p>2.copy the nds file to your flashcard</p>
+<p>3.Start the nds file</p>
+<p>4.select the save and bios file (if you don't have this files skip that step)</p>
+<p>5.select a gba file</p>
+<p>6.the gba game should start</p>
 <p> </p>
 <h2>License</h2>
 <p>GNU General Public License v2 or(at your option) any later Version</p>
@@ -99,15 +95,19 @@
 
   </div>
 
-  <script type="text/javascript">
-var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
-document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
-</script><script type="text/javascript" src="http://www.google-analytics.com/ga.js"></script>
 <script type="text/javascript">
-try {
-    var pageTracker = _gat._getTracker("UA-17525730-2");
-pageTracker._trackPageview();
-} catch(err) {}</script>
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-17525730-2']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
 
 
 </div></body>
