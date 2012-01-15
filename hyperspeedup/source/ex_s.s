@@ -55,18 +55,95 @@ b	inter_irq
 b	inter_fast
 b	inter_res2
 
+_exMain_tmpPuplain:
+	.word 0
+
+SPtemp: @lol not realy
+	.word 0
+
 
 inter_irq:
+	str sp,[pc, #-0xC]
+	ldr sp,=__sp_irq
 	STMDB SP!, {R0-R3,R12,LR}
 	MRC P15, 0 ,r0, c9,c1,0
 	Mov r0, r0, LSR #0xC
 	Mov r0, r0, LSL #0xC
 	ADD r0,r0, #0x4000
+	
+	mrc	p15, 0, r2, c5, c0, 2 @ ichfly
+	ldr	r1,=0x33333333
+	mcr	p15, 0, r1, c5, c0, 2
+	ldr	r1, =_exMain_tmpPuplain
+	str	r2, [r1] @ichfly
+	
 	ADD lr,pc,#0
 	LDR pc, [r0, #-0x4]
-	LDMIA SP!, {R0-R3,R12,LR}
+	
+	ldr	r1, =_exMain_tmpPuplain
+	ldr	r2, [r1] @ichfly
+	
+	
+	mov	r12, #0x4000000		@ REG_BASE
+	ldr	r0, [r12, #0x214]
+	
+
+	mcr	p15, 0, r2, c5, c0, 2
+	
+	
+	ldr	r2, =IME
+	ldr r2, [r2]
+	cmp r2,#1
+	BNE	noIME	
+	
+	ldr	r2, =anytimejmpfilter
+	ldr r2, [r2]
+	ands r0,r0,r2 @ anytimejmpfilter und IF
+	cmp r0,#0
+	BNE	got_over_gba_handler
+
+
+noIME:
+	
+	LDMIA SP!, {R0-R3,R12,LR} @exit
+	ldr sp,[pc, #-0x80]
 	SUBS pc, lr, #0x4
 	
+got_over_gba_handler:
+
+
+	ldr	r1, =0x33333330
+	
+	mcr	p15, 0, r1, c5, c0, 2
+
+	mrs	r3, cpsr
+	bic	r0, r3, #0x1F
+	mov r1,#0x12
+	orr	r0, r0, r1
+	msr	cpsr, r0
+
+	
+	LDMIA SP!, {R0-R3,R12,LR} @exit
+	ldr sp,[pc, #-0xA8]
+	
+	@original from gba
+	stmfd  SP!, {R0-R3,R12,LR} @save registers to SP_irq
+	mov    R0,#0x4000000       @ptr+4 to 03FFFFFC (mirror of 03007FFC)
+	add    LR,PC,#0            @retadr for USER handler
+	ldr    PC,[R0, #-0x4]      @jump to [03FFFFFC] USER handler
+	
+	
+	ldr	r1, =_exMain_tmpPuplain @ichfly einschub
+	ldr	r2, [r1] @ichfly
+	
+	
+	mcr	p15, 0, r2, c5, c0, 2	
+	
+	  
+	ldmfd  SP!, {R0-R3,R12,LR} @restore registers from SP_irq  
+	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
+
+
 inter_swi:
 
 
@@ -88,8 +165,8 @@ inter_swi:
 	
 	ldr	sp, =__sp_exc	@ use the new stack
 	
-	#mov lr,pc @ichfly change back if possible
-	#bx r1
+	@mov lr,pc @ichfly change back if possible
+	@bx r1
 	blx	r1 @ichfly change back if possible
 	
 	@ restore the registres 0->12

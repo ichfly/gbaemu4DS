@@ -1547,7 +1547,6 @@ int CPULoadRom(const char *szFile,bool extram)
   systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
   
 #ifdef loadindirect
-	  romSize = 0x00280000;
 	/*romSize = 0x100000; //test normal 0x2000000 current 1/10 oh no only 2 MB //no more needed default is 2,5 MB
 	
 	int malloctempmulti = 0x80000;
@@ -1577,7 +1576,11 @@ int CPULoadRom(const char *szFile,bool extram)
 	
   		/*printf("failed %x",(u32)rom);
 		while(1);*/
-		rom = (u8 *)0x02180000;
+
+	  //r4iopen(szFile);
+
+	  romSize = 0x02400000 - ((u32)getHeapEnd() + 0x4400 + 0x8000);
+	  rom = (u8 *)(getHeapEnd() + 0x4400/*for the other malloc here*/ + 0x8000/*32K for futur alloc*/);              //rom = (u8 *)0x02180000; //old
 #endif
   workRAM = (u8*)0x02000000;/*(u8 *)calloc(1, 0x40000);
   if(workRAM == NULL) {
@@ -2644,7 +2647,7 @@ void CPUCheckDMA(int reason, int dmamask)
 
 void CPUUpdateRegister(u32 address, u16 value)
 {
-  	if(0x60 > address && address > 0x7)
+  	/*if(0x60 > address && address > 0x7)
 	{
 			//iprintf("UP16 %x %x\r\n",address,value);
 		    *(u16 *)((address & 0x3FF) + 0x4000000) = value;
@@ -2653,7 +2656,7 @@ void CPUUpdateRegister(u32 address, u16 value)
 			//swiDelay(0x2000000);
 			//swiDelay(0x2000000);
 			
-	}
+	}*/
 
   switch(address) {
   case 0x00:
@@ -2713,27 +2716,37 @@ void CPUUpdateRegister(u32 address, u16 value)
   case 0x08:
     BG0CNT = (value & 0xDFCF);
     UPDATE_REG(0x08, BG0CNT);
+	*(u16 *)(0x4000008) = value;
     break;
   case 0x0A:
     BG1CNT = (value & 0xDFCF);
     UPDATE_REG(0x0A, BG1CNT);
-    break;
+    *(u16 *)(0x400000A) = value;
+	break;
   case 0x0C:
     BG2CNT = (value & 0xFFCF);
     UPDATE_REG(0x0C, BG2CNT);
+	if((DISPCNT & 7) < 3)*(u16 *)(0x400000C) = value;
+	else //ichfly some extra handling 
+	{
+		REG_BG3CNT = REG_BG3CNT | (value & 0x43);
+	}
     break;
   case 0x0E:
     BG3CNT = (value & 0xFFCF);
     UPDATE_REG(0x0E, BG3CNT);
+	if((DISPCNT & 7) < 3)*(u16 *)(0x400000E) = value;
     break;
   case 0x10:
     BG0HOFS = value & 511;
     UPDATE_REG(0x10, BG0HOFS);
-    break;
+    *(u16 *)(0x4000010) = value;
+	break;
   case 0x12:
     BG0VOFS = value & 511;
     UPDATE_REG(0x12, BG0VOFS);
-    break;
+    *(u16 *)(0x4000012) = value;
+	break;
   case 0x14:
     BG1HOFS = value & 511;
     UPDATE_REG(0x14, BG1HOFS);
@@ -2741,138 +2754,195 @@ void CPUUpdateRegister(u32 address, u16 value)
   case 0x16:
     BG1VOFS = value & 511;
     UPDATE_REG(0x16, BG1VOFS);
-    break;      
+    *(u16 *)(0x4000016) = value;
+	break;      
   case 0x18:
     BG2HOFS = value & 511;
     UPDATE_REG(0x18, BG2HOFS);
+	*(u16 *)(0x4000018) = value;
     break;
   case 0x1A:
     BG2VOFS = value & 511;
     UPDATE_REG(0x1A, BG2VOFS);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x400001A) = value; //ichfly only update if it is save
+	break;
   case 0x1C:
     BG3HOFS = value & 511;
     UPDATE_REG(0x1C, BG3HOFS);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x400001C) = value; //ichfly only update if it is save
+	break;
   case 0x1E:
     BG3VOFS = value & 511;
     UPDATE_REG(0x1E, BG3VOFS);
-    break;      
+    *(u16 *)(0x400001E) = value;
+	break;      
   case 0x20:
     BG2PA = value;
     UPDATE_REG(0x20, BG2PA);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x4000020) = value;
+	else *(u16 *)(0x4000030) = value;
+	break;
   case 0x22:
     BG2PB = value;
     UPDATE_REG(0x22, BG2PB);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x4000022) = value;
+	else *(u16 *)(0x4000032) = value;
+	break;
   case 0x24:
     BG2PC = value;
     UPDATE_REG(0x24, BG2PC);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x4000024) = value;
+	else *(u16 *)(0x4000034) = value;
+	break;
   case 0x26:
     BG2PD = value;
     UPDATE_REG(0x26, BG2PD);
-    break;
+	if((DISPCNT & 7) < 3)*(u16 *)(0x4000026) = value;
+	else *(u16 *)(0x4000036) = value;
+	break;
   case 0x28:
     BG2X_L = value;
     UPDATE_REG(0x28, BG2X_L);
-    gfxBG2Changed |= 1;
+    //gfxBG2Changed |= 1;
+	if((DISPCNT & 7) < 3)*(u16 *)(0x4000028) = value;
+	else *(u16 *)(0x4000038) = value;
     break;
   case 0x2A:
     BG2X_H = (value & 0xFFF);
     UPDATE_REG(0x2A, BG2X_H);
-    gfxBG2Changed |= 1;    
+    //gfxBG2Changed |= 1;
+	if((DISPCNT & 7) < 3)*(u16 *)(0x400002A) = value;
+	else *(u16 *)(0x400003A) = value;
     break;
   case 0x2C:
     BG2Y_L = value;
     UPDATE_REG(0x2C, BG2Y_L);
-    gfxBG2Changed |= 2;    
+    //gfxBG2Changed |= 2;
+	if((DISPCNT & 7) < 3)*(u16 *)(0x400002C) = value;
+	else *(u16 *)(0x400003C) = value;
     break;
   case 0x2E:
     BG2Y_H = value & 0xFFF;
     UPDATE_REG(0x2E, BG2Y_H);
-    gfxBG2Changed |= 2;    
+    //gfxBG2Changed |= 2;
+	if((DISPCNT & 7) < 3)*(u16 *)(0x400002E) = value;
+	else *(u16 *)(0x400003E) = value;
     break;
   case 0x30:
     BG3PA = value;
     UPDATE_REG(0x30, BG3PA);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x4000030) = value;
+	break;
   case 0x32:
     BG3PB = value;
     UPDATE_REG(0x32, BG3PB);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x4000032) = value;
+	break;
   case 0x34:
     BG3PC = value;
     UPDATE_REG(0x34, BG3PC);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x4000034) = value;
+	break;
   case 0x36:
     BG3PD = value;
     UPDATE_REG(0x36, BG3PD);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x4000036) = value;
+	break;
   case 0x38:
     BG3X_L = value;
     UPDATE_REG(0x38, BG3X_L);
-    gfxBG3Changed |= 1;
-    break;
+    //gfxBG3Changed |= 1;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x4000038) = value;
+	break;
   case 0x3A:
     BG3X_H = value & 0xFFF;
     UPDATE_REG(0x3A, BG3X_H);
-    gfxBG3Changed |= 1;    
-    break;
+    //gfxBG3Changed |= 1;    
+    if((DISPCNT & 7) < 3)*(u16 *)(0x400003A) = value;
+	break;
   case 0x3C:
     BG3Y_L = value;
     UPDATE_REG(0x3C, BG3Y_L);
-    gfxBG3Changed |= 2;    
-    break;
+    //gfxBG3Changed |= 2;    
+    if((DISPCNT & 7) < 3)*(u16 *)(0x400003C) = value;
+	break;
   case 0x3E:
     BG3Y_H = value & 0xFFF;
     UPDATE_REG(0x3E, BG3Y_H);
-    gfxBG3Changed |= 2;    
-    break;
+    //gfxBG3Changed |= 2;    
+    if((DISPCNT & 7) < 3)*(u16 *)(0x400003E) = value;
+	break;
   case 0x40:
     WIN0H = value;
     UPDATE_REG(0x40, WIN0H);
     //CPUUpdateWindow0();
-    break;
+    *(u16 *)(0x4000040) = value;
+	break;
   case 0x42:
     WIN1H = value;
     UPDATE_REG(0x42, WIN1H);
+	*(u16 *)(0x4000042) = value;
     //CPUUpdateWindow1();    
     break;      
   case 0x44:
     WIN0V = value;
     UPDATE_REG(0x44, WIN0V);
-    break;
+    *(u16 *)(0x4000044) = value;
+	break;
   case 0x46:
     WIN1V = value;
     UPDATE_REG(0x46, WIN1V);
-    break;
+    *(u16 *)(0x4000046) = value;
+	break;
   case 0x48:
     WININ = value & 0x3F3F;
     UPDATE_REG(0x48, WININ);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x4000048) = value;
+	else
+	{
+		int tempWININ = WININ & ~0x404;
+		tempWININ = tempWININ | ((WININ & 0x404) << 1);
+		WIN_IN = tempWININ;
+	}
+	break;
   case 0x4A:
     WINOUT = value & 0x3F3F;
     UPDATE_REG(0x4A, WINOUT);
-    break;
+    if((DISPCNT & 7) < 3)*(u16 *)(0x400004A) = value;
+	else
+	{
+		int tempWINOUT = WINOUT & ~0x404;
+		tempWINOUT = tempWINOUT | ((WINOUT & 0x404) << 1);
+		WIN_OUT = tempWINOUT;
+	}
+	break;
   case 0x4C:
     MOSAIC = value;
     UPDATE_REG(0x4C, MOSAIC);
-    break;
+    *(u16 *)(0x400004C) = value;
+	break;
   case 0x50:
     BLDMOD = value & 0x3FFF;
     UPDATE_REG(0x50, BLDMOD);
-    fxOn = ((BLDMOD>>6)&3) != 0;
+    //fxOn = ((BLDMOD>>6)&3) != 0;
     //CPUUpdateRender();
+	if((DISPCNT & 7) < 3)*(u16 *)(0x4000050) = value;
+	else
+	{
+		int tempBLDMOD = BLDMOD & ~0x404;
+		tempBLDMOD = tempBLDMOD | ((BLDMOD & 0x404) << 1);
+		REG_BLDCNT = tempBLDMOD;
+	}
     break;
   case 0x52:
     COLEV = value & 0x1F1F;
     UPDATE_REG(0x52, COLEV);
-    break;
+    *(u16 *)(0x4000052) = value;
+	break;
   case 0x54:
     COLY = value & 0x1F;
     UPDATE_REG(0x54, COLY);
+	*(u16 *)(0x4000054) = value;
     break;
   case 0x60:
   case 0x62:

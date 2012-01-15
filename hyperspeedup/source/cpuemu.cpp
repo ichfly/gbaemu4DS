@@ -61,7 +61,7 @@ u8  CPUReadByte (u32 addr);
 
 
 void unkommeopcode(u32 opcode, reg_pair *myregs);
-void unknowndebugprint();
+void unknowndebugprint(reg_pair *myregs);
 
 
 
@@ -71,8 +71,6 @@ extern char disbuffer[0x2000];
 
 extern void debugDump();
 
-
-#define DEV_VERSION
 
 #define patchmyregsfromromtoromaddr //parts todo
 
@@ -8326,12 +8324,28 @@ case 0x28:
  case 0xde:*/
  default:
 
-	 unknowndebugprint();
+	 unknowndebugprint(myregs);
 }
 }
-void unknowndebugprint()
+void unknowndebugprint(reg_pair *myregs)
 {
-	 Log("Undefined instruction");
+
+
+    Log("Undefined THUMB instruction %04x\n", *(u16*)(myregs[15].I - 6));
+	 
+	u32 offset = myregs[15].I - 6;
+	if(offset > 0x02040000) offset = myregs[15].I - 6 - (u32)rom + 0x08000000;
+	disArm(offset - 2,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");
+	disArm(offset,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");
+	disArm(offset + 2,disbuffer,DIS_VIEW_ADDRESS);
+	Log(disbuffer);
+	Log("\r\n");	
+	debugDump();
+	while(1);
 }
 void unkommeopcode(u32 opcode, reg_pair *myregs)
 {

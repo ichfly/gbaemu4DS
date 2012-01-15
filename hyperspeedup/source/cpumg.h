@@ -9,7 +9,7 @@
 // extern void cpu_GbaSetIwram();
 
 extern "C" void cpu_ArmJump(u32 address, u32 r1);
-
+extern "C" void cpu_ArmJumpforstackinit(u32 address, u32 r1);
 void exInitswisystem(void (*customswiHdl)());
 void gbaswieulatedbios();
 
@@ -25,6 +25,9 @@ unsigned long ARMShift(unsigned long value,unsigned char shift);
 extern "C" u32 cpuGetCPSR();
 extern "C" void cpuSetCPSR(u32 CPSR);
 
+
+void cpupausemodeexit();
+void cpupausemode();
 #endif /*__CPU_H__*/
  
  

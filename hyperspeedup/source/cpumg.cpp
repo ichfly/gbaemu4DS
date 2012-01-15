@@ -197,149 +197,6 @@ void exInit(void (*customHdl)())
 	exHandler = customHdl;
 }
 
-
-/*
-void Write32(u32 address, u32 value)
-{
-	Log("Write32: *%08X = %08X\n", address, value);
-	if((address & 0x0F000000) == 0x04000000)	/* IO *//*
-	{
-		switch(address & 0xFFF)
-		{
-			case 0x208:	/* REG_IME *//*
-				gbaIME = value & 0x1; 
-				break;
-			default:
-				Log("Unh. IO Write32 at %08X\n", address);
-				break;
-		}
-	}			
-}
-
-#define					BG0_CR		(*(vu16*)0x4000008)
-#define DISPLAY_CR (*(vu32*)0x04000000)
-
-void Write16(u32 address, u16 value)
-{
-	Log("Write16: *%08X = %04X\n", address, value);
-	if((address & 0x0F000000) == 0x04000000)	/* IO *//*
-	{
-		switch(address & 0xFFF)
-		{
-			case 0x000: {	/* REG_DISPCNT *//*
-				u32 dsValue;
-				gbaDISPCNT = value;
-				dsValue  = value & 0xFF87;
-				dsValue |= (value & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access *//*
-				dsValue |= (value & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d *//*
-				dsValue |= (value & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode *//*
-				/* TODO: gérer mode 4 *//*
-				REG_DISPCNT = dsValue;
-			} break;
-			case 0x004: /* REG_DISPSTAT *//*
-				/* TODO *//*
-				break;
-			case 0x008: /* REG_BG0CNT *//*
-			case 0x00A: /* REG_BG1CNT *//*
-			case 0x00C: /* REG_BG2CNT *//*
-			case 0x00E: { /* REG_BG3CNT *//*
-				u16 dsValue;
-				int bg = (address - 0x4000008) >> 1;
-				gbaBGxCNT[bg] = value;
-				dsValue = value;
-				*(&REG_BG0CNT + bg) = dsValue;
-			} break;
-			case 0x208: /* REG_IME *//*
-				gbaIME = value & 0x1; 
-				break;
-			default:
-				Log("Unh. IO Write16 at %08X\n", address);
-				break;
-		}
-	}
-}
-void Write8 (u32 address, u8  value)
-{
-	Log("Write8 : *%08X = %02X\n", address, value);
-	if((address & 0x0F000000) == 0x04000000)	/* IO *//*
-	{
-		switch(address & 0xFFF)
-		{
-			default:
-				Log("Unh. IO Write8 at %08X\n", address);
-				break;
-		}
-	}
-}
-
-u32 Read32(u32 address)
-{
-	u32 value = 0;
-	Log("Read32: *%08X\n", address);
-	if((address & 0x0F000000) == 0x04000000)	/* IO *//*
-	{
-		switch(address & 0xFFF)
-		{
-			case 0x208:
-				value = gbaIME; 
-				break;
-			default:
-				Log("Unh. IO Read32 at %08X\n", address);
-				break;
-		}
-	}
-	return value;
-}
-
-u16 Read16(u32 address)
-{
-	u16 value = 0;
-	Log("Read16: *%08X\n", address);
-	if((address & 0x0F000000) == 0x04000000)	/* IO *//*
-	{
-		switch(address & 0xFFF)
-		{
-			case 0x000: /* REG_DISPCNT *//*
-				value = gbaDISPCNT; break;
-			case 0x004: /* REG_DISPSTAT *//*
-				/* TODO *//*
-				break;
-			case 0x006: /* REG_VCOUNT *//*
-				value = REG_VCOUNT;
-				if(value > 227) value = 227;	/* limite à la taille de la gba *//*
-				break;
-			case 0x008: /* REG_BG0CNT *//*
-			case 0x00A: /* REG_BG1CNT *//*
-			case 0x00C: /* REG_BG2CNT *//*
-			case 0x00E: { /* REG_BG3CNT *//*
-				int bg = (address - 0x4000008) >> 1;
-				value = gbaBGxCNT[bg];
-			} break;
-			case 0x208: /* REG_IME *//*
-				value = gbaIME;  break;
-			default:
-				Log("Unh. IO Read16 at %08X\n", address);
-				break;
-		}
-	}
-	return value;
-}
-u8  Read8 (u32 address)
-{
-	u8 value = 0;
-	Log("Read8 : *%08X\n", address);
-	if((address & 0x0F000000) == 0x04000000)	/* IO *//*
-	{
-		switch(address & 0xFFF)
-		{
-			default:
-				Log("Unh. IO Read8 at %08X\n", address);
-				break;
-		}
-	}
-	return value;
-}
-*/
 void emuInstrARM(u32 instr, s32 *regs);
 void emuInstrTHUMB(u16 instr, s32 *regs);
 
@@ -356,9 +213,15 @@ void debugDump()
 		Log("R%d=%X ", i, exRegs[i]);
 	} 
 	Log("\n");
+
+	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu else we may cause an endless loop
+
 	for(i = 0; i < 4; i++) {
 		Log("+%02X: %08X %08X %08X\n", i*3*4, ((u32*)exRegs[13])[i*3], ((u32*)exRegs[13])[i*3+1], ((u32*)exRegs[13])[i*3+2]);
 	}
+
+	pu_Enable(); //back to normal code
+
 	Log("SPSR %08x CPSR %08x\n",BIOSDBG_SPSR,cpuGetCPSR());
 }
 
@@ -388,8 +251,8 @@ void gbaInit()
 
 
 	//pFile = fopen("fat:/gbaemulog.log","w");
-	pu_SetDataCachability(   0b00000010); //ichfly todo slowdown !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	pu_SetCodeCachability(   0b00000010);
+	pu_SetDataCachability(   0b00000000); //ichfly todo slowdown !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	pu_SetCodeCachability(   0b00000000);
 	pu_GetWriteBufferability(0b00000000);
 	
 	DC_FlushAll(); //try it
@@ -403,6 +266,15 @@ void gbaInit()
 	
 	// 	puSetGbaIWRAM();
 
+#ifdef releas
+	exInit(gbaExceptionHdl);
+#endif
+
+	exInitswisystem(gbaswieulatedbios);
+
+
+
+	WRAM_CR = 0;
 	pu_SetRegion(3, 0x03000000 | PU_PAGE_16M | 1);	/* gba iwram */ //it is the GBA Cart in the original //ichfly for log jumps it is 2 as bit as it should
 	pu_SetRegion(6, 0x02000000 | PU_PAGE_16M | 1);    //ram
 	//pu_SetRegion(7, 0x07000000 | PU_PAGE_16M | 1);
@@ -411,12 +283,10 @@ void gbaInit()
 	//pu_SetRegion(2, 0x05000000 | PU_PAGE_64M | 1);
 	//pu_SetRegion(3, 0x00000000 | PU_PAGE_32M | 1);
 	//pu_SetRegion(4, 0x02040000 | PU_PAGE_8M | 1);
-	WRAM_CR = 0;
-#ifdef releas
-	exInit(gbaExceptionHdl);
-#endif
 
-	exInitswisystem(gbaswieulatedbios);
+
+
+
 
 	iprintf("gbainit done\n\r");
 	
@@ -756,7 +626,7 @@ void ndsMode()
 	
 
 	
-	//Log("%08X %08X\n", exRegs[15] , BIOSDBG_SPSR);
+	//Log("%08X %08X %X %X\n", exRegs[15],*(u32*)(0x03FFFFFC),IME,IE);
 	
 	//debugDump();
 
@@ -1007,6 +877,34 @@ void gbaMode2()
 	puGba();	
 }
 #endif
+
+
+
+
+
+
+void cpupausemode()
+{
+	//undo
+	//Region 1 - System ROM 0xFFFF0000 PAGE_32K   
+	//--> Standard Palettes 0x05000000  (2KByte DS) (1KByte gba)  PAGE_16M
+	pu_SetRegion(1, 0xFFFF0000 | PU_PAGE_32K | 1);
+	cpu_SetCP15Cnt(cpu_GetCP15Cnt() | BIT(13));
+
+}
+void cpupausemodeexit()
+{
+	//do
+	//Region 1 - System ROM 0xFFFF0000 PAGE_32K   
+	//--> Standard Palettes 0x05000000  (2KByte DS) (1KByte gba)  PAGE_16M
+	cpu_SetCP15Cnt(cpu_GetCP15Cnt() &~BIT(13));
+	pu_SetRegion(1, 0x05000000 | PU_PAGE_16M | 1);
+}
+
+
+
+
+
 
 
 //extern things

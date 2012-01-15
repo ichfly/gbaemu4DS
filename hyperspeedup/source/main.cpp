@@ -1,12 +1,6 @@
-
-
-
-
-
-
 /*---------------------------------------------------------------------------------
 
-	Basic template code for starting a GBA app <-- this is a joke
+	Basic template code for starting a GBA app
 
 ---------------------------------------------------------------------------------*/
 #include <nds.h>
@@ -27,7 +21,7 @@
 #include "GBAinline.h"
 #include "bios.h"
 
-
+#include "mydebuger.h"
 
 #include "file_browse.h"
 
@@ -148,7 +142,7 @@ extern "C" void cpu_SetCP15Cnt(u32 v);
 extern "C" u32 cpu_GetCP15Cnt();
 extern "C" u32 pu_Enable();
 
-
+int ignorenextY = 0;
 
 void speedtest()
 {	
@@ -443,8 +437,31 @@ void VblankHandler(void) {
 			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
 			if(lastDISPCNT != DISPCNT)
 			{
-				//workaroundwrite32(workaroundread16((u16*)&DISPCNT) | 0x10010, (u32*)&REG_DISPCNT);      //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x10010); //need 0x10010
-				
+				//reset BG3HOFS and BG3VOFS
+				REG_BG3HOFS = BG3HOFS;
+				REG_BG3VOFS = BG3VOFS;
+
+				//reset
+				REG_BG3CNT = BG3CNT;
+				REG_BG2CNT = BG2CNT;
+				REG_BLDCNT = BLDMOD;
+				WIN_IN = WININ;
+				WIN_OUT = WINOUT;
+
+				REG_BG2PA = BG2PA;
+				REG_BG2PB = BG2PB;
+				REG_BG2PC = BG2PC;
+				REG_BG2PD = BG2PD;
+				REG_BG2X = (BG2X_L | (BG2X_H << 16));
+				REG_BG2Y = (BG2Y_L | (BG2Y_H << 16));
+
+				REG_BG3PA = BG3PA;
+				REG_BG3PB = BG3PB;
+				REG_BG3PC = BG3PC;
+				REG_BG3PD = BG3PD;
+				REG_BG3X = (BG3X_L | (BG3X_H << 16));
+				REG_BG3Y = (BG3Y_L | (BG3Y_H << 16));
+
 				u32 dsValue;
 				dsValue  = DISPCNT & 0xFF87;
 				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
@@ -463,11 +480,37 @@ void VblankHandler(void) {
 #endif
 			if(lastDISPCNT != DISPCNT)
 			{
-				//iprintf("DISPCNT4fly %x\r\n",workaroundread16((u16*)&DISPCNT));
-				//workaroundwrite32((workaroundread16((u16*)&DISPCNT) | 0x02010010) & ~0x400,(u32*)&REG_DISPCNT);
-				
+				//reset BG3HOFS and BG3VOFS
+				REG_BG3HOFS = 0;
+				REG_BG3VOFS = 0;
+
+				//BLDCNT(2 enabeled bits)
+				int tempBLDMOD = BLDMOD & ~0x404;
+				tempBLDMOD = tempBLDMOD | ((BLDMOD & 0x404) << 1);
+				REG_BLDCNT = tempBLDMOD;
+
+				//WINOUT(2 enabeled bits)
+				int tempWINOUT = WINOUT & ~0x404;
+				tempWINOUT = tempWINOUT | ((WINOUT & 0x404) << 1);
+				WIN_OUT = tempWINOUT;
+
+				//WININ(2 enabeled bits)
+				int tempWININ = WININ & ~0x404;
+				tempWININ = tempWININ | ((WININ & 0x404) << 1);
+				WIN_IN = tempWININ;
+
+				//swap LCD I/O BG Rotation/Scaling
+
+				REG_BG3PA = BG2PA;
+				REG_BG3PB = BG2PB;
+				REG_BG3PC = BG2PC;
+				REG_BG3PD = BG2PD;
+				REG_BG3X = (BG2X_L | (BG2X_H << 16));
+				REG_BG3Y = (BG2Y_L | (BG2Y_H << 16));
+
+
 				u32 dsValue;
-				dsValue  = DISPCNT & 0xFB87;
+				dsValue  = DISPCNT & 0xF087;
 				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
 				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
 				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
@@ -476,15 +519,11 @@ void VblankHandler(void) {
 				if((DISPCNT & 7) == 4)
 				
 				{
-					//iprintf("DISPCNTf %x %x\r\n",DISPCNT,REG_DISPCNT);
 					bgrouid = bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
-					//iprintf("DISPCNTf %x %x\r\n",DISPCNT,REG_DISPCNT);
 				}
 				else if((DISPCNT & 7) == 3)bgrouid = bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
 				else if((DISPCNT & 7) == 5)bgrouid = bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
-				//iprintf("%08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x07000000),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x6014000));
-				//iprintf("%08x %08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x601403C));
-				//iprintf("a");
+				REG_BG3CNT = REG_BG3CNT | (BG2CNT & 0x43); //swap BG2CNT (BG Priority and Mosaic) 
 			}
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
 			{
@@ -547,7 +586,15 @@ void VblankHandler(void) {
   if((joy & 192) == 192)
     joy &= ~128;
 #endif
-
+	if((joy & KEY_A) && (joy & KEY_B) && (joy & KEY_R) && (joy & KEY_L))
+	{
+		if(ignorenextY == 0)
+		{
+			pausemenue();
+			ignorenextY = 60; // 1 sec break time
+		}
+		else {ignorenextY -= 1;}
+	}
               P1 = 0x03FF ^ (joy & 0x3FF);             
               UPDATE_REG(0x130, P1);
 	//iprintf("test"); //sorry no write here
@@ -561,6 +608,68 @@ void VblankHandler(void) {
 	}*/
 	
 	//iprintf("%x %x %x %x %x %x %x %x %x %x \r\n",DISPCNT,BG2CNT, BG2X_L, BG2X_H, BG2Y_L, BG2Y_H,BG2PA, BG2PB, BG2PC, BG2PD);
+}
+
+
+
+
+
+
+
+
+
+char* seloptions [3] = {"save save","show mem","Continue (Beta)"};
+
+void pausemenue()
+{
+	irqDisable(IRQ_VBLANK);
+	cpupausemode();
+	int pressed;
+	int ausgewauhlt = 0;
+	while(1)
+	{
+		iprintf("\x1b[2J");
+		iprintf("Pause\n");
+		iprintf ("--------------------------------");
+		for(int i = 0; i < 3; i++)
+		{
+			if(i == ausgewauhlt) iprintf("->");
+			else iprintf("  ");
+			iprintf(seloptions[i]);
+			iprintf("\n");
+		}
+		do {
+			if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+			while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+			scanKeys();
+			pressed = (keysDownRepeat()& ~0xFC00);
+		} while (!pressed); //no communication here with arm7 so no more update
+		//iprintf("%x",ausgewauhlt);
+		if (pressed&KEY_A)
+		{
+			switch(ausgewauhlt)
+				{
+				case 0:
+					if(savePath[0] == 0)sprintf(savePath,"%s.save.bin",szFile);
+					CPUWriteBatteryFile(savePath);
+					break;
+				case 1:
+					show_mem();
+					break;
+				case 2:
+					cpupausemodeexit();
+					iprintf("\x1b[2J");
+					while(REG_VCOUNT != 192); //wait for Vblanc
+					irqEnable( IRQ_VBLANK);
+					return; //and return
+				}
+		}
+		if (pressed&KEY_DOWN && ausgewauhlt != 2){ ausgewauhlt++;}
+		if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
+
+	}
+
+
 }
 
 
@@ -587,6 +696,13 @@ int main(void) {
 	//bg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
 	consoleDemoInit();
 
+	powerOff(POWER_3D_CORE | POWER_MATRIX); //3D use power so that is not needed
+
+	soundDisable(); //sound use power
+
+
+
+
 	DISPCNT  = 0x0080;
 
 //rootenabelde[2] = fatMountSimple  ("sd", &__io_dsisd); //DSi//sems to be inited by fatInitDefault
@@ -603,6 +719,12 @@ if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0
 		swiWaitForVBlank();
 	}
 }
+
+
+/*	iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
+malloc(0x4000);
+iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
+	while(1);*/ //test getHeapEnd() is the needed thing
 
 	iprintf("Init Fat...\n");
     
@@ -874,8 +996,6 @@ int rrrresxfss = 0;
 
 	//VblankHandler();
 
-	
-
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu to write to the internalRAM
 
 	BIOS_RegisterRamReset(0xFF);
@@ -901,7 +1021,6 @@ int rrrresxfss = 0;
 	
 	iprintf("enter critical part set VblankHandler switch to gba mode and jump to (%08X)\n\r",rom);
 
-
 	//iprintf("ndsMode %x\n", (u32)rom);
 	
 	//iprintf("gbaInit\n");
@@ -909,15 +1028,18 @@ int rrrresxfss = 0;
 	emulateedbiosstart();
 	//iprintf("a");
 	
+
 	
-	gbaInit();
+
  	//iprintf("Current CP15 reg: %08X\n",cpuGetCPSR());
-	
-	
-	irqSet(IRQ_VBLANK, VblankHandler);
+
 	
 	ndsMode();
-	
+
+	gbaInit();
+
+	irqSet(IRQ_VBLANK, VblankHandler);
+
 	gbaMode2();
 
 
@@ -941,7 +1063,7 @@ int rrrresxfss = 0;
 	
 	//printf("test");
 
-	cpu_ArmJump((u32)rom, 0);
+	cpu_ArmJumpforstackinit((u32)rom, 0);
 	
 	
 	//cpu_ArmJump((u32)0x02000000, 0);

@@ -46,8 +46,37 @@ cpu_GetCP15Cnt:
  
 	.global cpu_ArmJump
 cpu_ArmJump:
+@      reg[13].I = 0x03007F00;
+
+@      reg[R13_IRQ].I = 0x03007FA0;
+@      reg[R13_SVC].I = 0x03007FE0;
+
 	bic r0, r0, #1
 	bx r0
+
+	.global cpu_ArmJumpforstackinit
+cpu_ArmJumpforstackinit:
+@      reg[13].I = 0x03007F00;
+
+@      reg[R13_IRQ].I = 0x03007FA0;
+@      reg[R13_SVC].I = 0x03007FE0;
+
+	mov	r2, #0x12		@ Switch to IRQ Mode
+	msr	cpsr, r2
+	ldr	sp, =0x03007FA0		@ Set IRQ stack
+
+	mov	r2, #0x13		@ Switch to SVC Mode
+	msr	cpsr, r2
+	ldr	sp, =0x03007FE0		@ Set SVC stack
+	
+
+	mov	r2, #0x1F		@ Switch to System Mode
+	msr	cpsr, r2
+	ldr sp,=0x03007F00
+	
+	bic r0, r0, #1
+	bx r0
+
 
 	.global cpu_GetCP15Cnt
 	

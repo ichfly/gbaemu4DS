@@ -57,6 +57,11 @@ void Logsd(const char *defaultMsg,...);
     WRITE16LE(((u16 *)&ioMem[address]),value);\
   }\
 
+/*
+u8 CPUReadByteQuick(u32 addr);
+u16 CPUReadHalfWordQuick(u32 addr);
+u32 CPUReadMemoryQuick(u32 addr);
+*/
 
 #define CPUReadByteQuick(addr) \
   map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]
