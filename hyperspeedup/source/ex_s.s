@@ -55,6 +55,27 @@ b	inter_irq
 b	inter_fast
 b	inter_res2
 
+somethingfailed:
+
+inter_Reset:
+inter_res:
+inter_fast:
+inter_res2:
+	str sp,[pc, #0x10]
+	str lr,[pc, #0x10]
+	ldr sp, =failcpphandler
+	ldr lr, =exHandler
+	str sp,[lr]
+	b dointerwtf
+	
+	
+.global savedsp
+savedsp:
+	.word 0
+.global savedlr
+savedlr:
+	.word 0
+
 _exMain_tmpPuplain:
 	.word 0
 
@@ -181,21 +202,69 @@ inter_swi:
 	
 	subs    pc, lr, #0 @ichfly this is not working	
 	
-inter_data:
+
+
+
+
+inter_fetch: @ break function todo
+
+	subs    lr, lr, #0x8000000
+	ldr		sp,=rom
+	ldr		sp,[sp]
+	add		lr,lr,sp
+	subs    pc, lr, #4
+
+
+
+
+
 inter_undefined:
-inter_fetch:
-inter_res:
-inter_fast:
-inter_res2:
-inter_Reset: @all debug we say all is debug
+
+	@ change the PU to nds mode
+	ldr	SP,=0x33333333	@ see cpumg.cpp for meanings protections
+	mcr	p15, 0, SP, c5, c0, 2
+	ldr	SP, =exRegs
 	
+	str	lr, [SP, #(15 * 4)]	@ save r15 (lr is r15)
+	
+	@ save the registres 0->12
+	stmia	SP, {r0-r12}
+	
+	@ jump into the personal handler
+	ldr	r1, =exHandlerundifined
+	ldr	r1, [r1]
+	
+	
+	ldr	sp, =__sp_exc	@ use the new stack
+	
+	blx	r1 @ichfly change back if possible
+	
+	@ restore the registres 0->12
+	ldr	lr, =exRegs
+	ldmia	lr, {r0-r12}
+	
+	ldr	lr, [lr, #(15 * 4)] 
+	
+	subs    pc, lr, #4 @ichfly this is not working	
+
+
+
+
+
+
+
+
+
+
+dointerwtf:
+
+inter_data:
 	
 	@ change the PU to nds mode
 	ldr	SP,=0x33333333	@ see cpumg.cpp for meanings protections
 	mcr	p15, 0, SP, c5, c0, 2
 
 
-@R0,R1,R4,R8 change
 
 	
 	@ichfly my code
@@ -243,10 +312,7 @@ inter_Reset: @all debug we say all is debug
 	
 	ldr	sp, =__sp_exc	@ use the new stack
 
-	#mov lr,pc @ichfly change back if possible
-	
-	#bx r12
-	blx	r12 @ichfly change back if possible
+	blx	r12
       
 	
 	@ need a better solution 
@@ -315,6 +381,10 @@ _exMain_tmpPu:
 exHandler:
 	.word	0
 	
+	.global exHandlerundifined
+exHandlerundifined:
+	.word	0
+
 	.global exHandlerswi
 exHandlerswi:
 	.word	0

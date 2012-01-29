@@ -84,7 +84,7 @@ static u32 CPUReadHalfWordreal(u32 address);
 
 __attribute__((section(".itcm"))) static inline u32 CPUReadHalfWord(u32 address)
  {
-	return CPUReadMemoryreal(address);
+	return CPUReadHalfWordreal(address);
  }
 static u8 CPUReadBytereal(u32 address);
 
@@ -175,7 +175,7 @@ __attribute__((section(".itcm"))) static inline void updateVC()
     break;
   case 4:
   
-	if(address > 0x40000FF && address < 0x4000110)
+	if(address > 0x40000FF && address < 0x4000111)
 	{
 		value = *(u32 *)(address);
 		break;
@@ -317,7 +317,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
     break;
   case 4:
   
-	if(address > 0x40000FF && address < 0x4000110)
+	if(address > 0x40000FF && address < 0x4000111)
 	{
 		value = *(u16 *)(address);
 		break;
@@ -452,9 +452,9 @@ iprintf("r8 %02x\n",address);
     return internalRAM[address & 0x7fff];
   case 4:
   
-	if(address > 0x40000FF && address < 0x4000110)
+	if(address > 0x40000FF && address < 0x4000111)
 	{
-		return *(u16 *)(address);
+		return *(u8 *)(address);
 	}
   
   	if(address > 0x4000003 && address < 0x4000008)//ichfly update
@@ -567,12 +567,12 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
   case 0x04:
     if(address < 0x4000400) {
 
-	if((0x4000060 > address && address > 0x4000007) || (address > 0x40000FF && address < 0x4000110)) //timer and lcd
+	/*if((0x4000060 > address && address > 0x4000007) || (address > 0x40000FF && address < 0x4000110)) //timer and lcd
 	{
 			//iprintf("32 %x %x\r\n",address,value);
 		    *(u32 *)(address) = value;
 	}
-	else //dont do twice
+	else //dont do twice*/ //don't need that any more
 	{
       CPUUpdateRegister((address & 0x3FC), value & 0xFFFF);
       CPUUpdateRegister((address & 0x3FC) + 2, (value >> 16));

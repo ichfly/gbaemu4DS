@@ -34,7 +34,7 @@
 #include "GBAinline.h"
 #include "Globals.h"
 
-extern s32  __attribute__((section(".itcm"))) exRegs[]; //automatisierung
+extern s32  __attribute__((section(".dtcm"))) exRegs[]; //automatisierung
 
 
 #define log(...) iprintf(__VA_ARGS__)

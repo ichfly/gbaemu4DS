@@ -3119,37 +3119,45 @@ void CPUUpdateRegister(u32 address, u16 value)
     }
     break;
  case 0x100:
-    timer0Reload = value;
+    //timer0Reload = value; //ichfly
+	*(u16 *)(0x4000100) = value;
     break;
   case 0x102:
-    timer0Value = value;
-    timerOnOffDelay|=1;
-    cpuNextEvent = cpuTotalTicks;
+    //timer0Value = value;
+    //timerOnOffDelay|=1;
+    //cpuNextEvent = cpuTotalTicks;
+	*(u16 *)(0x4000102) = value;
     break;
   case 0x104:
-    timer1Reload = value;
-    break;
+    //timer1Reload = value;
+    *(u16 *)(0x4000104) = value;
+	  break;
   case 0x106:
-    timer1Value = value;
-    timerOnOffDelay|=2;
-    cpuNextEvent = cpuTotalTicks;
-    break;
+    //timer1Value = value;
+    //timerOnOffDelay|=2;
+    //cpuNextEvent = cpuTotalTicks;
+    *(u16 *)(0x4000106) = value;
+	  break;
   case 0x108:
-    timer2Reload = value;
+    //timer2Reload = value;
+	*(u16 *)(0x4000108) = value;
     break;
   case 0x10A:
-    timer2Value = value;
-    timerOnOffDelay|=4;
-    cpuNextEvent = cpuTotalTicks;
-    break;
+    //timer2Value = value;
+    //timerOnOffDelay|=4;
+    //cpuNextEvent = cpuTotalTicks;
+    *(u16 *)(0x400010A) = value;
+	  break;
   case 0x10C:
-    timer3Reload = value;
-    break;
+    //timer3Reload = value;
+    *(u16 *)(0x400010C) = value;
+	  break;
   case 0x10E:
-    timer3Value = value;
-    timerOnOffDelay|=8;
-    cpuNextEvent = cpuTotalTicks;
-    break;
+    //timer3Value = value;
+    //timerOnOffDelay|=8;
+    //cpuNextEvent = cpuTotalTicks;
+    *(u16 *)(0x400010E) = value;
+	  break;
   case 0x128:
     if(value & 0x80) {
       value &= 0xff7f;
@@ -3501,11 +3509,11 @@ void CPUWriteByte(u32 address, u8 b)
 	//soundEvent(address&0xFF, b);  //ichfly disable sound
 	break;
       default:
-	if((0x4000060 > address && address > 0x4000008) || (address > 0x40000FF && address < 0x4000110))
+	/*if((0x4000060 > address && address > 0x4000008) || (address > 0x40000FF && address < 0x4000110))
 	{
 			//iprintf("8 %x %x\r\n",address,b);
 		    *(u8 *)(address) = b;
-	}
+	}*/ //ichfly don't need that
 	if(address & 1)
 	{
 	  CPUUpdateRegister(address & 0x3fe,

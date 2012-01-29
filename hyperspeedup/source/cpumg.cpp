@@ -56,6 +56,8 @@ extern "C" u32 cpu_GetCP15Cnt();
 
 #include "main.h"
 
+#include "anothercpu.h"
+
 
 extern "C" void swiHalt(void);
 
@@ -173,6 +175,7 @@ char disbuffer[0x2000];
 
 extern void __attribute__((section(".dtcm"))) (*exHandler)();
 extern void __attribute__((section(".dtcm"))) (*exHandlerswi)();
+extern void __attribute__((section(".dtcm"))) (*exHandlerundifined)();
 extern s32  __attribute__((section(".dtcm"))) exRegs[];
 extern s32  __attribute__((section(".dtcm"))) BIOSDBG_SPSR;
 
@@ -184,24 +187,6 @@ extern s32  __attribute__((section(".dtcm"))) BIOSDBG_SPSR;
 
 
 int durchlauf = 0;
-
-
-void exInitswisystem(void (*customswiHdl)())
-{
-	exHandlerswi = customswiHdl;
-}
-
-void exInit(void (*customHdl)())
-{
-	//EXCEPTION_VECTOR = exMain; //no more needed
-	exHandler = customHdl;
-}
-
-void emuInstrARM(u32 instr, s32 *regs);
-void emuInstrTHUMB(u16 instr, s32 *regs);
-
-#define B8(h,g,f,e,d,c,b,a) ((a)|((b)<<1)|((c)<<2)|((d)<<3)|((e)<<4)|((f)<<5)|((g)<<6)|((h)<<7))
-
 void debugDump()
 {
 // 	Log("dbgDump\n");
@@ -225,6 +210,50 @@ void debugDump()
 	Log("SPSR %08x CPSR %08x\n",BIOSDBG_SPSR,cpuGetCPSR());
 }
 
+
+extern "C" void failcpphandler()
+{
+	iprintf("something failed\r\n");
+	debugDump();
+	while(1);
+}
+
+void exInitundifinedsystem(void (*customundifinedHdl)())
+{
+	exHandlerundifined = customundifinedHdl;
+}
+
+void exInitswisystem(void (*customswiHdl)())
+{
+	exHandlerswi = customswiHdl;
+}
+
+void exInit(void (*customHdl)())
+{
+	//EXCEPTION_VECTOR = exMain; //no more needed
+	exHandler = customHdl;
+}
+
+void emuInstrARM(u32 instr, s32 *regs);
+void emuInstrTHUMB(u16 instr, s32 *regs);
+
+#define B8(h,g,f,e,d,c,b,a) ((a)|((b)<<1)|((c)<<2)|((d)<<3)|((e)<<4)|((f)<<5)|((g)<<6)|((h)<<7))
+
+
+void undifinedresolver()
+{
+	u32 tempforwtf = *(u32*)(exRegs[15] - 4);
+	if((tempforwtf &0x0F200090) == 0x00200090) //wtf why dos this tigger an exeption it is strh r1,[r0]+2! ��� 0xB2 10 E0 E0 on gba 0xE0E010B2 so think all strh rx,[ry]+z! do that
+	{
+		*(u32*)(exRegs[15] - 4) = tempforwtf & ~0x200000;//ther is just a wrong bit so don't worry patch it to strh r1,[r0]+2
+	}
+	else
+	{
+		printf("unknown OP\r\n");
+		debugDump();
+		while(1);
+	}
+}
 int durchgang = 0;
 
 void gbaInit()
@@ -271,6 +300,7 @@ void gbaInit()
 #endif
 
 	exInitswisystem(gbaswieulatedbios);
+	exInitundifinedsystem(undifinedresolver);
 
 
 
@@ -591,48 +621,16 @@ void ndsMode()
  __attribute__((section(".itcm"))) void gbaExceptionHdl()
 {
 
-	//debugDump();
-
-//Log("test\r\n");
-
-	int i;
 	u32 instr;
-	u32 sysMode;
 	u32 cpuMode;
 	
 	ndsModeinline();
-	//sysMode = cpuGetCPSR() & 0x1F; //ichfly don't need that
 	cpuMode = BIOSDBG_SPSR & 0x20;
 	
-	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80;
-	
-	/*u32 opSize;
-	if(cpuMode) opSize = 2;
-	else opSize = 4;*/
-	
-	 /*if(cpuMode)Log("%08X %08X\n", exRegs[15],BIOSDBG_SPSR);
-	 else
-	 {
-		Log("%08X %08X\n", exRegs[15],BIOSDBG_SPSR);
-	 }*/
-	
-	//exRegs[15] -= 4; //ichfly patch not working on emulators
-	
-
-	//exRegs[15] += 4;
-		
-	
-	//while(1);
-	
-
-	
-	//Log("%08X %08X %X %X\n", exRegs[15],*(u32*)(0x03FFFFFC),IME,IE);
-	
-	//debugDump();
-
+	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80; //sorry but this must be done
 	
 #ifndef unsave
-	if(exRegs[15] < 0x02000000 || exRegs[15] > 0x04000000 && !(exRegs[15] & 0x08000000))
+	if(exRegs[15] < 0x02000000 || exRegs[15] > 0x04000000)
 	{
 		Log("gba jumped to an unknown region\n");
 		debugDump();
@@ -640,94 +638,16 @@ void ndsMode()
 	}
 #endif
 	
-	/*if(exRegs[15] > (u32)(rom + 0x200))
+	/*if(exRegs[15] & 0x08000000)
 	{
-		//debugDump();
-		Log("%08X\n", exRegs[15]);
-		durchlauf++;
-		if((s32)workaroundread32((u32*)&rom) + 0x458 < exRegs[15] && (s32)workaroundread32((u32*)&rom) + 0x5a4 > exRegs[15])while(1);
-		//debugDump();
-	}*/
-	
-	if(exRegs[15] & 0x08000000)
-	{
-		//if(exRegs[15] == 0x08000290)while(1);
-		//Logsd("%08X\n", exRegs[15]);
-		//debugDump();
-		
-		//debugDump();
-		
-		//iprintf("\n\r%08X",BIOSDBG_SPSR);
-		
-
-		
-		//suche quelle
-		/*for(i = 0; i <= 14; i++) {
-			if((exRegs[i] & ~0x1) == (exRegs[15] - 4))
-			{
-				if(exRegs[i] &0x1) BIOSDBG_SPSR |= 0x20;
-				else  BIOSDBG_SPSR &= ~0x20;
-				break;
-			}
-		}*/ //ichfly check if needed
-		
-		
-		//exRegs[15] -= 8; //for my emu
-		//exRegs[15] -= 4; //for nothing
-		
-		//volatile static u32 temp;
-		
-		//temp = exRegs[15];
 		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
-		
-		//temp = exRegs[15];
-		//sehen[1] = (u32)rom;
-		//Log("ende %08X %08X %08X \n", sehen[0], sehen[1], sehen[2]);
-		
-	
 	}
 	else
-	{
-	 //		Logsd("-------- DA :\n");
-
-			
-			//exRegs[15] += 4; //for emu
-			
-			//debugDump();
-			
-			//durchgang++;
-			
-			//iprintf("%08X %X (%08X)\n", exRegs[15],cpuMode,*(u32*)(exRegs[15] - 8));
-			
-			
-				//debugDump();
-			
-			/*if(cpuMode) instr = (u32)*(u16*)(exRegs[15] - 4);
-			else instr = *(u32*)(exRegs[15] - 4);*/
-			
+	{*/		
 			if(cpuMode)
 			{
 				instr = *(u16*)(exRegs[15] - 8);
 				exRegs[15] -= 2;
-#ifdef BREAKswisupport
-				u16 tempforwtf = *(u16*)(exRegs[15] - 2);
-
-				//Logsd("%08X\n", instr);
-				if(tempforwtf > 0xBE00 && tempforwtf < 0xBE2B)
-				{
-				
-					
-					exRegs[15] += 4;
-					//debugDump();
-					BIOScall(tempforwtf,  exRegs);
-					
-					
-					
-					//while(1);
-					//debugDump();
-				}
-				else
-#endif
 				{
 					emuInstrTHUMB(instr, exRegs);
 				}
@@ -737,114 +657,11 @@ void ndsMode()
 			else
 			{
 				instr = *(u32*)(exRegs[15] - 8);
-				u32 tempforwtf = *(u32*)(exRegs[15] - 4);
-#ifdef BREAKswisupport
-				if((tempforwtf &0xFFF000F0) == 0xE1200070) //wtf ²àà 0xB2 10 E0 E0
-				{
-					exRegs[15] += 4;
-					BIOScall((tempforwtf & 0xFFF00)>>0x8, exRegs);
-				}
-				else
-#endif
-				if((tempforwtf &0x0F200090) == 0x00200090) //wtf why dos this tigger an exeption it is strh r1,[r0]+2! ²àà 0xB2 10 E0 E0 on gba 0xE0E010B2 so think all strh rx,[ry]+z! do that it is an comand interpreter error 
-				{
-					*(u32*)(exRegs[15] - 4) = tempforwtf & ~0x200000;//ther is just a wrong bit so don't worry patch it to strh r1,[r0]+2
-				}
-				else
-				{
-				/*u32 offset = exRegs[15] - 8;
-				if(offset > 0x02040000) offset = exRegs[15] - 8 - (s32)workaroundread32((u32*)&rom) + 0x08000000;
-				if(offset == 0x0800311C || offset == 0x08003120)
-				{
-					disArm(offset - 4,disbuffer,DIS_VIEW_ADDRESS);
-					Log(disbuffer);
-					Log("\r\n");
-										disArm(offset,disbuffer,DIS_VIEW_ADDRESS);
-					Log(disbuffer);
-					Log("\r\n");
-										disArm(offset + 4,disbuffer,DIS_VIEW_ADDRESS);
-					Log(disbuffer);
-					Log("\r\n");
-										disArm(offset + 8,disbuffer,DIS_VIEW_ADDRESS);
-					Log(disbuffer);
-					Log("\r\n");
-					
-					debugDump();
-					while(1);
-				}*/
-	 			//Log("ARM: %08X\n", instr);
 				emuInstrARM(instr, exRegs);
-				}
-	// 			Logsd("NDS TRACE\n")
-				//exRegs[15] -= 4;
 			}
 			
-	// 		exRegs[15] += opSize;
-	// 		while(1) { }
-		/*else if(sysMode == 0x1B)
-		{
-			if(cpuMode) instr = (u32)*(u16*)(exRegs[15] - 2);
-			else instr = *(u32*)(exRegs[15] - 4);
-			
-			// Undefined instruction (debug...) 
-			if((!cpuMode && instr == 0xE7F000F0) || (cpuMode && instr == 0xDE00))
-			{
-				Log("Trace... [%s]\n", cpuMode ? "THUMB" : "ARM");
-			}
-			else if((!cpuMode && instr == 0xE7F000F1) || (cpuMode && instr == 0xDE01))
-			{
-				debugDump();
-			}
-			else
-			{
-				Log("Unhandled und. except. (%08X)\n", instr);
-				//while(1)swiWaitForVBlank();
-			}
-			
-			exRegs[15] += 4;
-		}*/ //ichfly not reachable
-	}
-
-		//while(1);
-	
-	//Log("%08X\n", exRegs[1]);
-	//Log("%08X\n", exRegs[0]);
-	//while(1);
-	//debugDump();
-	
-	//test mode
-	
-	
-	/*iprintf("test\r\n%x\r\n%x\r\n%x\r\n%x\r\n",BIOSDBG_CP15, BIOSDBG_SPSR, BIOSDBG_R12, BIOSDBG_PC);
-	
-	BIOSDBG_PC = 0;
-	
-	iprintf("%x", BIOSDBG_PC);
-	while(1);*/
-	//test mode end
-	
-	//Log("%08X\n", exRegs[15]);
-	
-	//debugDump();
-	
-//Log("exit");
-
-
-
-	 /*if(cpuMode)Log("%08X %08X\n", exRegs[15],BIOSDBG_SPSR);
-	 else
-	 {
-		Log("%08X %08X\n", exRegs[15],BIOSDBG_SPSR);
-	 }*/
-
+	//}
 	gbaMode();
-	
-	//if(*(u16*)(exRegs[15] - 2) == 0xBE05) while(1);
-			//swiDelay(0x2000000); --
-	//swiDelay(0x20000);
-	
-	//if(exRegs[15] < 0x02000000)while(1) { ; } //i was funny hahahahaha
-
 }
 
 
