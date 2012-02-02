@@ -22,6 +22,8 @@
 
 #include "GBA.h"
 
+#include "ichflysettings.h"
+
 #define VERBOSE_SWI                  1
 #define VERBOSE_UNALIGNED_MEMORY     2
 #define VERBOSE_ILLEGAL_WRITE        4
@@ -32,6 +34,12 @@
 #define VERBOSE_DMA3               128
 #define VERBOSE_UNDEFINED          256
 #define VERBOSE_AGBPRINT           512
+
+#ifdef uppern_read_emulation
+extern FILE* ichflyfilestream;
+#endif
+
+extern int romSize;
 
 extern reg_pair reg[45];
 extern bool ioReadable[0x400];

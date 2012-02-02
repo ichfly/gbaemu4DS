@@ -219,8 +219,21 @@ __attribute__((section(".itcm"))) static inline void updateVC()
   case 10:
   case 11:
   case 12:
+#ifdef uppern_read_emulation
+	if((address&0x1FFFFFC) > romSize)
+	{
+		//iprintf("high word read");
+		fseek (ichflyfilestream , address&0x1FFFFFC , SEEK_SET);
+		fread (&value,1,4,ichflyfilestream);
+	}
+	else
+	{
+		value = READ32LE(((u32 *)&rom[address&0x1FFFFFC]));
+	}
+#else
     value = READ32LE(((u32 *)&rom[address&0x1FFFFFC]));
-    break;    
+#endif
+    break;
   case 13:
     if(cpuEEPROMEnabled)
       // no need to swap this
@@ -379,7 +392,22 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
     if(address == 0x80000c4 || address == 0x80000c6 || address == 0x80000c8)
       value = rtcRead(address);
     else
-      value = READ16LE(((u16 *)&rom[address & 0x1FFFFFE]));
+	{
+#ifdef uppern_read_emulation
+	if((address&0x1FFFFFE) > romSize)
+	{
+		//iprintf("high hword read");
+		fseek (ichflyfilestream , address&0x1FFFFFE , SEEK_SET);
+		fread (&value,1,2,ichflyfilestream);
+	}
+	else
+	{
+		value = READ16LE(((u16 *)&rom[address & 0x1FFFFFE]));
+	}
+#else
+    value = READ16LE(((u16 *)&rom[address & 0x1FFFFFE]));
+#endif
+	}
     break;    
   case 13:
     if(cpuEEPROMEnabled)
@@ -485,7 +513,23 @@ iprintf("r8 %02x\n",address);
   case 10:
   case 11:
   case 12:
-    return rom[address & 0x1FFFFFF];        
+
+#ifdef uppern_read_emulation
+	if((address&0x1FFFFFF) > romSize)
+	{
+		//iprintf("high byte read %08X %08X\r\n", address,romSize);
+		u8 temp = 0;
+		fseek (ichflyfilestream , address&0x1FFFFFF , SEEK_SET);
+		fread (&temp,1,1,ichflyfilestream);
+		return temp;
+	}
+	else
+	{
+		return rom[address & 0x1FFFFFF];
+	}
+#else
+    return rom[address & 0x1FFFFFF];
+#endif        
   case 13:
     if(cpuEEPROMEnabled)
       return eepromRead(address);

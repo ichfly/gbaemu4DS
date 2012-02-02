@@ -18,6 +18,13 @@
 
 #include "GBA.h"
 
+#include "ichflysettings.h"
+
+#ifdef uppern_read_emulation
+FILE* ichflyfilestream;
+#endif
+
+
 #ifdef BKPT_SUPPORT
 int  oldreg[17];
 char oldbuffer[10];

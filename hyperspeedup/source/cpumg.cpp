@@ -632,9 +632,16 @@ void ndsMode()
 #ifndef unsave
 	if(exRegs[15] < 0x02000000 || exRegs[15] > 0x04000000)
 	{
-		Log("gba jumped to an unknown region\n");
-		debugDump();
-		while(1);
+		/*if(exRegs[15] > 0x08000000)//don't know why this land herer but it dose
+		{
+			exRegs[15] = (exRegs[15] & 0x01FFFFFF) + (s32)rom;
+		}
+		else*/
+		{
+			Log("gba jumped to an unknown region\n");
+			debugDump();
+			while(1);
+		}
 	}
 #endif
 	

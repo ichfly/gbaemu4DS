@@ -26,6 +26,7 @@
 extern "C" {
 //#include <png.h> //ichfly todo ganze datei!!!!!!!! realy todo
 }
+#include "ichflysettings.h"
 
 #if 0
 #include "unrarlib.h"
@@ -851,6 +852,7 @@ u8 *utilLoad(const char *file, //ichfly todo
  }
   u8 *image = data;
 
+
   FILE *f = fopen(file, "rb");
 
   if(!f) {
@@ -876,7 +878,11 @@ u8 *utilLoad(const char *file, //ichfly todo
   }
   size_t read = fileSize <= size ? fileSize : size;
   size_t r = fread(image, 1, read, f);
+#ifndef uppern_read_emulation
   fclose(f);
+#else
+  ichflyfilestream = f;
+#endif
 
   if(r != read) {
     systemMessage(MSG_ERROR_READING_IMAGE,

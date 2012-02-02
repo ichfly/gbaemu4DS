@@ -1579,8 +1579,8 @@ int CPULoadRom(const char *szFile,bool extram)
 
 	  //r4iopen(szFile);
 
-	  romSize = 0x02400000 - ((u32)getHeapEnd() + 0x4400 + 0x8000);
-	  rom = (u8 *)(getHeapEnd() + 0x4400/*for the other malloc here*/ + 0x8000/*32K for futur alloc*/);              //rom = (u8 *)0x02180000; //old
+	  romSize = 0x02400000 - ((u32)getHeapEnd() + 0x5000 + 0x7000);
+	  rom = (u8 *)(getHeapEnd() + 0x5000/*for the other malloc here*/ + 0x7000/*28K for futur alloc*/);              //rom = (u8 *)0x02180000; //old
 #endif
   workRAM = (u8*)0x02000000;/*(u8 *)calloc(1, 0x40000);
   if(workRAM == NULL) {
@@ -2375,7 +2375,43 @@ void doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veral
 	{
 		if(s & 0x08000000)
 		{
+#ifdef uppern_read_emulation
+
+			if(((s&0x1FFFFFF) + c*4) > romSize) //slow
+			{
+				//iprintf("highdmaread %08X %08X %08X %08X %08X %X\r\n",s,d,c,si,di,transfer32);
+				if(di == -4 || si == -4)//this can't work the slow way so use the
+				{
+					doDMAslow(s, d, si, di, c, transfer32); //very slow way
+				}
+				if(transfer32)
+				{
+					//doDMAslow(s, d, si, di, c, transfer32);
+					fseek (ichflyfilestream , (s&0x1FFFFFF) , SEEK_SET);
+					//iprintf("seek %08X\r\n",s&0x1FFFFFF);
+					int dkdkdkdk = fread ((void*)d,1,c * 4,ichflyfilestream); // fist is buggy
+					//iprintf("(%08X %08X %08X) ret %08X\r\n",d,c,ichflyfilestream,dkdkdkdk);
+				}
+				else
+				{
+					//iprintf("teeees");
+					//doDMAslow(s, d, si, di, c, transfer32);
+					fseek (ichflyfilestream , (s&0x1FFFFFF) , SEEK_SET);
+					//iprintf("seek %08X\r\n",s&0x1FFFFFF);
+					int dkdkdkdk = fread ((void*)d,1,c * 2,ichflyfilestream);
+					//iprintf("(%08X %08X %08X) ret %08X\r\n",d,c,ichflyfilestream,dkdkdkdk);
+				}
+				//doDMAslow(s, d, si, di, c, transfer32); //very slow way
+				return;
+			}
+			else
+			{
+				s = (u32)(rom +  (s & 0x01FFFFFF));
+			}
+
+#else
 			s = (u32)(rom +  (s & 0x01FFFFFF));
+#endif
 		}
 		while(dmaBusy(3)); // ichfly wait for dma 3
 		DMA3_SRC = s;
