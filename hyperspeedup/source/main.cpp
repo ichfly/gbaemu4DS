@@ -108,7 +108,6 @@ int framenummer;
 
    #define DEFAULT_CACHE_PAGES 16
    #define DEFAULT_SECTORS_PAGE 8
-#include "DSi.h"
 
 #define public
 struct EmulatedSystem emulator;
@@ -623,7 +622,7 @@ char* seloptions [3] = {"save save","show mem","Continue (Beta)"};
 void pausemenue()
 {
 	irqDisable(IRQ_VBLANK);
-	cpupausemode();
+	//cpupausemode(); //don't need that
 	int pressed;
 	int ausgewauhlt = 0;
 	while(1)
@@ -689,9 +688,10 @@ int main(void) {
 	//set the first two banks as background memory and the third as sub background memory
 	//D is not used..if you need a bigger background then you will need to map
 	//more vram banks consecutivly (VRAM A-D are all 0x20000 bytes in size)
-	vramSetPrimaryBanks(	VRAM_A_MAIN_BG_0x06000000, VRAM_B_MAIN_SPRITE, 
-		VRAM_C_SUB_BG , /*VRAM_D_LCD*/ VRAM_D_MAIN_BG_0x06020000); 
+	vramSetPrimaryBanks(	VRAM_A_MAIN_BG_0x06000000/*for gba*/, VRAM_B_MAIN_SPRITE/*for gba sprite*/, 
+		VRAM_C_SUB_BG /*for prints to lowern screan*/ , /*VRAM_D_LCD*/ VRAM_D_MAIN_BG_0x06020000 /*for BG emulation*/); //needed for main emulator
 
+//the other start at 0x06880000 - 0x068A3FFF
 
 	//bg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
 	consoleDemoInit();
@@ -880,30 +880,6 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	}
 	
 
-	
-	
-	/*if(extraram)
-	{
-		int clock = 0;
-		while(1) {
-		iprintf("gbaemu DS by ichfly\n");
-		iprintf("\nSlot-2 ram %s detected\nSize:%d\n",ram_type_string(),ram_size());
-		iprintf("clock:%s\n\n",memoryWaitrealram[clock]);
-		
-		swiWaitForVBlank();
-		iprintf("\x1b[2J");
-		scanKeys();
-		if (keysDown()&KEY_A) break;
-		if (keysDown()&KEY_UP && clock != 7) clock++;
-		if (keysDown()&KEY_DOWN && clock != 0) clock--;
-		}
-		REG_EXMEMCNT = (REG_EXMEMCNT | (clock << 2));
-	}*/
-
-  //systemFrameSkip = frameSkip = 2; 
-  //gbBorderOn = 0;
-
-
 
 
   parseDebug = true;
@@ -912,89 +888,50 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
   //iprintf("%s",szFile);
   //while(1);
     bool failed = false;
-   
+ 
+	iprintf("CPULoadRom...");
+
       failed = !CPULoadRom(szFile,extraram);
 	  
 	  if(failed)
 	  {
-		printf("CPULoadRom failed");
+		printf("failed");
 		while(1);
 	  }
+	  iprintf("OK\n");
 	  	//iprintf("Hello World2!");
        emulator = GBASystem;
 
-      CPUInit(biosPath, useBios,extraram);
+		iprintf("CPUInit\n");
+		CPUInit(biosPath, useBios,extraram);
 	  
 	  	
 
-	  
+	  iprintf("CPUReset\n");
       CPUReset();
-	  
 		  
 
-	  if(savePath[0] != 0)CPUReadBatteryFile(savePath);
-  /*} else {
-    cartridgeType = 0;
-    strcpy(filename, "gnu_stub");
-    rom = (u8 *)malloc(0x2000000);
-    workRAM = (u8 *)calloc(1, 0x40000);
-    bios = (u8 *)calloc(1,0x4000);
-    internalRAM = (u8 *)calloc(1,0x8000);
-    paletteRAM = (u8 *)calloc(1,0x400);
-    vram = (u8 *)calloc(1, 0x20000);
-    oam = (u8 *)calloc(1, 0x400);
-    pix = (u8 *)calloc(1, 4 * 241 * 162);
-    ioMem = (u8 *)calloc(1, 0x400);
-
-    emulator = GBASystem;
-    
-
-int rrrresxfss = 0;
-*/
-
-  //soundInit();
-  
-	
-	
-	//irqSet(IRQ_HBLANK, HblankHandler); //todo
-	
-	//timerStart(0, ClockDivider_1024,  TIMER_FREQ_1024(1),speedtest); // 1 sec
-	
-
-	//irqEnable( IRQ_VBLANK);
-	
-	//irqEnable( IRQ_HBLANK);
-	
+	  if(savePath[0] != 0)
+	  {
+		  iprintf("CPUReadBatteryFile...");
+		  if(CPUReadBatteryFile(savePath))
+		  {
+			iprintf("OK\n");
+		  }
+		  else
+		  {
+			  iprintf("failed\n");
+			  while(1);
+		  }
+	  }
 	
 	
 	gbaHeader_t *gbaGame;
-/*#ifndef TEST_FROM_CARTRIDGE
-	gbaGame = (gbaHeader_t*)GBA_EWRAM;
-	memcpy(GBA_EWRAM, test_gba_bin, test_gba_bin_size);
-#else
-	gbaGame = (gbaHeader_t*)0x8000000;
-#endif*/
 
 	
 	gbaGame = (gbaHeader_t*)rom;
-	
-	
-	
-	//videoSetMode(0);	//not using the main screen
-	//videoSetModeSub(MODE_0_2D | DISPLAY_BG0_ACTIVE);	//sub bg 0 will be used to print text
-	//vramSetBankC(VRAM_C_SUB_BG);
-	
-	
-	
-	//vramSetBankA(VRAM_A_MAIN_BG_0x06000000);
-	
 
-	//BG_PALETTE_SUB[255] = RGB15(31,31,31);	//by default font will be rendered with color 255
-
-	//consoleInit() is a lot more flexible but this gets you up and running quick
-	//consoleInitDefault((u16*)SCREEN_BASE_BLOCK_SUB(31), (u16*)CHAR_BASE_BLOCK_SUB(0), 16);
-
-	//VblankHandler();
+	iprintf("BIOS_RegisterRamReset\n");
 
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu to write to the internalRAM
 
@@ -1002,82 +939,48 @@ int rrrresxfss = 0;
 
 	pu_Enable();
 	
-	iprintf("use emulated bios call to reset but we also use our copy hack\n");
 	
 	//memcopy((void*)0x2000000,(void*)rom, 0x40000);
 	
-	
+	iprintf("dmaCopy\n");
+
 	dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
 	
-	iprintf("dmaCopy is done\n");
-	
+	iprintf("irqinit\n");
 
-	
 	anytimejmpfilter = 0;
 	
 	anytimejmp = (VoidFn)0x3007FFC;
 	
-	iprintf("inited emulated irq system\n");
-	
-	iprintf("enter critical part set VblankHandler switch to gba mode and jump to (%08X)\n\r",rom);
+	iprintf("emulateedbiosstart\n");
 
-	//iprintf("ndsMode %x\n", (u32)rom);
-	
-	//iprintf("gbaInit\n");
-	
 	emulateedbiosstart();
-	//iprintf("a");
 	
+    iprintf("ndsMode\n");
 
-	
-
- 	//iprintf("Current CP15 reg: %08X\n",cpuGetCPSR());
-
-	
 	ndsMode();
+
+    iprintf("gbaInit\n");
 
 	gbaInit();
 
+	iprintf("irqSet\n");
+
 	irqSet(IRQ_VBLANK, VblankHandler);
 
+	iprintf("gbaMode2\n");
+	
 	gbaMode2();
 
 
-	//downgreadcpu(); // break compatibility to PU
-	
-	//switch_to_unprivileged_mode(); //additional init
-		
-	//ndsMode();
-	//iprintf("cpuJump\n");
-	
-	//while(1)swiWaitForVBlank();
-	
-	//swiWaitForVBlank();
-
-	//cpu_ArmJump((u32)0x2000000, 0);
-	
-	//if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-	//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-	
-	//while(1);
-	
-	//printf("test");
+	iprintf("jump to (%08X)\n\r",rom);
 
 	cpu_ArmJumpforstackinit((u32)rom, 0);
 	
 	
-	//cpu_ArmJump((u32)0x02000000, 0);
 	
   
-  while(true) {
-     /* if(debugger && emulator.emuHasDebugger)
-        dbgMain();
-      else*/
-        //emulator.emuMain(emulator.emuCount);
-	  	  	//iprintf("%d\r\n",rrrresxfss);
-			
-		//rrrresxfss++;
-  }
+  while(true);
 
 		 
   return 0;

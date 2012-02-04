@@ -38,8 +38,9 @@
 #include "System.h"
 
 
-
+#ifndef loadindirect
 #include "puzzleorginal_bin.h"
+#endif
 
 
 extern int framenummer;
@@ -67,7 +68,7 @@ bool ichflytest = false;
 #include "GBA.h"
 #include "GBAinline.h"
 #include "Globals.h"
-#include "Gfx.h"
+//#include "Gfx.h" //ichfly not that
 #include "EEprom.h"
 #include "Flash.h"
 #include "Sound.h"
@@ -888,7 +889,7 @@ static bool CPUWriteState(gzFile file)
 
   eepromSaveGame(file);
   flashSaveGame(file);
-  soundSaveGame(file);
+  //soundSaveGame(file);
 
   //cheatsSaveGame(file);
 
@@ -1009,7 +1010,7 @@ static bool CPUReadState(gzFile file)
 
   eepromReadGame(file, version);
   flashReadGame(file, version);
-  soundReadGame(file, version);
+  //soundReadGame(file, version); //ichfly this is not working
   
   if(version > SAVE_GAME_VERSION_1) {
     //cheatsReadGame(file, version);
@@ -1539,45 +1540,11 @@ void CPUCleanUp()
 
 int CPULoadRom(const char *szFile,bool extram)
 {
-  /*if(rom != NULL) {
-    CPUCleanUp();
-  }*/
 
 
   systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
   
 #ifdef loadindirect
-	/*romSize = 0x100000; //test normal 0x2000000 current 1/10 oh no only 2 MB //no more needed default is 2,5 MB
-	
-	int malloctempmulti = 0x80000;
-	
-	while(1) 
-	{
-		iprintf("gbaemu DS by ichfly\n");
-		iprintf("malloc %i multi: %i\n",romSize,malloctempmulti);
-		
-		swiWaitForVBlank(); //ichfly change that
-		iprintf("\x1b[2J");
-		scanKeys();
-		if (keysDown()&KEY_START) break;
-		if (keysDown()&KEY_UP) romSize+= malloctempmulti;
-		if (keysDown()&KEY_DOWN && romSize != 0) romSize-=malloctempmulti;
-		if (keysDown()&KEY_RIGHT) malloctempmulti *= 2;
-		if (keysDown()&KEY_LEFT && malloctempmulti != 1) malloctempmulti /= 2;
-	}
-	rom = (u8*)((u32)((u32)malloc(romSize + 0x1000) >> 12) << 12);
-	*/
-
-	//rom = (u8 *)malloc(romSize + 0x1000); //test normal 0x2000000 current 1/10 oh no only 2 MB
-	
-	
-	//rom = (u8*)(((u32)rom >> 12) << 12) ; //alinged 
-	
-	
-  		/*printf("failed %x",(u32)rom);
-		while(1);*/
-
-	  //r4iopen(szFile);
 
 	  romSize = 0x02400000 - ((u32)getHeapEnd() + 0x5000 + 0x7000);
 	  rom = (u8 *)(getHeapEnd() + 0x5000/*for the other malloc here*/ + 0x7000/*28K for futur alloc*/);              //rom = (u8 *)0x02180000; //old
@@ -1588,11 +1555,10 @@ int CPULoadRom(const char *szFile,bool extram)
                   "WRAM");
     return 0;
   }*/
- #ifdef loadindirect
+#ifdef loadindirect
   u8 *whereToLoad = rom;
   if(cpuIsMultiBoot)
     whereToLoad = workRAM;
-
 		if(!utilLoad(szFile,
 						  utilIsGBAImage,
 						  whereToLoad,
@@ -1600,42 +1566,9 @@ int CPULoadRom(const char *szFile,bool extram)
 		{
 			return 0;
 		}
-						  /*{
-		iprintf("b");
-		free(rom);
-		rom = NULL;
-		free(workRAM);
-		workRAM = NULL;
-		return 0;*/
-		//FILE *f = fopen(szFile, "r");
-		
-		//fseek(f,0,SEEK_END);
-		//int fileSize = ftell(f);
-		//fclose(f);//fseek(f,0,SEEK_SET);
-
-		//f = fopen(szFile, "r");
-		
-		//if(romSize > fileSize) romSize = fileSize;
-		
-		//int ihhtrv = fread((void*)rom, 1, romSize, f);
-		
-		//fclose(f);
-		
-		//iprintf("a %s %x %x %x",szFile,rom, romSize,ihhtrv);
-		
-		
-  //iprintf("c");
-  //}
 #else
 rom = (u8*)puzzleorginal_bin;  //rom = (u8*)puzzleorginal_bin;
 #endif
-  /*u16 *temp = (u16 *)(rom+((romSize+1)&~1));
-  int i;
-  for(i = (romSize+1)&~1; i < 0x2000000; i+=2) {
-    WRITE16LE(temp, (i >> 1) & 0xFFFF);
-    temp++;
-  }*/ //ichfly what the hell i dont understand
-	  	//iprintf("Hello World2!");
 
   bios = (u8 *)calloc(1,0x4000);
   if(bios == NULL) {

@@ -79,7 +79,6 @@ extern "C" void swiHalt(void);
 #include "GBA.h"
 #include "GBAinline.h"
 #include "Globals.h"
-#include "Gfx.h"
 #include "EEprom.h"
 #include "Flash.h"
 #include "Sound.h"

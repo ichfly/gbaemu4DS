@@ -813,43 +813,6 @@ u8 *utilLoad(const char *file, //ichfly todo
              u8 *data,
              int &size,bool extram)
 {
-/*  if(utilIsZipFile(file)) {
-    return utilLoadFromZip(file, accept, data, size);
-  }
-  if(utilIsGzipFile(file)) {
-    return utilLoadGzipFile(file, accept, data, size);
-  }
-#if 0
-  if(utilIsRarFile(file)) {
-    return utilLoadRarFile(file, accept, data, size);
-  }
-#endif
- */ 
- if(extram)
- {
-	ram_lock();
-	FILE *f = fopen(file, "rb");
-	int maxread = 100000;
-	int readed = 100000;
-	int offest = 0;
-	u8 * tempram = (u8 *)malloc(110000);
-	while(maxread == readed)
-	{
-		readed = fread(tempram, 1, maxread, f);
-		ram_unlock();
-		for(int iy = 0; iy <readed / 2 ; iy++)
-		{
-			*(u16 *)(data +offest + 2*iy) = *(u16 *)(tempram + 2*iy);
-		}
-		offest += readed;
-		ram_lock();
-	}
-    size = offest;
-	free(tempram);
-	fclose(f);
-	ram_unlock();
-	return data;
- }
   u8 *image = data;
 
 
@@ -863,33 +826,39 @@ u8 *utilLoad(const char *file, //ichfly todo
   fseek(f,0,SEEK_END);
   int fileSize = ftell(f);
   fseek(f,0,SEEK_SET);
-  if(size == 0)
-    size = fileSize;
 
-  if(image == NULL) {
-    image = (u8 *)malloc(utilGetSize(size));
-    if(image == NULL) {
-      systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
-                    "data");
-      fclose(f);
-      return NULL;
-    }
-    size = fileSize;
-  }
   size_t read = fileSize <= size ? fileSize : size;
-  size_t r = fread(image, 1, read, f);
+
+
+  size_t r= 0x80000;
+
+  //workaround read
+  /*int seek = 0;
+  while(r == 0x80000)
+  {
+	fseek(f,seek,SEEK_SET);
+	if(read > 0x80000)r = fread(image, 1, 0x80000, f); //512 KByte chucks
+	else r = fread(image, 1, read, f);
+	read -= r;
+	image += r;
+	seek += r;
+	fclose(f);
+	f = fopen(file, "rb"); //close and open
+  }*/
+
+	r = fread(image, 1, read, f);
+
+
 #ifndef uppern_read_emulation
   fclose(f);
 #else
   ichflyfilestream = f;
 #endif
 
-  if(r != read) {
+  if(read != read) {
     systemMessage(MSG_ERROR_READING_IMAGE,
                   N_("Error reading image %s"), file);
-    if(data == NULL)
-      free(image);
-    return NULL;
+	while(1);
   }  
 
   size = fileSize;
