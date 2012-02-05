@@ -135,6 +135,8 @@ char* memoryWaitrealram[8] =
 
 
 
+extern "C" void IntrMain();
+
 
 extern "C" void testasm(u32* feld);
 extern "C" void cpu_SetCP15Cnt(u32 v);
@@ -719,6 +721,17 @@ if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0
 		swiWaitForVBlank();
 	}
 }
+else
+{	
+	//antysoftreset
+	if(*(u32*)((u8*)(IntrMain) + 0x18) == 0xE51FF004)
+	{
+		int oldIME = enterCriticalSection();
+		*(u32*)((u8*)(IntrMain) + 0x18) = 0xE14F0000;
+		*(u32*)((u8*)(IntrMain) + 0x1C) = 0xE92D5002;
+		leaveCriticalSection(oldIME);
+	}
+}
 
 
 /*	iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
@@ -726,15 +739,15 @@ malloc(0x4000);
 iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	while(1);*/ //test getHeapEnd() is the needed thing
 
-	iprintf("Init Fat...\n");
+	iprintf("Init Fat...");
     
 
 
 
     if(fatInitDefault()){
-        iprintf("Fat OK.\n");
+        iprintf("OK\n");
     }else{
-        iprintf("Fat Fail.\n");
+        iprintf("failed\n");
         int i = 0;
 		while(i< 300)
 		{

@@ -62,7 +62,7 @@ typedef struct
 
 
 
-char* seloptionsshowmem [5] = {"dump ram","dump gba ram","show nds ram(todo)","show gba ram(todo)","exit"};
+char* seloptionsshowmem [6] = {"dump ram","dump gba ram","show nds ram(todo)","show gba ram(todo)","cram dump","exit"};
 
 void show_mem()
 {
@@ -73,7 +73,7 @@ void show_mem()
 		iprintf("\x1b[2J");
 		iprintf("show mem\n");
 		iprintf ("--------------------------------");
-		for(int i = 0; i < 5; i++)
+		for(int i = 0; i < 6; i++)
 		{
 			if(i == ausgewauhlt) iprintf("->");
 			else iprintf("  ");
@@ -119,10 +119,45 @@ void show_mem()
 				case 3:
 					break;
 				case 4:
+					{
+							int src = 0x023F0000; 
+							int srctempmulti = 0x80000;
+							while(1) {		
+								iprintf("src %08X multi: %08X\n",src,srctempmulti);
+								if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+								while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+								scanKeys();		
+								if (keysDown()&KEY_START) break;
+								if (keysDown()&KEY_UP) src+= srctempmulti;
+								if (keysDown()&KEY_DOWN && src != 0) src-=srctempmulti;
+								if (keysDown()&KEY_RIGHT) srctempmulti *= 2;
+								if (keysDown()&KEY_LEFT && srctempmulti != 1) srctempmulti /= 2;
+								iprintf("\x1b[2J");
+							}
+							int size = 0x10000; 
+							int sizetempmulti = 0x10000;
+							while(1) {		
+								iprintf("size %08X multi: %08X\n",size,sizetempmulti);
+								iprintf("\x1b[2J");
+								scanKeys();		
+								if (keysDown()&KEY_START) break;
+								if (keysDown()&KEY_UP) size+= sizetempmulti;
+								if (keysDown()&KEY_DOWN && size != 0) size-=sizetempmulti;
+								if (keysDown()&KEY_RIGHT) sizetempmulti *= 2;
+								if (keysDown()&KEY_LEFT && sizetempmulti != 1) sizetempmulti /= 2;
+								if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+								while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+							}
+							file = fopen("fat:/cram_dump.bin", "wb");
+							fwrite((u8*)(src), 1, size, file);
+							fclose(file);
+					}
+					break;
+				case 5:
 					return; //and return
 				}
 		}
-		if (pressed&KEY_DOWN && ausgewauhlt != 4){ ausgewauhlt++;}
+		if (pressed&KEY_DOWN && ausgewauhlt != 5){ ausgewauhlt++;}
 		if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
 
 	}
