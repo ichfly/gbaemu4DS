@@ -177,6 +177,7 @@ __attribute__((section(".itcm"))) static inline void updateVC()
   
 	if(address > 0x40000FF && address < 0x4000111)
 	{
+		//todo timer shift
 		value = *(u32 *)(address);
 		break;
 	}
@@ -185,7 +186,8 @@ __attribute__((section(".itcm"))) static inline void updateVC()
 	{
 		updateVC();
 	}
-		if(address == 0x4000202)//ichfly update
+
+	if((address & ~0x3) == 0x4000200)//ichfly update
 	{
 		IF = (REG_IF & 0x3FFF & ~(0x1 & anytimejmpfilter)); //VBlanc
 		UPDATE_REG(0x202, IF);
@@ -332,8 +334,35 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
   
 	if(address > 0x40000FF && address < 0x4000111)
 	{
-		value = *(u16 *)(address);
-		break;
+		
+		if((address&0x2) == 0)
+		{
+			if(ioMem[address & 0x3fe] & 0x8000)
+			{
+				/*if((ioMem[(address & 0x3fe) + 0x2] & 0x3) == 0)
+				{
+					value = (*(u16 *)(address)) << 5;
+				}
+				if((ioMem[(address & 0x3fe) + 0x2] & 0x3) == 1)
+				{
+					value = (*(u16 *)(address)) << 1;
+				}
+				if((ioMem[(address & 0x3fe) + 0x2] & 0x3) == 2)
+				{
+					value = (*(u16 *)(address)) << 1;
+				}
+				if((ioMem[(address & 0x3fe) + 0x2] & 0x3) == 3)
+				{
+					value = *(u16 *)(address); //todo timer shift
+				}*/
+				value = ((*(u16 *)(address)) >> 1) | 0x8000;
+			}
+			else
+			{
+				value = (*(u16 *)(address)) >> 1;
+			}
+			return value;
+		}
 	}
   
 	if(address > 0x4000003 && address < 0x4000008)//ichfly update
@@ -349,21 +378,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 	
     if((address < 0x4000400) && ioReadable[address & 0x3fe])
     {
-      value =  READ16LE(((u16 *)&ioMem[address & 0x3fe]));
-      if (((address & 0x3fe)>0xFF) && ((address & 0x3fe)<0x10E))
-      {
-        if (((address & 0x3fe) == 0x100) && timer0On)
-          value = 0xFFFF - ((timer0Ticks-cpuTotalTicks) >> timer0ClockReload);
-        else
-        if (((address & 0x3fe) == 0x104) && timer1On && !(TM1CNT & 4))
-          value = 0xFFFF - ((timer1Ticks-cpuTotalTicks) >> timer1ClockReload);
-        else
-        if (((address & 0x3fe) == 0x108) && timer2On && !(TM2CNT & 4))
-          value = 0xFFFF - ((timer2Ticks-cpuTotalTicks) >> timer2ClockReload);
-        else
-        if (((address & 0x3fe) == 0x10C) && timer3On && !(TM3CNT & 4))
-          value = 0xFFFF - ((timer3Ticks-cpuTotalTicks) >> timer3ClockReload);
-      }
+		value =  READ16LE(((u16 *)&ioMem[address & 0x3fe]));
     }
     else goto unreadable;
     break;
@@ -482,6 +497,7 @@ iprintf("r8 %02x\n",address);
   
 	if(address > 0x40000FF && address < 0x4000111)
 	{
+		//todo timer shift
 		return *(u8 *)(address);
 	}
   

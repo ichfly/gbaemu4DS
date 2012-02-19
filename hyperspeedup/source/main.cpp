@@ -9,12 +9,10 @@
 #include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
-#include "unzip.h"
 #include "Util.h"
 #include "getopt.h"
 #include "System.h"
 #include <fat.h>
-#include "ram.h"
 #include <dirent.h>
 
 #include "cpumg.h"
@@ -615,7 +613,7 @@ void VblankHandler(void) {
 
 
 
-
+bool gbamode = false;
 
 
 
@@ -673,13 +671,26 @@ void pausemenue()
 
 }
 
-
+/*void arm7debugMsgHandler(int bytes, void *user_data)
+{
+	//ndsMode();
+	u8 msg[255]; //max 255
+	iprintf("enter");
+	fifoGetDatamsg(FIFO_USER_02, bytes, msg);
+	iprintf((char*)msg);
+	iprintf("exit");
+	//if(gbamode)gbaMode2();
+}*/
 
 //---------------------------------------------------------------------------------
 int main(void) {
 
   biosPath[0] = 0;
   savePath[0] = 0;
+
+
+
+
 
 //---------------------------------------------------------------------------------
 	//set the mode for 2 text layers and two extended background layers
@@ -700,7 +711,8 @@ int main(void) {
 
 	powerOff(POWER_3D_CORE | POWER_MATRIX); //3D use power so that is not needed
 
-	soundDisable(); //sound use power
+	soundEnable(); //sound finaly
+	//fifoSetDatamsgHandler(FIFO_USER_02, arm7debugMsgHandler, 0);
 
 
 
@@ -982,11 +994,15 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	irqSet(IRQ_VBLANK, VblankHandler);
 
 	iprintf("gbaMode2\n");
+
+gbamode = true;
 	
 	gbaMode2();
 
 
 	iprintf("jump to (%08X)\n\r",rom);
+
+	iprintf("\x1b[2J"); //reset
 
 	cpu_ArmJumpforstackinit((u32)rom, 0);
 	

@@ -4,12 +4,10 @@
 #include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
-#include "unzip.h"
 #include "Util.h"
 #include "getopt.h"
 #include "System.h"
 #include <fat.h>
-#include "ram.h"
 #include <dirent.h>
 
 #include "cpumg.h"

@@ -20,8 +20,6 @@
 #ifndef VBA_SYSTEM_H
 #define VBA_SYSTEM_H
 
-#include "unzip.h"
-
 #include <stdio.h> //ichfly
 #include <stdlib.h>
 #include <nds/memory.h>//#include <memory.h> ichfly

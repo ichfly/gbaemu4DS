@@ -614,31 +614,6 @@ int disThumb(u32 offset, char *dest, int flags){
         *dest++ = '$';
         dest = addHex(dest, 32, (offset&0xfffffffc)+4+((opcode&0xff)<<2));
         break;
-      case 'J':
-        {
-          u32 value = debuggerReadMemory((offset&0xfffffffc)+4+
-                                         ((opcode & 0xff)<<2));
-          *dest++ = '$';
-          dest = addHex(dest, 32, value);
-          char *s = elfGetAddressSymbol(value);
-          if(*s) {
-            *dest++ = ' ';
-            dest = addStr(dest, s);
-          }
-        }
-        break;
-      case 'K':
-        {
-          u32 value = (offset&0xfffffffc)+4+((opcode & 0xff)<<2);
-          *dest++ = '$';
-          dest = addHex(dest, 32, value);
-          char *s = elfGetAddressSymbol(value);
-          if(*s) {
-            *dest++ = ' ';
-            dest = addStr(dest, s);
-          }          
-        }
-        break;
       case 'b':
         if (opcode&(1<<10))
           *dest++ = 'b';
@@ -712,25 +687,6 @@ int disThumb(u32 offset, char *dest, int flags){
             add |= 0xfffff800;
           add <<= 1;
           dest = addHex(dest, 32, offset+4+add);
-        }
-        break;
-      case 'A':
-        {
-          int nopcode = debuggerReadHalfWord(offset+2);
-          int add = opcode&0x7ff;
-          if (add&0x400)
-            add |= 0xfff800;
-          add = (add<<12)|((nopcode&0x7ff)<<1);
-          *dest++ = '$';
-          dest = addHex(dest,32, offset+4+add);
-          char *s = elfGetAddressSymbol(offset+4+add);
-          if(*s) {
-            *dest++ = ' ';
-            *dest++ = '(';
-            dest = addStr(dest, s);
-            *dest++ = ')';
-          }
-          ret = 4;
         }
         break;
       }

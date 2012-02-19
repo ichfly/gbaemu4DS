@@ -168,7 +168,6 @@ got_over_gba_handler:
 inter_swi:
 
 
-
 	@ change the PU to nds mode
 	ldr	SP,=0x33333333	@ see cpumg.cpp for meanings protections
 	mcr	p15, 0, SP, c5, c0, 2
@@ -264,10 +263,6 @@ inter_data:
 	ldr	SP,=0x33333333	@ see cpumg.cpp for meanings protections
 	mcr	p15, 0, SP, c5, c0, 2
 
-
-
-	
-	@ichfly my code
 	
 	ldr	SP, =exRegs
 
@@ -352,7 +347,9 @@ inter_data:
 	ldr	SP, [r12]
 	
 	mcr	p15, 0, SP, c5, c0, 2	
-	
+
+
+
 	@restore r0-r12 easy
 	ldr	lr, =exRegs
 	ldmia	lr, {r0-r12}

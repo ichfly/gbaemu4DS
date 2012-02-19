@@ -40,11 +40,6 @@ extern "C" {
 #include "Globals.h"
 #include "RTC.h"
 #include "Port.h"
-#include "ram.h"
-
-extern "C" {
-#include "memgzio.h"
-}
 
 #ifndef _MSC_VER
 #define _stricmp strcasecmp

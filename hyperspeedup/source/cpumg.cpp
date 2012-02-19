@@ -2,11 +2,9 @@
 #include <stdio.h>
 
 #include <filesystem.h>
-#include "unzip.h"
 #include "getopt.h"
 #include "System.h"
 #include <fat.h>
-#include "ram.h"
 #include <dirent.h>
 
 #include <stdio.h>
@@ -34,12 +32,10 @@ extern "C" u32 cpu_GetCP15Cnt();
 #include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
-#include "unzip.h"
 #include "Util.h"
 #include "getopt.h"
 #include "System.h"
 #include <fat.h>
-#include "ram.h"
 #include <dirent.h>
 
 #include "cpumg.h"
@@ -84,7 +80,6 @@ extern "C" void swiHalt(void);
 #include "Sound.h"
 #include "Sram.h"
 #include "bios.h"
-#include "unzip.h"
 #include "Cheats.h"
 #include "NLS.h"
 #include "elf.h"
@@ -448,10 +443,10 @@ void BIOScall(int op,  s32 *R)
 		BIOS_Diff16bitUnFilter();
 		break;
 	  case 0x19:
-	#ifdef DEV_VERSION
+	//#ifdef DEV_VERSION
 		  Log("SoundBiasSet: 0x%08x \n",
 			  R[0]);      
-	#endif    
+	//#endif    
 		//if(reg[0].I) //ichfly sound todo
 		  //systemSoundPause(); //ichfly sound todo
 		//else //ichfly sound todo

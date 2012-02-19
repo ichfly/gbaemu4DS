@@ -35,7 +35,6 @@ extern "C" void swiHalt(void);
 #include "Sound.h"
 #include "Sram.h"
 #include "bios.h"
-#include "unzip.h"
 #include "Cheats.h"
 #include "NLS.h"
 #include "elf.h"
