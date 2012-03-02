@@ -7,6 +7,8 @@
 
 
 
+#define arm9advsound
+
 
 
 #define patch_VERSION //non patch Version no more works

@@ -27,6 +27,7 @@
 
 #include <nds.h>
 
+#include "arm7sound.h"
 
 #include "main.h"
 
@@ -404,7 +405,10 @@ void VblankHandler(void) {
 		//*(volatile u32*)0x4000214 = 0x1;
 		//while(1);
 	
-	
+	  /*fifoSendValue32(FIFO_USER_01,0x80000000); //request data
+	  fifoSendValue32(FIFO_USER_01,0x80000000); //dummy*/
+
+
 	//iprintf("DISPCNT %x\r\n",DISPCNT);
 
 	
@@ -415,10 +419,20 @@ void VblankHandler(void) {
 	
 	if(framewtf == frameskip)
 	{
+		//REG_IPC_FIFO_TX = 0x80000000;
+		//REG_IPC_FIFO_TX = 0x5B468E37;
+	  //iprintf("enter");
+		/*u8 msg[255]; //max 255
+		//iprintf("enter");
+		fifoGetDatamsg(FIFO_USER_02, 100, msg);
+		iprintf((char*)msg);*/
+		//iprintf("exit");
 		while(dmaBusy(3)); // ichfly wait for dma 3
 //#ifndef public
 		//iprintf("DISPCNT %x %x\r\n",DISPCNT,REG_DISPCNT);
 //#endif
+
+
 		framewtf = 0;
 		//iprintf("DISPCNT2fly %x %x\r\n",&DISPCNT,workaroundread16((u16*)&DISPCNT));
 		/*for(int iy = 0; iy <0x200 ; iy++)
@@ -594,8 +608,22 @@ void VblankHandler(void) {
 		}
 		else {ignorenextY -= 1;}
 	}
-              P1 = 0x03FF ^ (joy & 0x3FF);             
-              UPDATE_REG(0x130, P1);
+    P1 = 0x03FF ^ (joy & 0x3FF);             
+    UPDATE_REG(0x130, P1);
+
+	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu to write to the internalRAM
+
+
+	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))
+	{
+		u32 temprx = REG_IPC_FIFO_RX;
+		iprintf("%08X %08X\r\n",temprx,*(u32*)temprx);
+	}
+
+	pu_Enable();
+	
+	
+	
 	//iprintf("test"); //sorry no write here
 	//*(u32*)0x2003000 = *(u32*)0x2003000 + 1;
 	/*if(IME & 1 && IE & 1)
@@ -638,10 +666,14 @@ void pausemenue()
 			iprintf("\n");
 		}
 		do {
-			if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-			while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-			scanKeys();
-			pressed = (keysDownRepeat()& ~0xFC00);
+			for(int asdlkjalksjdf = 0; asdlkjalksjdf < 60;asdlkjalksjdf++)
+			{
+				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+			}
+			//scanKeys();
+			//pressed = (keysDownRepeat()& ~0xFC00);
+			pressed = (~REG_KEYINPUT&0x3ff);
 		} while (!pressed); //no communication here with arm7 so no more update
 		//iprintf("%x",ausgewauhlt);
 		if (pressed&KEY_A)
@@ -704,6 +736,13 @@ int main(void) {
 	vramSetPrimaryBanks(	VRAM_A_MAIN_BG_0x06000000/*for gba*/, VRAM_B_MAIN_SPRITE/*for gba sprite*/, 
 		VRAM_C_SUB_BG /*for prints to lowern screan*/ , /*VRAM_D_LCD*/ VRAM_D_MAIN_BG_0x06020000 /*for BG emulation*/); //needed for main emulator
 
+
+
+#ifdef arm9advsound
+	irqSet(IRQ_IPC_SYNC,arm7dmareq);
+	irqEnable(IRQ_IPC_SYNC);
+#endif
+
 //the other start at 0x06880000 - 0x068A3FFF
 
 	//bg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
@@ -711,7 +750,7 @@ int main(void) {
 
 	powerOff(POWER_3D_CORE | POWER_MATRIX); //3D use power so that is not needed
 
-	soundEnable(); //sound finaly
+	//soundEnable(); //sound finaly
 	//fifoSetDatamsgHandler(FIFO_USER_02, arm7debugMsgHandler, 0);
 
 
@@ -742,9 +781,26 @@ else
 		*(u32*)((u8*)(IntrMain) + 0x18) = 0xE14F0000;
 		*(u32*)((u8*)(IntrMain) + 0x1C) = 0xE92D5002;
 		leaveCriticalSection(oldIME);
+
+
+	  //send seed patch
+	  //fifoSendValue32(FIFO_USER_01,0x40000000);
+	  //fifoSendValue32(FIFO_USER_01,0xAF8CA2B8);
+
+
 	}
 }
 
+//test
+
+/*REG_IPC_FIFO_TX = 0;
+while(true)
+{
+	int i = REG_IPC_FIFO_RX;
+	iprintf("%08X\r\n",i);
+	REG_IPC_FIFO_TX = i;
+
+}*/
 
 /*	iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 malloc(0x4000);
@@ -878,34 +934,42 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	
 	//sprintf(szFile,"%s","nitro:/puzzle.gba"); //ichfly test
 	
-	scanKeys();
+	/*scanKeys();
 
 	while(keysDownRepeat()&KEY_A)
 	{
 		scanKeys();
 		swiWaitForVBlank();
-	}
-	
-	
+	}*/
+
+		iprintf("\x1b[2J");
+			for(int asdlkjalksjdf = 0; asdlkjalksjdf < 20;asdlkjalksjdf++)
+			{
+				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+			}
+
 	bool extraram =false; 
 	//if(!REG_DSIMODE) extraram = ram_init(DETECT_RAM); 
 	//extraram = true; //testtest
 	while(1) 
 	{
+		iprintf("\x1b[2J");
 		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
 		iprintf("fps 60/%i\n",frameskip + 1);
-		
-		swiWaitForVBlank();
-		iprintf("\x1b[2J");
-		scanKeys();
-		int isdaas = keysDownRepeat();
+		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+		//swiWaitForVBlank();
+		//scanKeys();
+		int isdaas = (~REG_KEYINPUT&0x3ff);
 		if (isdaas&KEY_A) break;
 		if (isdaas&KEY_UP) frameskip++;
 		if (isdaas&KEY_DOWN && frameskip != 0) frameskip--;
 	}
+	iprintf("\x1b[2J");
 	
 
-
+  iprintf("\x1b[2J");
 
   parseDebug = true;
 
@@ -992,6 +1056,8 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	iprintf("irqSet\n");
 
 	irqSet(IRQ_VBLANK, VblankHandler);
+
+	irqEnable(IRQ_VBLANK);
 
 	iprintf("gbaMode2\n");
 

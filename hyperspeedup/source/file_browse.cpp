@@ -251,9 +251,16 @@ void browseForFile (const string& extension) {
 		
 		// Power saving loop. Only poll the keys once per frame and sleep the CPU if there is nothing else to do
 		do {
-			scanKeys();
-			pressed = keysDownRepeat();
-			swiWaitForVBlank();
+			//scanKeys();
+			pressed = (~REG_KEYINPUT&0x3ff);
+			//iprintf("%08X",pressed);
+			//swiWaitForVBlank(); //is not working
+			for(int asdlkjalksjdf = 0; asdlkjalksjdf < 10;asdlkjalksjdf++)
+			{
+				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+			}
+			
 		} while (!pressed);
 	
 		if (pressed & KEY_UP) 		fileOffset -= 1;
@@ -290,14 +297,6 @@ void browseForFile (const string& extension) {
 					//ichfly some sort wtf
 
 
-
-
-
-
-
-
-
-
 				int ausgewauhlt = 0;
 				int pressed;
 	bool nichtausgewauhlt = true;
@@ -324,9 +323,16 @@ void browseForFile (const string& extension) {
 		{
 			// Power saving loop. Only poll the keys once per frame and sleep the CPU if there is nothing else to do
 			do {
-			swiWaitForVBlank();
-			scanKeys();
-			pressed = keysDownRepeat();
+			//swiWaitForVBlank();
+			//scanKeys();
+			//pressed = keysDownRepeat();
+			for(int asdlkjalksjdf = 0; asdlkjalksjdf < 10;asdlkjalksjdf++)
+			{
+				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+			}
+			pressed = (~REG_KEYINPUT&0x3ff);
+			//iprintf("%08X",pressed);
 			} while (!pressed);
 
 			if (pressed&KEY_A) //es gibt einen grund warum hier kein case benutzt wird !!!

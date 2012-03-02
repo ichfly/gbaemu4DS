@@ -2059,8 +2059,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef soundwriteprint
 	  iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	  fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	  fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000);
+	  REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 	  UPDATE_REG(address,value);
     break;
   case 0xB0:
@@ -2102,8 +2102,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef dmawriteprint
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
     
 	DM1SAD_L = value;
     UPDATE_REG(0xBC, DM1SAD_L);
@@ -2112,8 +2112,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef dmawriteprint
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
     DM1SAD_H = value & 0x0FFF;
     UPDATE_REG(0xBE, DM1SAD_H);
@@ -2122,8 +2122,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef dmawriteprint
     iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 	DM1DAD_L = value;
     UPDATE_REG(0xC0, DM1DAD_L);
@@ -2132,8 +2132,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef dmawriteprint
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
     DM1DAD_H = value & 0x07FF;
     UPDATE_REG(0xC2, DM1DAD_H);
@@ -2142,8 +2142,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef dmawriteprint
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 	DM1CNT_L = value & 0x3FFF;
     UPDATE_REG(0xC4, 0);
@@ -2152,8 +2152,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef dmawriteprint
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 	  {
       bool start = ((DM1CNT_H ^ value) & 0x8000) ? true : false;
@@ -2173,8 +2173,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef dmawriteprint
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 	DM2SAD_L = value;
     UPDATE_REG(0xC8, DM2SAD_L);
@@ -2183,8 +2183,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef dmawriteprint
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 	DM2SAD_H = value & 0x0FFF;
     UPDATE_REG(0xCA, DM2SAD_H);
@@ -2193,8 +2193,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef dmawriteprint
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 	DM2DAD_L = value;
     UPDATE_REG(0xCC, DM2DAD_L);
@@ -2203,8 +2203,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 #ifdef dmawriteprint
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 	DM2DAD_H = value & 0x07FF;
     UPDATE_REG(0xCE, DM2DAD_H);
@@ -2214,8 +2214,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 
 	DM2CNT_L = value & 0x3FFF;
@@ -2226,8 +2226,8 @@ void CPUUpdateRegister(u32 address, u16 value)
 
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 
 	  {
@@ -2285,8 +2285,8 @@ void CPUUpdateRegister(u32 address, u16 value)
  case 0x100:
     timer0Reload = value; //ichfly
 	iprintf("ur %04x to %08x\r\n",value,address);
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 
 	UPDATE_REG(0x100, value);
@@ -2298,8 +2298,8 @@ void CPUUpdateRegister(u32 address, u16 value)
     //cpuNextEvent = cpuTotalTicks;
 	UPDATE_REG(0x102, value);
 	iprintf("ur %04x to %08x\r\n",value,address);
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 	/*if(timer0Reload & 0x8000)
 	{
 		if((value & 0x3) == 0)
@@ -2332,16 +2332,16 @@ void CPUUpdateRegister(u32 address, u16 value)
   case 0x104:
     timer1Reload = value;
 	iprintf("ur %04x to %08x\r\n",value,address);
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
 	UPDATE_REG(0x104, value);
 	*(u16 *)(0x4000104) = value;
 	break;
   case 0x106:
 	iprintf("ur %04x to %08x\r\n",value,address);
-	fifoSendValue32(FIFO_USER_01,(address | 0x80000000));
-	fifoSendValue32(FIFO_USER_01,(value | 0x80000000)); //faster in case we send a 0
+	REG_IPC_FIFO_TX = (address | 0x80000000);
+	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
     timer1Value = value;
     //timerOnOffDelay|=2;
@@ -2748,8 +2748,8 @@ void CPUWriteByte(u32 address, u8 b)
       case 0x9f:      
 	//soundEvent(address&0xFF, b);  //ichfly disable sound
 		  iprintf("b %02x to %08x\r\n",b,address);
-		  fifoSendValue32(FIFO_USER_01,(address | 0x40000000));
-		  fifoSendValue32(FIFO_USER_01,(b | 0x80000000)); //faster in case we send a 0
+		  REG_IPC_FIFO_TX = (address | 0x40000000);
+		  REG_IPC_FIFO_TX = (b | 0x80000000); //faster in case we send a 0
 	break;
       default:
 	/*if((0x4000060 > address && address > 0x4000008) || (address > 0x40000FF && address < 0x4000110))
