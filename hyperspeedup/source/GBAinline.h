@@ -189,7 +189,7 @@ __attribute__((section(".itcm"))) static inline void updateVC()
 
 	if((address & ~0x3) == 0x4000200)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF & ~(0x1 & anytimejmpfilter)); //VBlanc
+		IF = ((REG_IF & 0x3FFF) |IF_VBl); //VBlanc
 		UPDATE_REG(0x202, IF);
 	}
     if((address < 0x4000400) && ioReadable[address & 0x3fc]) {
@@ -372,7 +372,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 	
 	if(address == 0x4000202)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF & ~(0x1 & anytimejmpfilter)); //VBlanc
+		IF = ((REG_IF & 0x3FFF) |IF_VBl); //VBlanc
 		UPDATE_REG(0x202, IF);
 	}
 	
@@ -507,7 +507,7 @@ iprintf("r8 %02x\n",address);
 	}
 	if(address == 0x4000202 || address == 0x4000203)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF & ~(0x1 & anytimejmpfilter)); //VBlanc
+		IF = ((REG_IF & 0x3FFF) |IF_VBl); //VBlanc
 		UPDATE_REG(0x202, IF);
 	}
     if((address < 0x4000400) && ioReadable[address & 0x3ff])

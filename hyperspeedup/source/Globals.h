@@ -41,6 +41,8 @@ extern FILE* ichflyfilestream;
 
 extern int romSize;
 
+extern u8 IF_VBl;
+
 extern reg_pair reg[45];
 extern bool ioReadable[0x400];
 extern bool N_FLAG;

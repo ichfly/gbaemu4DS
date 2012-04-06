@@ -99,6 +99,10 @@ u8  CPUReadByte (u32 addr);
 
 extern "C" void swiIntrWaitc();
 
+
+extern "C" u32 savedsp;
+extern "C" u32 savedlr;
+
 //#define DEV_VERSION
 
 
@@ -207,8 +211,9 @@ void debugDump()
 
 extern "C" void failcpphandler()
 {
-	iprintf("something failed\r\n");
+	/*iprintf("something failed\r\n");
 	debugDump();
+	Log("SSP %08x SLR %08x\n",savedsp,savedlr);*/
 	while(1);
 }
 
@@ -258,6 +263,7 @@ void gbaInit()
 	Region 1 - System ROM 0xFFFF0000 PAGE_32K   
 	--> Standard Palettes 0x05000000  (2KByte DS) (1KByte gba)  PAGE_16M
 	Region 2 - alternate vector base 0x00000000 PAGE_4K
+	--> more size PAGE_32K
 	Region 3 - DS Accessory (GBA Cart) / DSi switchable iwram 0x08000000 PAGE_16M (0x03000000 PAGE_8M DSi) 
 	--> Shared WRAM (32KByte) 0x03000000 PU_PAGE_16M
 	Region 4 - ITCM 0x01000000 PAGE_32K
@@ -307,12 +313,11 @@ void gbaInit()
 	//pu_SetRegion(2, 0x05000000 | PU_PAGE_64M | 1);
 	//pu_SetRegion(3, 0x00000000 | PU_PAGE_32M | 1);
 	//pu_SetRegion(4, 0x02040000 | PU_PAGE_8M | 1);
+	//pu_SetRegion(2, 0x00000000 | PU_PAGE_32K | 1);
 
 
 
-
-
-	iprintf("gbainit done\n\r");
+	//iprintf("gbainit done\n\r");
 	
 }
 
@@ -328,7 +333,7 @@ void gbaswieulatedbios()
 	u16 tempforwtf = *(u16*)(exRegs[15] - 2);
 	BIOScall(tempforwtf,  exRegs);
 
-		gbaMode();
+	gbaMode();
 	//while(1);
 }
 
@@ -623,6 +628,8 @@ void ndsMode()
 	
 	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80; //sorry but this must be done
 	
+	Log("%08X\r\n",exRegs[15]);
+
 #ifndef unsave
 	if(exRegs[15] < 0x02000000 || exRegs[15] > 0x04000000)
 	{

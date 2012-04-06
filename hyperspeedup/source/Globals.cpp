@@ -30,6 +30,8 @@ int  oldreg[17];
 char oldbuffer[10];
 #endif
 
+
+u8 IF_VBl = 0;
 reg_pair reg[45];
 memoryMap map[256];
 bool ioReadable[0x400];

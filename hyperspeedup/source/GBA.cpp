@@ -1505,7 +1505,7 @@ void CPUCheckDMA(int reason, int dmamask)
         int count = (DM0CNT_L ? DM0CNT_L : 0x4000) << 1;
         if(DM0CNT_H & 0x0400)
           count <<= 1;
-        log("DMA0: s=%08x d=%08x c=%04x count=%08x\n", dma0Source, dma0Dest, 
+        iprintf("DMA0: s=%08x d=%08x c=%04x count=%08x\n", dma0Source, dma0Dest, 
             DM0CNT_H,
             count);
       }
@@ -1573,7 +1573,7 @@ void CPUCheckDMA(int reason, int dmamask)
           int count = (DM1CNT_L ? DM1CNT_L : 0x4000) << 1;
           if(DM1CNT_H & 0x0400)
             count <<= 1;
-          log("DMA1: s=%08x d=%08x c=%04x count=%08x\n", dma1Source, dma1Dest,
+          iprintf("DMA1: s=%08x d=%08x c=%04x count=%08x\n", dma1Source, dma1Dest,
               DM1CNT_H,
               count);
         }
@@ -1643,7 +1643,7 @@ void CPUCheckDMA(int reason, int dmamask)
           int count = (DM2CNT_L ? DM2CNT_L : 0x4000) << 1;
           if(DM2CNT_H & 0x0400)
             count <<= 1;
-          log("DMA2: s=%08x d=%08x c=%04x count=%08x\n", dma2Source, dma2Dest,
+          iprintf("DMA2: s=%08x d=%08x c=%04x count=%08x\n", dma2Source, dma2Dest,
               DM2CNT_H,
               count);
         }
@@ -1701,7 +1701,7 @@ void CPUCheckDMA(int reason, int dmamask)
         int count = (DM3CNT_L ? DM3CNT_L : 0x10000) << 1;
         if(DM3CNT_H & 0x0400)
           count <<= 1;
-        log("DMA3: s=%08x d=%08x c=%04x count=%08x\n", dma3Source, dma3Dest,
+        iprintf("DMA3: s=%08x d=%08x c=%04x count=%08x\n", dma3Source, dma3Dest,
             DM3CNT_H,
             count);
       }
@@ -2489,6 +2489,7 @@ void CPUUpdateRegister(u32 address, u16 value)
     break;
   case 0x202:
 	REG_IF = value;
+	if(value & 1)IF_VBl = 0;
 	//IF = REG_IF;
     //IF ^= (value & IF);
     //UPDATE_REG(0x202, IF); //ichfly update at read
@@ -2747,7 +2748,9 @@ void CPUWriteByte(u32 address, u8 b)
       case 0x9e:
       case 0x9f:      
 	//soundEvent(address&0xFF, b);  //ichfly disable sound
+#ifdef printsoundwrites
 		  iprintf("b %02x to %08x\r\n",b,address);
+#endif
 		  REG_IPC_FIFO_TX = (address | 0x40000000);
 		  REG_IPC_FIFO_TX = (b | 0x80000000); //faster in case we send a 0
 	break;
