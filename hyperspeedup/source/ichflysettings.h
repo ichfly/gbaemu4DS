@@ -7,7 +7,7 @@
 
 //#define printsoundwrites
 
-#define arm9advsound
+//#define arm9advsound
 
 
 

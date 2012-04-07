@@ -628,7 +628,7 @@ void ndsMode()
 	
 	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80; //sorry but this must be done
 	
-	Log("%08X\r\n",exRegs[15]);
+	//Log("%08X\r\n",exRegs[15]);
 
 #ifndef unsave
 	if(exRegs[15] < 0x02000000 || exRegs[15] > 0x04000000)

@@ -413,11 +413,12 @@ void VblankHandler(void) {
 
 
 	//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
-
+#ifdef arm9advsound
 	if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //inter sounddma
 	{
 		arm7dmareq();
 	}
+#endif
 	CPUCheckDMA(1, 0x0f);
 	
 
@@ -427,7 +428,7 @@ void VblankHandler(void) {
 	
 	if(framewtf == frameskip)
 	{
-	iprintf("%x %x %x\r\n",IE,IF_VBl,anytimejmpfilter);
+	//iprintf("%x %x %x %x %x %x\r\n",IE,IF_VBl,anytimejmpfilter,REG_IE,REG_IF,IME);
 		//REG_IPC_FIFO_TX = 0x80000000;
 		//REG_IPC_FIFO_TX = 0x5B468E37;
 	  //iprintf("enter");
