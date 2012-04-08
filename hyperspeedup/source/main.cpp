@@ -98,7 +98,6 @@ void downgreadcpu();
 
 int framenummer;
 
-#define ichflytestkeypossibillity
 
 #define GBA_EWRAM ((void*)(0x02000000))
 
@@ -598,9 +597,9 @@ void VblankHandler(void) {
 	
 
 	
-		scanKeys();
+		//scanKeys();
   
-  u32 joy = keysCurrent();
+  u32 joy = ((~REG_KEYINPUT)&0x3ff);
 #ifdef ichflytestkeypossibillity  
   
   // disallow L+R or U+D of being pressed at the same time
@@ -618,7 +617,7 @@ void VblankHandler(void) {
 		}
 		else {ignorenextY -= 1;}
 	}
-    P1 = 0x03FF ^ (joy & 0x3FF);             
+    P1 = 0x03FF ^ joy;             
     UPDATE_REG(0x130, P1);
 
 	//cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu to write to the internalRAM
@@ -647,6 +646,139 @@ void VblankHandler(void) {
 	
 	//iprintf("%x %x %x %x %x %x %x %x %x %x \r\n",DISPCNT,BG2CNT, BG2X_L, BG2X_H, BG2Y_L, BG2Y_H,BG2PA, BG2PB, BG2PC, BG2PD);
 }
+
+
+
+
+
+
+
+void frameasyncsync(void) {
+//---------------------------------------------------------------------------------
+	
+		while(dmaBusy(3)); // ichfly wait for dma 3
+		framewtf = 0;
+		if((DISPCNT & 7) < 3)
+		{
+			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
+			if(lastDISPCNT != DISPCNT)
+			{
+				//reset BG3HOFS and BG3VOFS
+				REG_BG3HOFS = BG3HOFS;
+				REG_BG3VOFS = BG3VOFS;
+
+				//reset
+				REG_BG3CNT = BG3CNT;
+				REG_BG2CNT = BG2CNT;
+				REG_BLDCNT = BLDMOD;
+				WIN_IN = WININ;
+				WIN_OUT = WINOUT;
+
+				REG_BG2PA = BG2PA;
+				REG_BG2PB = BG2PB;
+				REG_BG2PC = BG2PC;
+				REG_BG2PD = BG2PD;
+				REG_BG2X = (BG2X_L | (BG2X_H << 16));
+				REG_BG2Y = (BG2Y_L | (BG2Y_H << 16));
+
+				REG_BG3PA = BG3PA;
+				REG_BG3PB = BG3PB;
+				REG_BG3PC = BG3PC;
+				REG_BG3PD = BG3PD;
+				REG_BG3X = (BG3X_L | (BG3X_H << 16));
+				REG_BG3Y = (BG3Y_L | (BG3Y_H << 16));
+
+				u32 dsValue;
+				dsValue  = DISPCNT & 0xFF87;
+				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
+				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
+				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
+				REG_DISPCNT = dsValue; 
+			}
+			lastDISPCNT = DISPCNT;
+		}
+		else
+		{
+			if(lastDISPCNT != DISPCNT)
+			{
+				//reset BG3HOFS and BG3VOFS
+				REG_BG3HOFS = 0;
+				REG_BG3VOFS = 0;
+
+				//BLDCNT(2 enabeled bits)
+				int tempBLDMOD = BLDMOD & ~0x404;
+				tempBLDMOD = tempBLDMOD | ((BLDMOD & 0x404) << 1);
+				REG_BLDCNT = tempBLDMOD;
+
+				//WINOUT(2 enabeled bits)
+				int tempWINOUT = WINOUT & ~0x404;
+				tempWINOUT = tempWINOUT | ((WINOUT & 0x404) << 1);
+				WIN_OUT = tempWINOUT;
+
+				//WININ(2 enabeled bits)
+				int tempWININ = WININ & ~0x404;
+				tempWININ = tempWININ | ((WININ & 0x404) << 1);
+				WIN_IN = tempWININ;
+
+				//swap LCD I/O BG Rotation/Scaling
+
+				REG_BG3PA = BG2PA;
+				REG_BG3PB = BG2PB;
+				REG_BG3PC = BG2PC;
+				REG_BG3PD = BG2PD;
+				REG_BG3X = (BG2X_L | (BG2X_H << 16));
+				REG_BG3Y = (BG2Y_L | (BG2Y_H << 16));
+
+
+				u32 dsValue;
+				dsValue  = DISPCNT & 0xF087;
+				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
+				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
+				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
+				REG_DISPCNT = dsValue; //workaroundwrite32(dsValue, (u32*)&REG_DISPCNT);
+                                       //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x02010010) & ~0x400; //need 0x10010
+				if((DISPCNT & 7) == 4)
+				
+				{
+					bgrouid = bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
+				}
+				else if((DISPCNT & 7) == 3)bgrouid = bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				else if((DISPCNT & 7) == 5)bgrouid = bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				REG_BG3CNT = REG_BG3CNT | (BG2CNT & 0x43); //swap BG2CNT (BG Priority and Mosaic) 
+			}
+			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
+			{
+				u8 *pointertobild = (u8 *)(0x6000000);
+				for(int iy = 0; iy <160; iy++){
+					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
+					pointertobild+=480;
+				}
+			}	
+			if((DISPCNT & 7) == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
+			{
+				u8 *pointertobild = (u8 *)(0x6000000);
+				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
+				for(int iy = 0; iy <160; iy++){
+					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 240);
+					pointertobild+=240;
+					//pointertobild+=120;
+				}
+			}
+			if((DISPCNT & 7) == 5) //BG Mode 5 - 160x128 pixels, 32768 colors
+			{
+				u8 *pointertobild = (u8 *)(0x6000000);
+				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
+				for(int iy = 0; iy <128; iy++){
+					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
+					pointertobild+=320;
+				}
+			}
+			dmaCopyWordsAsynch(1,(void*)0x06014000,(void*)0x06404000,0x4000);
+			lastDISPCNT = DISPCNT;
+		}
+	}
+
+
 
 
 
@@ -975,7 +1107,7 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 		if (isdaas&KEY_UP) frameskip++;
 		if (isdaas&KEY_DOWN && frameskip != 0) frameskip--;
 	}
-	iprintf("\x1b[2J");
+	//iprintf("\x1b[2J");
 	
 
   iprintf("\x1b[2J");
@@ -987,7 +1119,7 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
   //while(1);
     bool failed = false;
  
-	//iprintf("CPULoadRom...");
+	iprintf("CPULoadRom...");
 
       failed = !CPULoadRom(szFile,extraram);
 	  
@@ -1000,12 +1132,12 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	  	//iprintf("Hello World2!");
        emulator = GBASystem;
 
-		//iprintf("CPUInit\n");
+		iprintf("CPUInit\n");
 		CPUInit(biosPath, useBios,extraram);
 	  
 	  	
 
-	  //iprintf("CPUReset\n");
+	  iprintf("CPUReset\n");
       CPUReset();
 		  
 
@@ -1029,7 +1161,7 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	
 	gbaGame = (gbaHeader_t*)rom;
 
-	//iprintf("BIOS_RegisterRamReset\n");
+	iprintf("BIOS_RegisterRamReset\n");
 
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu to write to the internalRAM
 
@@ -1040,63 +1172,63 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	
 	//memcopy((void*)0x2000000,(void*)rom, 0x40000);
 	
-	//iprintf("dmaCopy\n");
+	iprintf("dmaCopy\n");
 
-REG_IPC_FIFO_TX = 0; //test backcall
+/*REG_IPC_FIFO_TX = 0; //test backcall
 REG_IPC_FIFO_TX = 0x7654321;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
 
 	dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
 	
-	//iprintf("irqinit\n");
+	iprintf("irqinit\n");
 
 	anytimejmpfilter = 0;
 	
 	anytimejmp = (VoidFn)0x3007FFC;
-	
+/*
 REG_IPC_FIFO_TX = 0; //test backcall
 REG_IPC_FIFO_TX = 0x1234567;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-	//iprintf("emulateedbiosstart\n");
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
+	iprintf("emulateedbiosstart\n");
 
 	emulateedbiosstart();
-REG_IPC_FIFO_TX = 0; //test backcall
+/*REG_IPC_FIFO_TX = 0; //test backcall
 REG_IPC_FIFO_TX = 0x1111111;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-    //iprintf("ndsMode\n");
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
+    iprintf("ndsMode\n");
 
 	ndsMode();
-REG_IPC_FIFO_TX = 0; //test backcall
+/*REG_IPC_FIFO_TX = 0; //test backcall
 REG_IPC_FIFO_TX = 0x2222222;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-    //iprintf("gbaInit\n");
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
+    iprintf("gbaInit\n");
 
 	gbaInit();
-REG_IPC_FIFO_TX = 0; //test backcall
+/*REG_IPC_FIFO_TX = 0; //test backcall
 REG_IPC_FIFO_TX = 0x3333333;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-	//iprintf("irqSet\n");
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
+	iprintf("irqSet\n");
 
 	irqSet(IRQ_VBLANK, VblankHandler);
 
 	irqEnable(IRQ_VBLANK);
-REG_IPC_FIFO_TX = 0; //test backcall
+/*REG_IPC_FIFO_TX = 0; //test backcall
 REG_IPC_FIFO_TX = 0x4444444;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-	//iprintf("gbaMode2\n");
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
+	iprintf("gbaMode2\n");
 
 gbamode = true;
 	
 	gbaMode2();
 
 
-	//iprintf("jump to (%08X)\n\r",rom);
+	iprintf("jump to (%08X)\n\r",rom);
 
 	//iprintf("\x1b[2J"); //reset
 

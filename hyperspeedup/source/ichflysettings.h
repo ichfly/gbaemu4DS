@@ -3,7 +3,10 @@
 
 //#define printreads
 
+#define powerpatches //do some hacky things that give the emulator more Vb in some cases.6
 
+
+#define ichflytestkeypossibillity
 
 //#define printsoundwrites
 

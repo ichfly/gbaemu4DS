@@ -16,6 +16,7 @@ extern "C" int SPtemp;
 		//iprintf("i %08X\r\n",src);
 		if(src != (u32*)0xFFFFFFFF)
 		{
+			//iprintf("%08X\r\n",REG_IPC_FIFO_RX);
 			//iprintf("%08X %08X\n\r",src,REG_IPC_FIFO_CR);
 			while(i < 4)
 			{

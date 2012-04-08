@@ -386,6 +386,9 @@ void BIOScall(int op,  s32 *R)
 		  //VblankHandler(); //todo
 	#endif
 		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+#ifdef powerpatches
+		frameasyncsync(); //hope it don't need more than 160 Lines this give the emulator more power
+#endif
 		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
 		
 		break;

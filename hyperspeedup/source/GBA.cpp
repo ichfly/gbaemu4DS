@@ -2284,7 +2284,9 @@ void CPUUpdateRegister(u32 address, u16 value)
     break;
  case 0x100:
     timer0Reload = value; //ichfly
+#ifdef printsoundtimer
 	iprintf("ur %04x to %08x\r\n",value,address);
+#endif
 	REG_IPC_FIFO_TX = (address | 0x80000000);
 	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
@@ -2297,7 +2299,9 @@ void CPUUpdateRegister(u32 address, u16 value)
     //timerOnOffDelay|=1;
     //cpuNextEvent = cpuTotalTicks;
 	UPDATE_REG(0x102, value);
+#ifdef printsoundtimer
 	iprintf("ur %04x to %08x\r\n",value,address);
+#endif
 	REG_IPC_FIFO_TX = (address | 0x80000000);
 	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 	/*if(timer0Reload & 0x8000)
@@ -2331,7 +2335,9 @@ void CPUUpdateRegister(u32 address, u16 value)
     break;
   case 0x104:
     timer1Reload = value;
+#ifdef printsoundtimer
 	iprintf("ur %04x to %08x\r\n",value,address);
+#endif
 	REG_IPC_FIFO_TX = (address | 0x80000000);
 	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
@@ -2339,7 +2345,9 @@ void CPUUpdateRegister(u32 address, u16 value)
 	*(u16 *)(0x4000104) = value;
 	break;
   case 0x106:
+#ifdef printsoundtimer
 	iprintf("ur %04x to %08x\r\n",value,address);
+#endif
 	REG_IPC_FIFO_TX = (address | 0x80000000);
 	REG_IPC_FIFO_TX = (value | 0x80000000); //faster in case we send a 0
 
