@@ -420,6 +420,8 @@ void VblankHandler(void) {
 #endif
 	CPUCheckDMA(1, 0x0f);
 	
+	//Log("VB %X %X ",SPtoload,SPtemp);
+	//iprintf("i%x %x %x %x %x %x\r\n",IE,IF_VBl,anytimejmpfilter,REG_IE,REG_IF,IME);
 
 
 	//iprintf("DISPCNT2fly %x %x\r\n",DISPCNT,workaroundread16((u16*)&DISPCNT));

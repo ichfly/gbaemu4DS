@@ -93,23 +93,25 @@ void show_mem()
 				case 0: //dump ram
 					file = fopen("fat:/fulldump.bin", "wb"); //4.411.976 Byte
 					fwrite((u8*)(0x01000000), 1, 0x8000, file);
-					fwrite((u8*)(0x02000000), 1, 0x400000, file);
 					fwrite((u8*)(0x03000000), 1, 0x8000, file);
 					fwrite((u8*)(0x04000000), 1, 0x248, file);//IO
 					fwrite((u8*)(0x05000000), 1, 0x800, file);
 					fwrite((u8*)(0x06000000), 1, 0x20000, file);
 					fwrite((u8*)(0x07000000), 1, 0x800, file);
 					fwrite((u8*)(0x0b000000), 1, 0x4000, file);
+					fwrite((u8*)(0x02000000), 1, 0x400000, file);
 					fclose(file);
 					break;
 				case 1:
-					file = fopen("fat:/gbadump.bin", "wb"); // 396.288 Byte
-					fwrite((u8*)(0x02000000), 1, 0x40000, file);
+					file = fopen("fat:/gbadump.bin", "wb"); // 396.288 Byte @outdate
 					fwrite((u8*)(0x03000000), 1, 0x8000, file);
 					fwrite(ioMem, 1, 0x400, file);
 					fwrite((u8*)(0x05000000), 1, 0x400, file);
-					fwrite((u8*)(0x06000000), 1, 0x18000, file);
 					fwrite((u8*)(0x07000000), 1, 0x800, file);
+					fwrite((u8*)(0x01000000), 1, 0x8000, file);
+					fwrite((u8*)(0x0b000000), 1, 0x4000, file);
+					fwrite((u8*)(0x06000000), 1, 0x18000, file); //can't get this with half dumps
+					fwrite((u8*)(0x02000000), 1, 0x40000, file); //can't get this with half dumps
 					fclose(file);
 					break;
 				case 2:

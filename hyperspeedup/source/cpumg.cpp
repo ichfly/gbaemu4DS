@@ -113,6 +113,8 @@ extern bool disableMessage;
 void gbaExceptionHdl();
 
 
+extern "C" int SPtoload;
+extern "C" int SPtemp;
 
 
 
@@ -169,6 +171,12 @@ u16 gbaBGxCNT[4] = {0, 0, 0, 0};
 
 char disbuffer[0x2000];
 
+#ifdef lastdebug
+u32 lasttime[6];
+int current = 0;
+int size = 6;
+#endif
+
 //extern "C" void exMain(); 
 
 extern void __attribute__((section(".dtcm"))) (*exHandler)();
@@ -196,6 +204,13 @@ void debugDump()
 		Log("R%d=%X ", i, exRegs[i]);
 	} 
 	Log("\n");
+	Log("sup %X %X\n",SPtoload,SPtemp);
+
+	/*if((exRegs[13] &0xFF000000) != 0x3000000)
+	{
+		REG_IME = IME_DISABLE;
+		while(1);
+	}*/
 
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu else we may cause an endless loop
 
@@ -206,14 +221,39 @@ void debugDump()
 	pu_Enable(); //back to normal code
 
 	Log("SPSR %08x CPSR %08x\n",BIOSDBG_SPSR,cpuGetCPSR());
+#ifdef lastdebug
+	int ipr = current - 1;
+	if(ipr < 0)ipr= size - 1;
+	while(ipr != current)
+	{
+		Log("run %08X\n",lasttime[ipr]);
+		ipr--;
+		if(ipr < 0)ipr= size - 1;
+	}
+	Log("run %08X\n",lasttime[current]); //last
+#endif
+	  u32 joy = ((~REG_KEYINPUT)&0x3ff);
+	if((joy & KEY_B) && (joy & KEY_R) && (joy & KEY_L))
+	{
+		FILE *file = fopen("fat:/gbadump.bin", "wb"); // 396.288 Byte @outdate
+		fwrite((u8*)(0x03000000), 1, 0x8000, file);
+		fwrite(ioMem, 1, 0x400, file);
+		fwrite((u8*)(0x05000000), 1, 0x400, file);
+		fwrite((u8*)(0x07000000), 1, 0x800, file);
+		fwrite((u8*)(0x01000000), 1, 0x8000, file);
+		fwrite((u8*)(0x0b000000), 1, 0x4000, file);
+		fwrite((u8*)(0x06000000), 1, 0x18000, file); //can't get this with half dumps
+		fwrite((u8*)(0x02000000), 1, 0x40000, file); //can't get this with half dumps
+		fclose(file);	
+	}
 }
 
 
 extern "C" void failcpphandler()
 {
-	/*iprintf("something failed\r\n");
+	iprintf("something failed\r\n");
 	debugDump();
-	Log("SSP %08x SLR %08x\n",savedsp,savedlr);*/
+	Log("SSP %08x SLR %08x\n",savedsp,savedlr);
 	while(1);
 }
 
@@ -330,8 +370,14 @@ void gbaswieulatedbios()
 
 	//Log("%08X S\n", exRegs[15]);
 
+
 	u16 tempforwtf = *(u16*)(exRegs[15] - 2);
 	BIOScall(tempforwtf,  exRegs);
+#ifdef lastdebug
+lasttime[current] = exRegs[15];
+current++;
+if(current == size)current = 0;
+#endif
 
 	gbaMode();
 	//while(1);
@@ -633,6 +679,8 @@ void ndsMode()
 	
 	//Log("%08X\r\n",exRegs[15]);
 
+
+
 #ifndef unsave
 	if(exRegs[15] < 0x02000000 || exRegs[15] > 0x04000000)
 	{
@@ -643,7 +691,7 @@ void ndsMode()
 		else*/
 		{
 			Log("gba jumped to an unknown region\n");
-			debugDump();
+			debugDump(); //test
 			while(1);
 		}
 	}
@@ -672,6 +720,13 @@ void ndsMode()
 			}
 			
 	//}
+
+#ifdef lastdebug
+lasttime[current] = exRegs[15];
+current++;
+if(current == size)current = 0;
+#endif
+
 	gbaMode();
 }
 

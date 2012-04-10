@@ -1,5 +1,6 @@
 #define uppern_read_emulation
 
+//#define lastdebug
 
 //#define printreads
 
