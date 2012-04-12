@@ -126,6 +126,10 @@ u32* dirfeldsizes;
 
 int bg = 0;
 
+
+char* savetypeschar[7] =
+	{"SaveTypeAutomatic","SaveTypeEeprom","SaveTypeSram","SaveTypeFlash64KB","SaveTypeEepromSensor","SaveTypeNone","SaveTypeFlash128KB"};
+
 char* memoryWaitrealram[8] =
   { "10 and 6","8 and 6","6 and 6","18 and 6","10 and 4","8 and 4","6 and 4","18 and 4" };
 
@@ -154,95 +158,6 @@ void speedtest()
 
 
 
-
-bool dirfolder (char* folder)
-{	
-		DIR *pdir;
-		struct dirent *pent;
-		struct stat statbuf;
-
-		pdir=opendir(folder);
-
-		if (pdir){
-			
-			while ((pent=readdir(pdir))!=NULL) {
-	    		stat(pent->d_name,&statbuf);
-	    		if(strcmp(".", pent->d_name) == 0)
-	        		continue;
-				void* temp = malloc((dirfeldsize + 1)*4);
-				memcpy( (void *)temp , (void *)dirfeldsizes , (dirfeldsize)*4);
-				//iprintf ("%x\n", (u32)dirfeldsizes);
-				if(dirfeldsize > 2) free(dirfeldsizes); //memory leak
-				dirfeldsizes = (u32*)temp;
-				char** temp2 = (char**)malloc((dirfeldsize + 1)*4);
-				//iprintf ("%x\n", (u32)temp2);
-				memcpy( (void *)temp2 , (void *)names , (dirfeldsize)*4);
-				if(dirfeldsize > 2)free(names); //memory leak
-				names = temp2;
-				//iprintf ("%x\n", (u32)temp2);
-				//iprintf ("%x\n", (u32)names);
-	    		if(S_ISDIR(statbuf.st_mode))
-				{
-	        		*(u32*)(dirfeldsize + dirfeldsizes) = 0xFFFFFFFF;
-					//iprintf("%s <dir>%d %d\n ", pent->d_name,dirfeldsize,*(u32*)(dirfeldsize + dirfeldsizes));
-				}
-	    		if(!(S_ISDIR(statbuf.st_mode)))
-				{
-					*(u32*)(dirfeldsize + dirfeldsizes) = statbuf.st_size;
-					//iprintf ("%d\n", *(u32*)(dirfeldsize + dirfeldsizes));
-					//iprintf("%s %ld\n", pent->d_name, statbuf.st_size);
-	        	}
-				*(char**)((u32)names + dirfeldsize * 4) = (char*)malloc(strlen(pent->d_name) + 2);
-				sprintf(*(char**)((u32)names + dirfeldsize * 4),"%s",pent->d_name);
-				dirfeldsize++;
-				//while(1);
-				//iprintf ("%d\n", dirfeldsize);
-				//free(temp2);
-				//free(temp);
-			}
-			closedir(pdir);
-		} else {
-			//iprintf ("opendir() failure; terminating\n");
-			return false;
-		}
-	/*for(int i = 0; i < dirfeldsize; i++)
-	{
-		//iprintf ("%d\n", *(u32*)((u32)dirfeldsizes + i * 4));
-		iprintf ("%x\n", (char**)((u32)names + i * 4));
-	}
-	iprintf ("%d\n",dirfeldsize);*/
-	return true;
-
-}
-
-
-
-void dirfree ()
-{
-	for(int i = 0; i < dirfeldsize - 1; i++)
-	{
-		iprintf ("%x\n", *(u32*)((u32)names + i * 4));
-		free(*(char**)((u32)names + i * 4));
-	}
-	//while(1);
-	free(names);
-	if(dirfeldsize > 2)free(dirfeldsizes); //malloc return 0x341 when i free that but why
-	dirfeldsize = 0;
-}
-
-
-
-void display ()
-{
-	for(int i = ausgewauhlt - (ausgewauhlt%20); i < dirfeldsize && i < ausgewauhlt - (ausgewauhlt%20) + 20 ; i++)
-	{
-		if(i == ausgewauhlt)iprintf("->");
-		else iprintf("  ");
-
-		if(*(u32*)(i + dirfeldsizes) == 0xFFFFFFFF)iprintf("%s <dir>\n", *(char**)((u32)names + i * 4));
-		else iprintf("%s (%ld)\n", *(char**)((u32)names + i * 4), *(u32*)(dirfeldsizes + i));
-	}
-}
 
 #define READ16LE(x) \
   swap16(*((u16 *)(x)))
@@ -996,92 +911,57 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 #ifndef loaddirect
 
 	browseForFile("");
-	/*while(nichtausgewauhlt)
-	{
-		for(int i = 0; i < 3; i++)
-		{
-			if(i == ausgewauhlt) printf("->");
-			else printf("  ");
-			printf(rootdirnames[i]);
-			printf("\n");
-		}
-		while(nichtausgewauhlt)
-		{
-			swiWaitForVBlank();
-			scanKeys();
-			if (keysDown()&KEY_A)
-			{
-				if(ausgewauhlt == 0)
-				{
-					iprintf("Init Nitro...\n");
-					if(nitroFSInit())
-					iprintf("Nitro OK.\n");
-					else{
-						iprintf("Nitro Fail.\n");
-						int i = 0;
-						while(i< 300)
-						{
-							swiWaitForVBlank();
-							i++;
-						}
-						
-					}
-					swiWaitForVBlank();
-				}
-				
-				int ausgewauhlt2 = ausgewauhlt;
-				dirfolder(rootdirnames[ausgewauhlt2]);
-				//menue start
-				
-				while(nichtausgewauhlt)
-				{
-					iprintf("\x1b[2J");
-					display();
-					while(nichtausgewauhlt)
-					{
-						swiWaitForVBlank();
-						scanKeys();
-						if (keysDown()&KEY_DOWN){ ausgewauhlt++; if(ausgewauhlt == dirfeldsize)ausgewauhlt = 0;  break;}
-						if (keysDown()&KEY_UP && ausgewauhlt != 0) { if(ausgewauhlt == 0)ausgewauhlt = dirfeldsize;else {ausgewauhlt--;} break;}
-						if (keysDown()&KEY_A)
-						{
-							if(currentdir == (char*)0)
-							{
-								currentdir = (char*)malloc(strlen(rootdirnames[ausgewauhlt2]) + strlen(*(char**)((u32)names + ausgewauhlt * 4)) + 4);
-								sprintf(currentdir,"%s%s",rootdirnames[ausgewauhlt2],*(char**)((u32)names + ausgewauhlt * 4));
-							}
-							else
-							{
-								char* currentdirtemp = (char*)malloc(strlen(currentdir) + strlen(*(char**)((u32)names + ausgewauhlt * 4)) + 4);
-								sprintf(currentdirtemp,"%s/%s",currentdir,*(char**)((u32)names + ausgewauhlt * 4));								
-								//free(currentdir);
-								currentdir = currentdirtemp;
-							}
-							if(!(*(u32*)(dirfeldsizes + ausgewauhlt) == 0xFFFFFFFF))
-							{
-								sprintf(szFile,"%s",currentdir);
-								free(currentdir);
-								nichtausgewauhlt = false;
-							}
-							//iprintf(currentdir);
-							dirfree();
-							dirfolder(currentdir);
-							ausgewauhlt = 0;
-							break;
-						}
-					}
-				}
-				//menue ende
-				//break;
-			}
-			if (keysDown()&KEY_DOWN && ausgewauhlt != 2){ ausgewauhlt++; break;}
-			if (keysDown()&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--; break;}
-		}
-		iprintf("\x1b[2J");	
-	}
-	dirfree();*/
 #endif
 	
+	int ausgewauhlt = 0;
+
+
+	int myflashsize = 0x10000;
+	u32 pressed = 0;
+
+
+		while(1)
+		{
+			iprintf("\x1b[2J");
+
+			for(int i = 0; i < 7; i++)
+			{
+				if(i == ausgewauhlt) iprintf("->");
+				else iprintf("  ");
+				iprintf(savetypeschar[i]);
+				iprintf("\n");
+			}
+			do 
+			{
+				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+				scanKeys();
+				pressed = keysDownRepeat();
+			} while (!pressed);
+
+			if (pressed&KEY_A)
+			{
+				if(ausgewauhlt == 6)
+				{
+					myflashsize = 0x20000;
+					cpuSaveType = 3;
+				}
+				else
+				{
+					cpuSaveType = ausgewauhlt;
+				}
+				break;
+			}
+			if (pressed&KEY_DOWN && ausgewauhlt != 6){ ausgewauhlt++;}
+			if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
+		}
+
+
+
+
+
+
+
 	//sprintf(szFile,"%s","nitro:/puzzle.gba"); //ichfly test
 	
 	/*scanKeys();
@@ -1156,7 +1036,7 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 			  while(1);
 		  }
 	  }
-	
+	if(cpuSaveType == 3)flashSetSize(myflashsize);
 	
 	gbaHeader_t *gbaGame;
 
@@ -1233,7 +1113,6 @@ gbamode = true;
 	iprintf("jump to (%08X)\n\r",rom);
 
 	//iprintf("\x1b[2J"); //reset
-
 	cpu_ArmJumpforstackinit((u32)rom, 0);
 	
 	

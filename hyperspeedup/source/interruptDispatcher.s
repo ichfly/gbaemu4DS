@@ -35,9 +35,9 @@ IntrMain:
 	mov	r12, #0x4000000		@ REG_BASE
 	
 	mrs	r0, spsr
-	ldr r1,=SPtemp
-	ldr r1,[r1]
-	stmfd	sp!, {r0,r1,lr}	@ {spsr,SPtemp, lr_irq}
+	@ldr r1,=SPtemp
+	@ldr r1,[r1]
+	stmfd	sp!, {r0,lr}	@ {spsr, lr_irq}
 	
 	add	r12, r12, #0x210
 	ldmia	r12, {r1,r2}
@@ -65,7 +65,7 @@ findIRQ:
 no_handler:
 @---------------------------------------------------------------------------------
 	@str	r1, [r12, #4]	@ IF Clear @not us so do nothing
-	ldmfd   sp!, {r0,r1,lr}	@ {spsr,SPtemp, lr_irq}
+	ldmfd   sp!, {r0,lr}	@ {spsr, lr_irq}
 	
 	mov	pc,lr
 
@@ -117,6 +117,9 @@ IntrRet:
 	orr	r3, r3, #0xd2		@ /  --> Disable IRQ & FIQ. Set CPU mode to IRQ. @so the pointer don't swap
 	msr	cpsr,r3
 	
+	ldr r12,=SPtemp
+	str sp,[r12]@save new stack size change
+	
 	mov sp,r0
 
 	
@@ -124,11 +127,11 @@ IntrRet:
     @swi 0x2F0000
 
 	msr	cpsr, r2
-	ldmfd   sp!, {r0,r1,lr}	@ {spsr,SPtemp, lr_irq}
+	ldmfd   sp!, {r0,lr}	@ {spsr, lr_irq}
 	msr	spsr, r0		@ restore spsr
 	
-	ldr r2,=SPtemp
-	str r1,[r2]
+	@ldr r2,=SPtemp
+	@str r1,[r2]
 	
 	mov	pc,lr
 

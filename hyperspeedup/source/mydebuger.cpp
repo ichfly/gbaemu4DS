@@ -106,6 +106,7 @@ void show_mem()
 					file = fopen("fat:/gbadump.bin", "wb"); // 396.288 Byte @outdate
 					fwrite((u8*)(0x03000000), 1, 0x8000, file);
 					fwrite(ioMem, 1, 0x400, file);
+					fwrite((u8*)(0x04000000), 1, 0x400, file);//IO
 					fwrite((u8*)(0x05000000), 1, 0x400, file);
 					fwrite((u8*)(0x07000000), 1, 0x800, file);
 					fwrite((u8*)(0x01000000), 1, 0x8000, file);

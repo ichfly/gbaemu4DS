@@ -22,9 +22,13 @@ void ndsMode();
 u32 getExceptionAddress( u32 opcodeAddress, u32 thumbState);
 unsigned long ARMShift(unsigned long value,unsigned char shift);
 
+extern "C" void readbankedextra(u32 CPSR);
 extern "C" u32 cpuGetCPSR();
+extern "C" u32 cpuGetSPSR();
 extern "C" void cpuSetCPSR(u32 CPSR);
 
+extern "C" u32 readbankedsp(u32 CPSR);
+extern "C" u32 readbankedlr(u32 CPSR);
 
 void cpupausemodeexit();
 void cpupausemode();

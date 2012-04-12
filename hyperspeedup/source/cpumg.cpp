@@ -197,7 +197,7 @@ void debugDump()
 {
 // 	Log("dbgDump\n");
 // 	return;
-	
+	//readbankedextra(cpuGetSPSR());
 
 	int i;
 	for(i = 0; i <= 15; i++) {
@@ -220,7 +220,11 @@ void debugDump()
 
 	pu_Enable(); //back to normal code
 
-	Log("SPSR %08x CPSR %08x\n",BIOSDBG_SPSR,cpuGetCPSR());
+	Log("SPSR %08x ",BIOSDBG_SPSR);
+	Log("CPSR %08x\n",cpuGetCPSR());
+	//Log("irqBank %08x",readbankedsp(0x12));
+	Log("irqBank %08x %08x\n",readbankedlr(0x12),readbankedsp(0x12));
+	Log("userBank %08x %08x\n",readbankedlr(0x1F),readbankedsp(0x1F));
 #ifdef lastdebug
 	int ipr = current - 1;
 	if(ipr < 0)ipr= size - 1;
@@ -235,16 +239,16 @@ void debugDump()
 	  u32 joy = ((~REG_KEYINPUT)&0x3ff);
 	if((joy & KEY_B) && (joy & KEY_R) && (joy & KEY_L))
 	{
-		FILE *file = fopen("fat:/gbadump.bin", "wb"); // 396.288 Byte @outdate
-		fwrite((u8*)(0x03000000), 1, 0x8000, file);
-		fwrite(ioMem, 1, 0x400, file);
-		fwrite((u8*)(0x05000000), 1, 0x400, file);
-		fwrite((u8*)(0x07000000), 1, 0x800, file);
-		fwrite((u8*)(0x01000000), 1, 0x8000, file);
-		fwrite((u8*)(0x0b000000), 1, 0x4000, file);
-		fwrite((u8*)(0x06000000), 1, 0x18000, file); //can't get this with half dumps
-		fwrite((u8*)(0x02000000), 1, 0x40000, file); //can't get this with half dumps
-		fclose(file);	
+					FILE* file = fopen("fat:/gbadump.bin", "wb"); // 396.288 Byte @outdate
+					fwrite((u8*)(0x03000000), 1, 0x8000, file);
+					fwrite(ioMem, 1, 0x400, file);
+					fwrite((u8*)(0x04000000), 1, 0x400, file);//IO
+					fwrite((u8*)(0x05000000), 1, 0x400, file);
+					fwrite((u8*)(0x07000000), 1, 0x800, file);
+					fwrite((u8*)(0x01000000), 1, 0x8000, file);
+					fwrite((u8*)(0x0b000000), 1, 0x4000, file);
+					fwrite((u8*)(0x06000000), 1, 0x18000, file); //can't get this with half dumps
+					fwrite((u8*)(0x02000000), 1, 0x40000, file); //can't get this with half dumps
 	}
 }
 
@@ -254,7 +258,8 @@ extern "C" void failcpphandler()
 	iprintf("something failed\r\n");
 	debugDump();
 	Log("SSP %08x SLR %08x\n",savedsp,savedlr);
-	while(1);
+			REG_IME = IME_DISABLE;
+		while(1);
 }
 
 void exInitundifinedsystem(void (*customundifinedHdl)())
@@ -290,6 +295,7 @@ void undifinedresolver()
 	{
 		printf("unknown OP\r\n");
 		debugDump();
+		REG_IME = IME_DISABLE;
 		while(1);
 	}
 }
@@ -345,7 +351,11 @@ void gbaInit()
 
 
 	WRAM_CR = 0;
+#ifdef checkclearaddr
+	pu_SetRegion(3, 0x03000000 | PU_PAGE_32K | 1);	/* gba iwram */ //it is the GBA Cart in the original //ichfly for log jumps it is 2 as bit as it should
+#else
 	pu_SetRegion(3, 0x03000000 | PU_PAGE_16M | 1);	/* gba iwram */ //it is the GBA Cart in the original //ichfly for log jumps it is 2 as bit as it should
+#endif
 	pu_SetRegion(6, 0x02000000 | PU_PAGE_16M | 1);    //ram
 	//pu_SetRegion(7, 0x07000000 | PU_PAGE_16M | 1);
 	pu_SetRegion(1, 0x05000000 | PU_PAGE_16M | 1);
@@ -433,7 +443,7 @@ void BIOScall(int op,  s32 *R)
 	#endif
 		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 #ifdef powerpatches
-		frameasyncsync(); //hope it don't need more than 160 Lines this give the emulator more power
+		if(REG_VCOUNT < 60)frameasyncsync(); //hope it don't need more than 100 Lines this give the emulator more power
 #endif
 		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
 		
@@ -513,10 +523,15 @@ void BIOScall(int op,  s32 *R)
 		BIOS_SndDriverJmpTableCopy();
 		break;
 		// let it go, because we don't really emulate this function
-	  case 0x2D: //silent debug call
-		break;
-	  case 0x2F: //debug call all
+	  case 0x2D: //debug call all
 		debugDump();
+		break;
+	  case 0x2F: //debug call all break
+		//Log("irqBank %08x",readbankedsp(0x12));
+		  debugDump();
+
+		REG_IME = IME_DISABLE;
+		while(1);
 		break;
 	  default:
 		if((comment & 0x30) == 0x30)
@@ -645,7 +660,8 @@ void ndsExceptionHdl()
 	debugDump();
 	/*if(instrset) Log("FAILED INSTR = %04X\n", *(u16*)(exRegs[15] - (mode == 0x17 ? 4 : 2)));
 	else Log("FAILED INSTR = %08X\n", *(u32*)(exRegs[15] - (mode == 0x17 ? 8 : 4)));*/ //ichfly don't like that
-	while(1) { ; }
+			REG_IME = IME_DISABLE;
+		while(1);
 }
 
 
@@ -682,8 +698,15 @@ void ndsMode()
 
 
 #ifndef unsave
-	if(exRegs[15] < 0x02000000 || exRegs[15] > 0x04000000)
+	if(exRegs[15] < 0x02000000 
+		
+#ifdef checkclearaddr
+	|| exRegs[15] > 0x03007FFF)
+#else
+	|| exRegs[15] > 0x04000000)
+#endif
 	{
+
 		/*if(exRegs[15] > 0x08000000)//don't know why this land herer but it dose
 		{
 			exRegs[15] = (exRegs[15] & 0x01FFFFFF) + (s32)rom;
@@ -692,7 +715,8 @@ void ndsMode()
 		{
 			Log("gba jumped to an unknown region\n");
 			debugDump(); //test
-			while(1);
+					REG_IME = IME_DISABLE;
+		while(1);
 		}
 	}
 #endif

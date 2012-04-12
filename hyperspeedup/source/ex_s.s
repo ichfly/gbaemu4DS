@@ -17,8 +17,7 @@
 	@LDMIA SP!, {r12,lr}
 
 
-
-
+#include "ichflysettings.h"
 
 
 
@@ -102,7 +101,7 @@ inter_irq:
 	ldr sp,[sp]
 	STMDB SP!, {R0-R4,R12,LR}
 	ldr r0,=SPtoload
-	sub r1,sp,#0x3E8@ ichfly irq stack size 0x400
+	sub r1,sp,#0x3E4@ ichfly irq stack size 0x400
 	str r1,[r0]
 
 	MRC P15, 0 ,r0, c9,c1,0
@@ -191,10 +190,19 @@ nop
 
 	@original from gba
 	stmfd  SP!, {R0-R3,R12,LR} @save registers to SP_irq
+#ifdef checkclearaddr
+
+	ldr    R1,=0x03008000
+	mov    R0,#0x4000000       @ptr+4 to 03FFFFFC (mirror of 03007FFC)
+	add    LR,PC,#0            @retadr for USER handler
+	ldr    PC,[R1, #-0x4]      @jump to [03FFFFFC] USER handler
+
+#else
+
 	mov    R0,#0x4000000       @ptr+4 to 03FFFFFC (mirror of 03007FFC)
 	add    LR,PC,#0            @retadr for USER handler
 	ldr    PC,[R0, #-0x4]      @jump to [03FFFFFC] USER handler
-	
+#endif
 	@s:
 	@B s
 	

@@ -220,8 +220,8 @@ void printgbainfo (const char* filename)  {
 	if(gbaheader.is96h == 0x96)iprintf("is96h OK\r\n");
 	else {iprintf("is96h is %02x\r\n",gbaheader.is96h);}
 	iprintf("Cartridge Key Number MSB %u\r\n",(gbaheader.logo[154] & 0x3));
-	if(gbaheader.logo[152] == 0xA5)iprintf("Cartridge with Debugging Enabled\r\n");
-	if(gbaheader.logo[152] == 0x21)iprintf("Cartridge with Debugging Disabled\r\n");
+	if(gbaheader.logo[152] == 0xA5)iprintf("Debugging Enabled\r\n");
+	if(gbaheader.logo[152] == 0x21)iprintf("Debugging Disabled\r\n");
 	if((gbaheader.entryPoint & 0xFE000000) == 0xEA000000){iprintf("entrypoint %08x\r\n",0x08000000 + (gbaheader.entryPoint & 0x00FFFFFF));}
 	else {iprintf("entrypoint not detected\r\n");}
 	iprintf ("--------------------------------");

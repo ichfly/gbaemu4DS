@@ -2,9 +2,12 @@
 
 //#define lastdebug
 
+
+//#define checkclearaddr
+
 //#define printreads
 
-#define powerpatches //do some hacky things that give the emulator more Vb in some cases.6
+#define powerpatches //do some hacky things that give the emulator more Vb in some cases.
 
 
 #define ichflytestkeypossibillity

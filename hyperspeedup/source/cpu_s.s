@@ -6,6 +6,57 @@
 	.code 32
 	.arm
 	
+	.global readbankedsp
+readbankedsp:
+	push {r1-r4}
+	
+	
+	mrs	r3, cpsr
+	bic	r4, r3, #0x1F
+	and	r0, r0, #0x1F
+	
+	
+	cmp r0,#0x10 @ichfly user is system
+	moveq r0,#0x1F
+	
+	orr	r4, r4, r0
+	msr	cpsr, r4	@ hop, c'est fait
+	
+	mov r0,sp
+	
+	msr	cpsr, r3	@ back to normal mode @ on revient au mode "normal"
+	
+	@swi 0x2D0000
+	
+	pop {r1-r4}
+	
+	bx lr
+	
+	.global readbankedlr
+readbankedlr:
+	push {r1-r4}
+	
+	
+	mrs	r3, cpsr
+	bic	r4, r3, #0x1F
+	and	r0, r0, #0x1F
+	
+	
+	cmp r0,#0x10 @ichfly user is system
+	moveq r0,#0x1F
+	
+	orr	r4, r4, r0
+	msr	cpsr, r4	@ hop, c'est fait
+	
+	mov r0,lr
+	
+	msr	cpsr, r3	@ back to normal mode @ on revient au mode "normal"
+	
+	
+	pop {r1-r4}
+	bx lr
+	
+	
 	.global cpuSetCPSR
 cpuSetCPSR:
 	msr cpsr, r0
@@ -82,11 +133,17 @@ cpu_ArmJumpforstackinit:
 	
 cpu_GbaSaveRegs:
 
+	.global cpuGetSPSR
+cpuGetSPSR:
+	mrs r0, spsr
+	bx lr
+	
+	
 	.global cpuGetCPSR
 cpuGetCPSR:
 	mrs r0, cpsr
 	bx lr
-
+	
 	.global pu_SetRegion
 pu_SetRegion:
 	ldr	r2, =_puSetRegion_jmp
