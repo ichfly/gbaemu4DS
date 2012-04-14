@@ -19,6 +19,7 @@
 
 ------------------------------------------------------------------*/
 
+#include "Util.h"
 #include "file_browse.h"
 #include <vector>
 #include <algorithm>
@@ -298,14 +299,20 @@ void browseForFile (const string& extension) {
 
 	int pathLen = 0;
 
+		getcwd (temppath, MAXPATHLEN);
+		pathLen = strlen (temppath);
+		strcpy (temppath + pathLen, entry->name.c_str());
+		if(utilIsGBAImage(temppath)) ausgewauhlt = 0;
+		if(utilIsSAV(temppath))ausgewauhlt = 1;
+
 	while(nichtausgewauhlt)
 	{
 		iprintf("\x1b[2J");
 
-		getcwd (temppath, MAXPATHLEN);
-		pathLen = strlen (temppath);
-		strcpy (temppath + pathLen, entry->name.c_str());
 		printgbainfo(temppath);
+		
+		iprintf("Use as\n");
+		
 
 		for(int i = 0; i < 3; i++)
 		{

@@ -739,7 +739,7 @@ void pausemenue()
 			switch(ausgewauhlt)
 				{
 				case 0:
-					if(savePath[0] == 0)sprintf(savePath,"%s.save.bin",szFile);
+					if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
 					CPUWriteBatteryFile(savePath);
 					break;
 				case 1:

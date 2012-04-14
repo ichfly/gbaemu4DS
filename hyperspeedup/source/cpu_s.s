@@ -196,41 +196,99 @@ pu_GetWriteBufferability:
 
 
 
+@swicode
+
 @---------------------------------------------------------------------------------
-	.global swiIntrWaitc
+	.global ichflyswiWaitForVBlank
 @---------------------------------------------------------------------------------
-swiIntrWaitc:
+ichflyswiWaitForVBlank:
+@---------------------------------------------------------------------------------
+	mov	r0, #1
+	mov	r1, #1
+	mov	r2, #0
+@---------------------------------------------------------------------------------
+	.global ichflyswiIntrWait
+@---------------------------------------------------------------------------------
+ichflyswiIntrWait:
 @---------------------------------------------------------------------------------
 
+	push {lr}
+	cmp	r0, #0
+	blne	testirq
+
+wait_irq:
+	@swi	#(6<<16) @ichfly my code
+	
+	mov r12 ,#0
+	mcr p15,0,r12,c7,c0,4	
+	
+	@ichfly einschub
+	
+	mrs	r2, cpsr
+	bic	r3, r2, #0xC0
+	
+	
+	
+	@push regs
+	push {r0-r3}
+	sub r0,sp,#4*17 @+1 res you know
+	ldr r1,=exRegs
+	mov r2,#4*16
+	BLX memcpy
+	pop {r0-r3}
+	
+	sub sp,sp,#0x58
+	ldr	r12, =SPtoloadswi	@save old stack
+	str sp, [r12]
+	add sp,sp,#0x58
+	
+	mov r12,sp
+	
+	msr	cpsr,r3 @irq
+	msr cpsr,r2
+	
+	mov sp,r12
+	ldr	r12,=0x33333333	@ see cpumg.cpp for meanings protections
+	mcr	p15, 0, r12, c5, c0, 2	
+
+	@pop regs
+	push {r0-r3}
+	sub r1,sp,#4*17 @+1 res you know
+	ldr r0,=exRegs
+	mov r2,#4*16
+	BLX memcpy
+	pop {r0-r3}
+
+
+
+	@ichfly my code end
+	
+	bl	testirq
+	beq	wait_irq
+	pop {lr}
+	bx	lr
+
+testirq:
+	mov	r12, #0x4000000
+	strb	r12, [r12,#0x208]
+	ldr	r3, [r12,#-8]
+	ands	r0, r1,	r3
+	eorne	r3, r3,	r0
+	strne	r3, [r12,#-8]
+	mov	r0, #1
+	strb	r0, [r12,#0x208]
+	bx	lr
+
+
+
+@---------------------------------------------------------------------------------
+	.global ichflyswiHalt
+@---------------------------------------------------------------------------------
+ichflyswiHalt:
+@---------------------------------------------------------------------------------
+
+	push {r12}
 	mov r12 ,#0
 	mcr p15,0,r12,c7,c0,4
+	pop {r12}
 	bx	lr
-
-@---------------------------------------------------------------------------------
-	.global testcode
-@---------------------------------------------------------------------------------
-testcode:
-@---------------------------------------------------------------------------------
-
-@---------------------------------------------------------------------------------
-	.global testasm
-@---------------------------------------------------------------------------------
-testasm:
-@---------------------------------------------------------------------------------
-
-	mov r0, #0
-	mov r1, #0
-	mov r2, #0
-	mov r3, #0
-	mov r4, #0
-	mov r5, #0
-	mov r6, #0
-	mov r7, #0
-	mov r8, #0
-	mov r9, #0
-	mov r10, #0
-	@stmia	r0!, {r1-r15}
-	@BKPT 0x2D0 @silent debug call
-	@stmia	r0!, {r1-r15}
-	bx	lr
-

@@ -42,13 +42,13 @@ IntrMain:
 	add	r12, r12, #0x210
 	ldmia	r12, {r1,r2}
 	ands	r1, r1, r2
-	ldr	r0, =__irq_flags	@ defined by linker script
+	@ldr	r0, =__irq_flags	@ defined by linker script @ichfly gbadas
 	ldr	r2, =irqTable
 
-setflags:
-	ldr	r3,[r0]
-	orr	r3,r3,r1
-	str	r3,[r0]
+@setflags:
+	@ldr	r3,[r0]
+	@orr	r3,r3,r1
+	@str	r3,[r0]
 
 @---------------------------------------------------------------------------------
 findIRQ:

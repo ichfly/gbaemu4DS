@@ -26,6 +26,8 @@
 #include "GBA.h"
 
 #include "ichflysettings.h"
+#include "cpumg.h"
+#include "main.h"
 
 #include <nds/interrupts.h>
 
@@ -139,7 +141,7 @@ __attribute__((section(".itcm"))) static inline void updateVC()
 #ifdef DEV_VERSION
   if(address & 3) {  
     if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
-      log("Unaligned word read: %08x at %08x\n", address, armMode ?
+      Log("Unaligned word read: %08x at %08x\n", address, armMode ?
           armNextPC - 4 : armNextPC - 2);
     }
   }
@@ -156,7 +158,7 @@ __attribute__((section(".itcm"))) static inline void updateVC()
       if(address < 0x4000) {
 #ifdef DEV_VERSION
         if(systemVerbose & VERBOSE_ILLEGAL_READ) {
-          log("Illegal word read: %08x at %08x\n", address, armMode ?
+          Log("Illegal word read: %08x at %08x\n", address, armMode ?
               armNextPC - 4 : armNextPC - 2);
         }
 #endif
@@ -168,9 +170,15 @@ __attribute__((section(".itcm"))) static inline void updateVC()
       value = READ32LE(((u32 *)&bios[address & 0x3FFC]));
     break;
   case 2:
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unreadable;
+#endif
     value = READ32LE(((u32 *)&workRAM[address & 0x3FFFC]));
     break;
   case 3:
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
+#endif
     value = READ32LE(((u32 *)&internalRAM[address & 0x7ffC]));
     break;
   case 4:
@@ -200,9 +208,15 @@ __attribute__((section(".itcm"))) static inline void updateVC()
     } else goto unreadable;
     break;
   case 5:
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unreadable;
+#endif
     value = READ32LE(((u32 *)&paletteRAM[address & 0x3fC]));
     break;
   case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unreadable;
+#endif
     address = (address & 0x1fffc);
     if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
     {
@@ -214,6 +228,9 @@ __attribute__((section(".itcm"))) static inline void updateVC()
     value = READ32LE(((u32 *)&vram[address]));
     break;
   case 7:
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unreadable;
+#endif
     value = READ32LE(((u32 *)&oam[address & 0x3FC]));
     break;
   case 8:
@@ -249,10 +266,12 @@ __attribute__((section(".itcm"))) static inline void updateVC()
   default:
   unreadable:
   //while(1);
-#ifdef DEV_VERSION
-
-      log("Illegal word read: %08x at %08x\n", address, armMode ?
-          armNextPC - 4 : armNextPC - 2);
+#ifdef checkclearaddrrw
+      //Log("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  Log("Illegal word read: %08x\n", address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
 #endif
 
     if(cpuDmaHack) {
@@ -301,7 +320,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 #ifdef DEV_VERSION      
   if(address & 1) {
     if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
-      log("Unaligned halfword read: %08x at %08x\n", address, armMode ?
+      Log("Unaligned halfword read: %08x at %08x\n", address, armMode ?
           armNextPC - 4 : armNextPC - 2);
     }
   }
@@ -315,7 +334,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
       if(address < 0x4000) {
 #ifdef DEV_VERSION
         if(systemVerbose & VERBOSE_ILLEGAL_READ) {
-          log("Illegal halfword read: %08x at %08x\n", address, armMode ?
+          Log("Illegal halfword read: %08x at %08x\n", address, armMode ?
               armNextPC - 4 : armNextPC - 2);
         }
 #endif
@@ -325,9 +344,15 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
       value = READ16LE(((u16 *)&bios[address & 0x3FFE]));
     break;
   case 2:
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unreadable;
+#endif
     value = READ16LE(((u16 *)&workRAM[address & 0x3FFFE]));
     break;
   case 3:
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
+#endif
     value = READ16LE(((u16 *)&internalRAM[address & 0x7ffe]));
     break;
   case 4:
@@ -339,22 +364,6 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 		{
 			if(ioMem[address & 0x3fe] & 0x8000)
 			{
-				/*if((ioMem[(address & 0x3fe) + 0x2] & 0x3) == 0)
-				{
-					value = (*(u16 *)(address)) << 5;
-				}
-				if((ioMem[(address & 0x3fe) + 0x2] & 0x3) == 1)
-				{
-					value = (*(u16 *)(address)) << 1;
-				}
-				if((ioMem[(address & 0x3fe) + 0x2] & 0x3) == 2)
-				{
-					value = (*(u16 *)(address)) << 1;
-				}
-				if((ioMem[(address & 0x3fe) + 0x2] & 0x3) == 3)
-				{
-					value = *(u16 *)(address); //todo timer shift
-				}*/
 				value = ((*(u16 *)(address)) >> 1) | 0x8000;
 			}
 			else
@@ -383,9 +392,15 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
     else goto unreadable;
     break;
   case 5:
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unreadable;
+#endif
     value = READ16LE(((u16 *)&paletteRAM[address & 0x3fe]));
     break;
   case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unreadable;
+#endif
     address = (address & 0x1fffe);
     if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
     {
@@ -397,6 +412,9 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
     value = READ16LE(((u16 *)&vram[address]));
     break;
   case 7:
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unreadable;
+#endif
     value = READ16LE(((u16 *)&oam[address & 0x3fe]));
     break;
   case 8:
@@ -436,12 +454,14 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
     // default
   default:
   unreadable:
-#ifdef DEV_VERSION
-    if(systemVerbose & VERBOSE_ILLEGAL_READ) {
-      log("Illegal halfword read: %08x at %08x\n", address, armMode ?
-          armNextPC - 4 : armNextPC - 2);
-    }
+#ifdef checkclearaddrrw
+      //Log("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  Log("Illegal hword read: %08x\n", address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
 #endif
+
     if(cpuDmaHack) {
       value = cpuDmaLast & 0xFFFF;
     } else {
@@ -481,7 +501,7 @@ iprintf("r8 %02x\n",address);
       if(address < 0x4000) {
 #ifdef DEV_VERSION
         if(systemVerbose & VERBOSE_ILLEGAL_READ) {
-          log("Illegal byte read: %08x at %08x\n", address, armMode ?
+          Log("Illegal byte read: %08x at %08x\n", address, armMode ?
               armNextPC - 4 : armNextPC - 2);
         }
 #endif
@@ -490,8 +510,14 @@ iprintf("r8 %02x\n",address);
     }
     return bios[address & 0x3FFF];
   case 2:
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unreadable;
+#endif
     return workRAM[address & 0x3FFFF];
   case 3:
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
+#endif
     return internalRAM[address & 0x7fff];
   case 4:
   
@@ -514,8 +540,14 @@ iprintf("r8 %02x\n",address);
       return ioMem[address & 0x3ff];
     else goto unreadable;
   case 5:
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unreadable;
+#endif
     return paletteRAM[address & 0x3ff];
   case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unreadable;
+#endif
     address = (address & 0x1ffff);
     if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
         return 0;
@@ -523,6 +555,9 @@ iprintf("r8 %02x\n",address);
       address &= 0x17fff;
     return vram[address];
   case 7:
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unreadable;
+#endif
     return oam[address & 0x3ff];
   case 8:
   case 9:
@@ -568,12 +603,14 @@ iprintf("r8 %02x\n",address);
     // default
   default:
   unreadable:
-#ifdef DEV_VERSION
-    if(systemVerbose & VERBOSE_ILLEGAL_READ) {
-      log("Illegal byte read: %08x at %08x\n", address, armMode ?
-          armNextPC - 4 : armNextPC - 2);
-    }
+#ifdef checkclearaddrrw
+      //Log("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  Log("Illegal byte read: %08x\n", address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
 #endif
+
     if(cpuDmaHack) {
       return cpuDmaLast & 0xFF;
     } else {
@@ -597,7 +634,7 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
 #ifdef DEV_VERSION
   if(address & 3) {
     if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
-      log("Unaligned word write: %08x to %08x from %08x\n",
+      Log("Unaligned word write: %08x to %08x from %08x\n",
           value,
           address,
           armMode ? armNextPC - 4 : armNextPC - 2);
@@ -613,6 +650,9 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
                         value);
     else
 #endif
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unreadable;
+#endif
       WRITE32LE(((u32 *)&workRAM[address & 0x3FFFC]), value);
     break;
   case 0x03:
@@ -621,6 +661,9 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
       cheatsWriteMemory(address & 0x3007FFC,
                         value);
     else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
 #endif
       WRITE32LE(((u32 *)&internalRAM[address & 0x7ffC]), value);
     break;
@@ -646,9 +689,15 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
                         value);
     else
 #endif
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unreadable;
+#endif
     WRITE32LE(((u32 *)&paletteRAM[address & 0x3FC]), value);
     break;
   case 0x06:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unreadable;
+#endif
     address = (address & 0x1fffc);
     if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
         return;
@@ -664,6 +713,9 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
     WRITE32LE(((u32 *)&vram[address]), value);
     break;
   case 0x07:
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unreadable;
+#endif
 #ifdef BKPT_SUPPORT
     if(*((u32 *)&freezeOAM[address & 0x3fc]))
       cheatsWriteMemory(address & 0x70003FC,
@@ -686,13 +738,13 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
     // default
   default:
   unwritable:
-#ifdef DEV_VERSION
-    if(systemVerbose & VERBOSE_ILLEGAL_WRITE) {
-      log("Illegal word write: %08x to %08x from %08x\n",
-          value,
-          address,
-          armMode ? armNextPC - 4 : armNextPC - 2);
-    }
+ unreadable:
+#ifdef checkclearaddrrw
+      //Log("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  Log("Illegal word write: %08x to %08x\n",value, address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
 #endif
     break;
   }

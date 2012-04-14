@@ -97,7 +97,6 @@ u16 CPUReadHalfWordSigned(u32 addr);
 u8  CPUReadByte (u32 addr);
 
 
-extern "C" void swiIntrWaitc();
 
 
 extern "C" u32 savedsp;
@@ -356,7 +355,11 @@ void gbaInit()
 #else
 	pu_SetRegion(3, 0x03000000 | PU_PAGE_16M | 1);	/* gba iwram */ //it is the GBA Cart in the original //ichfly for log jumps it is 2 as bit as it should
 #endif
+#ifdef checkclearaddr20
+	pu_SetRegion(6, 0x02000000 | PU_PAGE_4M | 1);    //ram
+#else
 	pu_SetRegion(6, 0x02000000 | PU_PAGE_16M | 1);    //ram
+#endif
 	//pu_SetRegion(7, 0x07000000 | PU_PAGE_16M | 1);
 	pu_SetRegion(1, 0x05000000 | PU_PAGE_16M | 1);
 	pu_SetRegion(7, 0x06000000 | PU_PAGE_32M | 1);	//todo swap
@@ -406,34 +409,40 @@ void BIOScall(int op,  s32 *R)
 		BIOS_RegisterRamReset();
 		break;
 	  case 0x02:
-		  Log("Halt: IE %x\n",IE);        
+	    Log("Halt: IE %x\n",IE);
 		//holdState = true;
 		//holdType = -1;
 		//cpuNextEvent = cpuTotalTicks;
 		
-		
+		ichflyswiHalt();
+		if(!(IE & 0x1))
+		{
+			while(!(REG_IF & ~0x1))
+			{
+				ichflyswiHalt();
+			}
+		}
 		//durchlauf = 1;
 		
 		//debugDump();
 		
 		//VblankHandler();
 		
-		//swiIntrWaitc();
-		
 		break;
 	  case 0x03:
-		  Log("Stop(not yet)\n");         
-		//holdState = true;
-		//holdType = -1;
-		//stopState = true;
-		//cpuNextEvent = cpuTotalTicks; 
-		break;
+		  Log("Stop\n");         
+			//holdState = true;
+			//holdType = -1;
+			//stopState = true;
+			//cpuNextEvent = cpuTotalTicks;
+			ichflyswiIntrWait(1,(IE & 0x6080));
+		  break;
 	  case 0x04:
 		  Log("IntrWait: 0x%08x,0x%08x\n",
 			  R[0],
 			  R[1]);      
 	
-		swiIntrWait(R[0],R[1]);
+		ichflyswiIntrWait(R[0],R[1]);
 		//CPUSoftwareInterrupt();
 		break;    
 	  case 0x05:
@@ -441,12 +450,14 @@ void BIOScall(int op,  s32 *R)
 		  Log("VBlankIntrWait:\n");
 		  //VblankHandler(); //todo
 	#endif
-		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+		//if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 #ifdef powerpatches
-		if(REG_VCOUNT < 60)frameasyncsync(); //hope it don't need more than 100 Lines this give the emulator more power
+		if((REG_DISPSTAT & DISP_IN_VBLANK) || (REG_VCOUNT < 60))frameasyncsync(); //hope it don't need more than 100 Lines this give the emulator more power
 #endif
-		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+		//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
 		
+		ichflyswiWaitForVBlank();
+
 		break;
 	  case 0x06:
 		BIOS_Div();
@@ -699,7 +710,9 @@ void ndsMode()
 
 #ifndef unsave
 	if(exRegs[15] < 0x02000000 
-		
+#ifdef checkclearaddr20
+	|| (exRegs[15] > 0x023FFFFF && exRegs[15] < 0x03000000 ) 
+#endif
 #ifdef checkclearaddr
 	|| exRegs[15] > 0x03007FFF)
 #else

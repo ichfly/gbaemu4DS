@@ -382,6 +382,25 @@ void utilApplyIPS(const char *ips, u8 **r, int *s)
 
 extern bool cpuIsMultiBoot;
 
+
+bool utilIsSAV(const char * file)
+{
+  if(strlen(file) > 4) {
+    const char * p = strrchr(file,'.');
+
+    if(p != NULL) {
+      if(_stricmp(p, ".sav") == 0) {
+        cpuIsMultiBoot = true;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+
+
 bool utilIsGBAImage(const char * file)
 {
   cpuIsMultiBoot = false;
@@ -395,8 +414,8 @@ bool utilIsGBAImage(const char * file)
         return true;
       if(_stricmp(p, ".bin") == 0)
         return true;
-      if(_stricmp(p, ".elf") == 0)
-        return true;
+      /*if(_stricmp(p, ".elf") == 0)
+        return true;*/ //todo
       if(_stricmp(p, ".mb") == 0) {
         cpuIsMultiBoot = true;
         return true;

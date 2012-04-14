@@ -32,6 +32,16 @@ extern "C" u32 readbankedlr(u32 CPSR);
 
 void cpupausemodeexit();
 void cpupausemode();
+void debugDump();
+
+
+extern "C" void ichflyswiHalt();
+extern "C" void ichflyswiWaitForVBlank();
+extern "C" void ichflyswiIntrWait(u32 i,u32 c);
+
+
+
+
 #endif /*__CPU_H__*/
  
  

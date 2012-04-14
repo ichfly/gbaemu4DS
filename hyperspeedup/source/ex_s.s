@@ -45,7 +45,8 @@
 
 @new stacks todo mix some stacks
 __sp_undef	=	__dtcm_top - 0x100;	@ichfly @ 1.792 Byte
-__sp_irq	=	__sp_undef  - 0x800; @ichfly @ 1.024 Byte each
+__sp_svc	=	__sp_undef - 0x700;	@ichfly @ 4.096 Byte
+__sp_irq	=	__sp_svc  - 0x1000; @ichfly @ 1.024 Byte each
 
 @========== Exception code ====================
 	
@@ -217,6 +218,9 @@ nop
 	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
 
 
+.global SPtoloadswi
+SPtoloadswi:
+	.word __sp_svc
 inter_swi:
 
 
@@ -235,11 +239,16 @@ inter_swi:
 	ldr	r1, [r1]
 	
 	
-	ldr	sp, =__sp_undef	@ use the new stack
+	ldr	sp, =SPtoloadswi	@ use the new stack
+	ldr sp, [sp]
 	
 	@mov lr,pc @ichfly change back if possible
 	@bx r1
 	blx	r1 @ichfly change back if possible
+	
+	
+	ldr	r1, =SPtoloadswi	@save old stack
+	str sp, [r1]
 	
 	@ restore the registres 0->12
 	ldr	lr, =exRegs

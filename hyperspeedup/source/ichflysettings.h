@@ -3,11 +3,17 @@
 //#define lastdebug
 
 
+
 //#define checkclearaddr
+
+//#define checkclearaddr20 //break clock and some other things only work with checkclearaddr
+
+//#define checkclearaddrrw
+
 
 //#define printreads
 
-#define powerpatches //do some hacky things that give the emulator more Vb in some cases.
+//#define powerpatches //do some hacky things that give the emulator more Vb in some cases.
 
 
 #define ichflytestkeypossibillity
@@ -16,13 +22,14 @@
 
 //#define arm9advsound
 
+#define unsave
 
 
-#define patch_VERSION //non patch Version no more works
+
+
+
+#define patch_VERSION //is set even if this is not defineed
 
 #define releas //non releas no more working 
 
-
-//#define unsave //unsave is no more stable
-
-//#define BREAKswisupport //that wont work any more
+//#define BREAKswisupport //flag dose nothing is no more sup

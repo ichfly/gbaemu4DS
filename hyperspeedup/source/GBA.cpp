@@ -987,7 +987,7 @@ bool CPUIsZipFile(const char * file)
   return false;
 }
 
-bool CPUIsGBAImage(const char * file)
+/*bool CPUIsGBAImage(const char * file)
 {
   cpuIsMultiBoot = false;
   if(strlen(file) > 4) {
@@ -1010,7 +1010,7 @@ bool CPUIsGBAImage(const char * file)
   }
 
   return false;
-}
+}*/
 
 bool CPUIsGBABios(const char * file)
 {
@@ -2589,6 +2589,9 @@ iprintf("w16 %04x to %08x\r\n",value,address);
                           value);
     else
 #endif
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unwritable;
+#endif
       WRITE16LE(((u16 *)&workRAM[address & 0x3FFFE]),value);
     break;
   case 3:
@@ -2597,6 +2600,9 @@ iprintf("w16 %04x to %08x\r\n",value,address);
       cheatsWriteHalfWord(address & 0x3007ffe,
                           value);
     else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unwritable;
 #endif
       WRITE16LE(((u16 *)&internalRAM[address & 0x7ffe]), value);
     break;    
@@ -2624,9 +2630,15 @@ iprintf("w16 %04x to %08x\r\n",value,address);
                           value);
     else
 #endif
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unwritable;
+#endif
     WRITE16LE(((u16 *)&paletteRAM[address & 0x3fe]), value);
     break;
   case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unwritable;
+#endif
     address = (address & 0x1fffe);
     if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
         return;
@@ -2646,6 +2658,9 @@ iprintf("w16 %04x to %08x\r\n",value,address);
       cheatsWriteHalfWord(address & 0x70003fe,
                           value);
     else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unwritable;
 #endif
     WRITE16LE(((u16 *)&oam[address & 0x3fe]), value);
     break;
@@ -2670,13 +2685,12 @@ iprintf("w16 %04x to %08x\r\n",value,address);
     goto unwritable;
   default:
   unwritable:
-#ifdef DEV_VERSION
-    if(systemVerbose & VERBOSE_ILLEGAL_WRITE) {
-      log("Illegal halfword write: %04x to %08x from %08x\n",
-          value,
-          address,
-          armMode ? armNextPC - 4 : armNextPC - 2);
-    }
+#ifdef checkclearaddrrw
+      //log("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  log("Illegal hword write: %04x to %08x\n",value, address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
 #endif
     break;
   }
@@ -2693,7 +2707,10 @@ void CPUWriteByte(u32 address, u8 b)
       if(freezeWorkRAM[address & 0x3FFFF])
         cheatsWriteByte(address & 0x203FFFF, b);
       else
-#endif  
+#endif
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unwritable;
+#endif
         workRAM[address & 0x3FFFF] = b;
     break;
   case 3:
@@ -2701,6 +2718,9 @@ void CPUWriteByte(u32 address, u8 b)
     if(freezeInternalRAM[address & 0x7fff])
       cheatsWriteByte(address & 0x3007fff, b);
     else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unwritable;
 #endif
       internalRAM[address & 0x7fff] = b;
     break;
@@ -2784,10 +2804,16 @@ void CPUWriteByte(u32 address, u8 b)
     } else goto unwritable;
     break;
   case 5:
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unwritable;
+#endif
     // no need to switch
     *((u16 *)&paletteRAM[address & 0x3FE]) = (b << 8) | b;
     break;
   case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unwritable;
+#endif
     address = (address & 0x1fffe);
     if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
         return;
@@ -2807,6 +2833,9 @@ void CPUWriteByte(u32 address, u8 b)
     }
     break;
   case 7:
+#ifdef checkclearaddrrw
+	goto unwritable;
+#endif
     // no need to switch
     // byte writes to OAM are ignored
     //    *((u16 *)&oam[address & 0x3FE]) = (b << 8) | b;
@@ -2828,13 +2857,12 @@ void CPUWriteByte(u32 address, u8 b)
     // default
   default:
   unwritable:
-#ifdef DEV_VERSION
-    if(systemVerbose & VERBOSE_ILLEGAL_WRITE) {
-      log("Illegal byte write: %02x to %08x from %08x\n",
-          b,
-          address,
-          armMode ? armNextPC - 4 : armNextPC -2 );
-    }
+#ifdef checkclearaddrrw
+      //log("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  log("Illegal byte write: %02x to %08x\n",b, address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
 #endif
     break;
   }

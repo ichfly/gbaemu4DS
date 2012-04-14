@@ -20,6 +20,12 @@
 #define gzFile void* //ichfly
 #define voidp void*
 
+#include <nds.h>
+#include <stdio.h>
+
+
+
+
 #ifndef VBA_UTIL_H
 #define VBA_UTIL_H
 enum IMAGE_TYPE {
@@ -40,6 +46,7 @@ extern bool utilWriteBMPFile(const char *, int, int, u8 *);
 extern void utilApplyIPS(const char *ips, u8 **rom, int *size);
 extern void utilWriteBMP(char *, int, int, u8 *);
 extern bool utilIsGBAImage(const char *);
+extern bool utilIsSAV(const char * file);
 extern bool utilIsGBImage(const char *);
 extern bool utilIsZipFile(const char *);
 extern bool utilIsGzipFile(const char *);
