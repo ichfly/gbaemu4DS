@@ -72,4 +72,5 @@ extern int utilGzClose(gzFile file);
 extern long utilGzMemTell(gzFile file);
 extern void utilGBAFindSave(const u8 *, const int);
 extern void utilUpdateSystemColorMaps();
+extern int anytimejmpfilter;
 #endif

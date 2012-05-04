@@ -807,7 +807,7 @@ int main(void) {
 	//bg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
 	consoleDemoInit();
 
-	powerOff(POWER_3D_CORE | POWER_MATRIX); //3D use power so that is not needed
+	REG_POWERCNT &= ~((POWER_3D_CORE | POWER_MATRIX) & 0xFFFF);//powerOff(POWER_3D_CORE | POWER_MATRIX); //3D use power so that is not needed
 
 	//soundEnable(); //sound finaly
 	//fifoSetDatamsgHandler(FIFO_USER_02, arm7debugMsgHandler, 0);
@@ -1067,7 +1067,7 @@ REG_IPC_FIFO_TX = 0x7654321;
 
 	anytimejmpfilter = 0;
 	
-	anytimejmp = (VoidFn)0x3007FFC;
+	//anytimejmp = (VoidFn)0x3007FFC; //bios import
 /*
 REG_IPC_FIFO_TX = 0; //test backcall
 REG_IPC_FIFO_TX = 0x1234567;

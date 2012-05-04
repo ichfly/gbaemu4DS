@@ -1,6 +1,7 @@
 #include <nds.h>
 #include <stdio.h>
-
+#include "ichflysettings.h"
+#ifdef arm9advsound
 extern "C" int SPtoload;
 extern "C" int SPtemp;
 
@@ -35,3 +36,4 @@ extern "C" int SPtemp;
 	//DMA0_DEST = REG_IPC_FIFO_RX;
 	//DMA0_CR = REG_IPC_FIFO_RX;
 }
+#endif

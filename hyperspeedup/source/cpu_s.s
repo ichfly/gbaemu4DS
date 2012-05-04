@@ -6,7 +6,10 @@
 	.code 32
 	.arm
 	
+
+
 	.global readbankedsp
+   .type   readbankedsp STT_FUNC
 readbankedsp:
 	push {r1-r4}
 	
@@ -33,6 +36,7 @@ readbankedsp:
 	bx lr
 	
 	.global readbankedlr
+   .type   readbankedlr STT_FUNC
 readbankedlr:
 	push {r1-r4}
 	
@@ -58,27 +62,35 @@ readbankedlr:
 	
 	
 	.global cpuSetCPSR
+   .type   cpuSetCPSR STT_FUNC
 cpuSetCPSR:
 	msr cpsr, r0
 	bx lr
 	
 	.global puSetGbaIWRAM
+   .type   puSetGbaIWRAM STT_FUNC
 puSetGbaIWRAM:
 	ldr	r0,=( (0b01110 << 1) | 0x03000000 | 1)	
 	mcr	p15, 0, r0, c6, c2, 0
 	bx lr
 	
 	.global cpu_GetMemPrem
+   .type   cpu_GetMemPrem STT_FUNC
+
 cpu_GetMemPrem:
 	mrc p15, 0, r0, c5, c0, 2
 	bx lr
 
 	.global puSetMemPerm
+   .type   puSetMemPerm STT_FUNC
+
 puSetMemPerm:
 	mcr p15, 0, r0, c5, c0, 2
 	bx lr
 	
 	.global pu_Enable
+   .type   pu_Enable STT_FUNC
+
 pu_Enable:
  	mrc	p15,0,r0,c1,c0,0
  	orr	r0,r0,#1
@@ -86,16 +98,21 @@ pu_Enable:
 	bx lr
 	
 	.global cpu_SetCP15Cnt
+   .type   cpu_SetCP15Cnt STT_FUNC
+
 cpu_SetCP15Cnt:
 	mcr p15, 0, r0, c1, c0, 0
 	bx lr
 			
 	.global cpu_GetCP15Cnt
+   .type   cpu_GetCP15Cnt STT_FUNC
 cpu_GetCP15Cnt:
 	mrc p15, 0, r0, c1, c0, 0
 	bx lr		
  
 	.global cpu_ArmJump
+   .type   cpu_ArmJump STT_FUNC
+
 cpu_ArmJump:
 @      reg[13].I = 0x03007F00;
 
@@ -106,12 +123,14 @@ cpu_ArmJump:
 	bx r0
 
 	.global cpu_ArmJumpforstackinit
+   .type   cpu_ArmJumpforstackinit STT_FUNC
+
 cpu_ArmJumpforstackinit:
 @      reg[13].I = 0x03007F00;
 
 @      reg[R13_IRQ].I = 0x03007FA0;
 @      reg[R13_SVC].I = 0x03007FE0;
-
+	
 	mov	r2, #0x12		@ Switch to IRQ Mode
 	msr	cpsr, r2
 	ldr	sp, =0x03007FA0		@ Set IRQ stack
@@ -130,21 +149,25 @@ cpu_ArmJumpforstackinit:
 
 
 	.global cpu_GetCP15Cnt
+   .type   cpu_GetCP15Cnt STT_FUNC
 	
 cpu_GbaSaveRegs:
 
 	.global cpuGetSPSR
+   .type   cpuGetSPSR STT_FUNC
 cpuGetSPSR:
 	mrs r0, spsr
 	bx lr
 	
 	
 	.global cpuGetCPSR
+   .type   cpuGetCPSR STT_FUNC
 cpuGetCPSR:
 	mrs r0, cpsr
 	bx lr
 	
 	.global pu_SetRegion
+   .type   pu_SetRegion STT_FUNC
 pu_SetRegion:
 	ldr	r2, =_puSetRegion_jmp
 	add	r2, r0, lsl #3
@@ -168,27 +191,37 @@ _puSetRegion_jmp:
 	bx		lr
 
 	.global pu_SetDataPermissions
+   .type   pu_SetDataPermissions STT_FUNC
+
 pu_SetDataPermissions:
 
 	mcr	p15, 0, r0, c5, c0, 2
 	bx		lr
 
 	.global pu_SetCodePermissions
+   .type   pu_SetCodePermissions STT_FUNC
+
 pu_SetCodePermissions:
 	mcr	p15, 0, r0, c5, c0, 3
 	bx		lr
 
 	.global pu_SetDataCachability
+   .type   pu_SetDataCachability STT_FUNC
+
 pu_SetDataCachability:
 	mcr	p15, 0, r0, c2, c0, 0
 	bx		lr
 
 	.global pu_SetCodeCachability
+   .type   pu_SetCodeCachability STT_FUNC
+
 pu_SetCodeCachability:
 	mcr	p15, 0, r0, c2, c0, 1
 	bx		lr
 
 	.global pu_GetWriteBufferability 
+   .type   pu_GetWriteBufferability STT_FUNC
+
 pu_GetWriteBufferability:
 	mcr	p15, 0, r0, c3, c0, 0
 	bx		lr
@@ -200,6 +233,8 @@ pu_GetWriteBufferability:
 
 @---------------------------------------------------------------------------------
 	.global ichflyswiWaitForVBlank
+   .type   ichflyswiWaitForVBlank STT_FUNC
+
 @---------------------------------------------------------------------------------
 ichflyswiWaitForVBlank:
 @---------------------------------------------------------------------------------
@@ -208,6 +243,8 @@ ichflyswiWaitForVBlank:
 	mov	r2, #0
 @---------------------------------------------------------------------------------
 	.global ichflyswiIntrWait
+   .type   ichflyswiIntrWait STT_FUNC
+
 @---------------------------------------------------------------------------------
 ichflyswiIntrWait:
 @---------------------------------------------------------------------------------
@@ -283,6 +320,8 @@ testirq:
 
 @---------------------------------------------------------------------------------
 	.global ichflyswiHalt
+   .type   ichflyswiHalt STT_FUNC
+
 @---------------------------------------------------------------------------------
 ichflyswiHalt:
 @---------------------------------------------------------------------------------

@@ -1560,7 +1560,7 @@ void CPUCheckDMA(int reason, int dmamask)
       if(reason == 3) {
 #ifdef DEV_VERSION
         if(systemVerbose & VERBOSE_DMA1) {
-          log("DMA1: s=%08x d=%08x c=%04x count=%08x\n", dma1Source, dma1Dest,
+          Log("DMA1: s=%08x d=%08x c=%04x count=%08x\n", dma1Source, dma1Dest,
               DM1CNT_H,
               16);
         }
@@ -1630,7 +1630,7 @@ void CPUCheckDMA(int reason, int dmamask)
 #ifdef DEV_VERSION
         if(systemVerbose & VERBOSE_DMA2) {
           int count = (4) << 2;
-          log("DMA2: s=%08x d=%08x c=%04x count=%08x\n", dma2Source, dma2Dest,
+          Log("DMA2: s=%08x d=%08x c=%04x count=%08x\n", dma2Source, dma2Dest,
               DM2CNT_H,
               count);
         }
@@ -2573,7 +2573,7 @@ iprintf("w16 %04x to %08x\r\n",value,address);
 #ifdef DEV_VERSION
   if(address & 1) {
     if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
-      log("Unaligned halfword write: %04x to %08x from %08x\n",
+      Log("Unaligned halfword write: %04x to %08x from %08x\n",
           value,
           address,
           armMode ? armNextPC - 4 : armNextPC - 2);
@@ -2686,8 +2686,8 @@ iprintf("w16 %04x to %08x\r\n",value,address);
   default:
   unwritable:
 #ifdef checkclearaddrrw
-      //log("Illegal word read: %08x at %08x\n", address,reg[15].I);
-	  log("Illegal hword write: %04x to %08x\n",value, address);
+      //Log("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  Log("Illegal hword write: %04x to %08x\n",value, address);
 	  REG_IME = IME_DISABLE;
 	  debugDump();
 	  while(1);
@@ -2858,8 +2858,8 @@ void CPUWriteByte(u32 address, u8 b)
   default:
   unwritable:
 #ifdef checkclearaddrrw
-      //log("Illegal word read: %08x at %08x\n", address,reg[15].I);
-	  log("Illegal byte write: %02x to %08x\n",b, address);
+      //Log("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  Log("Illegal byte write: %02x to %08x\n",b, address);
 	  REG_IME = IME_DISABLE;
 	  debugDump();
 	  while(1);
@@ -3284,7 +3284,7 @@ void CPUReset()
 }
 
 #ifdef SDL
-void log(const char *defaultMsg, ...)
+void Log(const char *defaultMsg, ...)
 {
   char buffer[2048];
   va_list valist;
@@ -3293,7 +3293,7 @@ void log(const char *defaultMsg, ...)
   vsprintf(buffer, defaultMsg, valist);
 
   if(out == NULL) {
-    out = fopen("trace.log","w");
+    out = fopen("trace.Log","w");
   }
 
   fputs(buffer, out);
@@ -3301,7 +3301,7 @@ void log(const char *defaultMsg, ...)
   va_end(valist);
 }
 #else
-extern void winlog(const char *, ...);
+extern void winLog(const char *, ...);
 #endif
 
 
@@ -3345,7 +3345,7 @@ u32 systemGetClock()
   return 0; //ichfly todo ftp counter 
 }
 
-void winlog(char const*, ...)
+void winLog(char const*, ...)
 {
 	return; //todo ichfly
 }

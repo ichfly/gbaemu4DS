@@ -1,6 +1,6 @@
 #define uppern_read_emulation
 
-//#define lastdebug
+#define lastdebug
 
 
 
@@ -22,7 +22,7 @@
 
 //#define arm9advsound
 
-#define unsave
+//#define unsave
 
 
 

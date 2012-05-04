@@ -8,6 +8,7 @@
 
 
 #include "main.h"
+#include "ichflysettings.h"
 
 
 extern "C" void swiHalt(void);
@@ -3029,9 +3030,13 @@ extern u8 cpuBitsSet[256];
 
 
 
-
+#ifndef checkclearaddrrw
 __attribute__((section(".itcm"))) /*inline*/ void emuInstrARM(u32 opcode, s32 *R) //to big for inline
-{
+#else
+/*inline*/ void emuInstrARM(u32 opcode, s32 *R) //to big for inline
+
+#endif
+		{
 
 reg_pair* myregs = (reg_pair*)R;
 	
@@ -7053,7 +7058,7 @@ unkommeopcode(opcode,myregs);
 
 }
 
-__attribute__((section(".itcm"))) inline void emuInstrTHUMB(u16 opcode, s32 *R)
+__attribute__((section(".itcm"))) /*inline*/ void emuInstrTHUMB(u16 opcode, s32 *R)
 {
 
 reg_pair* myregs = (reg_pair*)R;

@@ -62,7 +62,7 @@ void initSystem(void) {
 
 	punixTime = (time_t*)memUncached((void *)&__transferRegion()->unixTime);
 
-	__syscalls.exit = __libnds_exit;
+	//__syscalls.exit = __libnds_exit;
 	extern  char *fake_heap_end;
 	__transferRegion()->bootcode = (struct __bootstub *)fake_heap_end;
 	//irqEnable(IRQ_VBLANK);
