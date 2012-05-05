@@ -746,7 +746,7 @@ void pausemenue()
 					show_mem();
 					break;
 				case 2:
-					cpupausemodeexit();
+					//cpupausemodeexit();
 					iprintf("\x1b[2J");
 					while(REG_VCOUNT != 192); //wait for Vblanc
 					irqEnable( IRQ_VBLANK);
@@ -1112,7 +1112,8 @@ gbamode = true;
 
 	iprintf("jump to (%08X)\n\r",rom);
 
-	//iprintf("\x1b[2J"); //reset
+	//iprintf("\x1b[2J"); //reset (not working huh)
+
 	cpu_ArmJumpforstackinit((u32)rom, 0);
 	
 	

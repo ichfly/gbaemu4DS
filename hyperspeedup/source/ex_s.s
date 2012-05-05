@@ -166,7 +166,7 @@ got_over_gba_handler:
 	@nop
 	@nop
 
-	ldr	r1, =0x33333330
+	ldr	r1, =0x03333333
 	
 	mcr	p15, 0, r1, c5, c0, 2
 	

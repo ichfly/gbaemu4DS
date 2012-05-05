@@ -2478,11 +2478,12 @@ void CPUUpdateRegister(u32 address, u16 value)
     UPDATE_REG(0x128, value);
     break;
   case 0x130:
-    P1 |= (value & 0x3FF);
-    UPDATE_REG(0x130, P1);
+    //P1 |= (value & 0x3FF); //ichfly readonly
+    //UPDATE_REG(0x130, P1);
     break;
   case 0x132:
     UPDATE_REG(0x132, value & 0xC3FF);
+	*(u16 *)(0x4000132) = value;
     break;
   case 0x200:
     IE = value & 0x3FFF;
@@ -2503,8 +2504,8 @@ void CPUUpdateRegister(u32 address, u16 value)
     //UPDATE_REG(0x202, IF); //ichfly update at read
     break;
   case 0x204:
-    {
-      memoryWait[0x0e] = memoryWaitSeq[0x0e] = gamepakRamWaitState[value & 3];
+    { //ichfly can't emulate that
+      /*memoryWait[0x0e] = memoryWaitSeq[0x0e] = gamepakRamWaitState[value & 3];
       
       if(!speedHack) {
         memoryWait[0x08] = memoryWait[0x09] = gamepakWaitState[(value >> 2) & 3];
@@ -2542,7 +2543,7 @@ void CPUUpdateRegister(u32 address, u16 value)
         busPrefetchEnable = false;
         busPrefetch = false;
         busPrefetchCount = 0;
-      }
+      }*/
       UPDATE_REG(0x204, value & 0x7FFF);
 
     }

@@ -210,7 +210,7 @@ void debugDump()
 		REG_IME = IME_DISABLE;
 		while(1);
 	}*/
-
+DC_FlushAll();
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu else we may cause an endless loop
 
 	for(i = 0; i < 4; i++) {
@@ -218,7 +218,7 @@ void debugDump()
 	}
 
 	pu_Enable(); //back to normal code
-
+DC_FlushAll();
 	Log("SPSR %08x ",BIOSDBG_SPSR);
 	Log("CPSR %08x\n",cpuGetCPSR());
 	//Log("irqBank %08x",readbankedsp(0x12));
@@ -303,74 +303,56 @@ int durchgang = 0;
 void gbaInit()
 {
 
+
 	/*
-	Region 0 - IO registers	0x04000000 PAGE_64M
-	Region 1 - System ROM 0xFFFF0000 PAGE_32K   
-	--> Standard Palettes 0x05000000  (2KByte DS) (1KByte gba)  PAGE_16M
-	Region 2 - alternate vector base 0x00000000 PAGE_4K
-	--> more size PAGE_32K
-	Region 3 - DS Accessory (GBA Cart) / DSi switchable iwram 0x08000000 PAGE_16M (0x03000000 PAGE_8M DSi) 
-	--> Shared WRAM (32KByte) 0x03000000 PU_PAGE_16M
-	Region 4 - ITCM 0x01000000 PAGE_32K
-	Region 5 - DTCM 0x0b000000 PAGE_16K
-	Region 6 - non cacheable main ram 0x02000000 PAGE_16M
-	--> same to secure that everything works
-	Region 7 - cacheable main ram 0x02000000 PAGE_4M
-	--> VRAM/OAM 0x06000000 PU_PAGE_32M
-
-
-	
-
+	Region 0 - background	0x00000000 PU_PAGE_128M
+	Region 1 - DTCM 0x0b000000 PAGE_16K   
+	Region 2 - speedupone 0x02040000 PU_PAGE_256K
+	Region 3 - speeduptwo 0x02080000 PU_PAGE_512K
+	Region 4 - speedupthree 0x02100000 PU_PAGE_1M
+	Region 5 - speedupfour 0x02200000 PU_PAGE_2M
+	Region 6 - free
+	Region 7 - IO 0x04000000 PU_PAGE_16M
 	*/
 
+	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu while configurating pu
 
-	//pFile = fopen("fat:/gbaemulog.log","w");
-	pu_SetDataCachability(   0b00000000); //ichfly todo slowdown !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	pu_SetCodeCachability(   0b00000000);
-	pu_GetWriteBufferability(0b00000000);
+
+	pu_SetDataCachability(   0b00111100);
+	pu_SetCodeCachability(   0b00111100);
+	pu_GetWriteBufferability(0b00111100);
 	
+
+
+#ifdef releas
+	exInit(gbaExceptionHdl); //define handler
+#endif
+
+	exInitswisystem(gbaswieulatedbios); //define handler
+	exInitundifinedsystem(undifinedresolver); //define handler
+
+
+
+	WRAM_CR = 0; //swap wram in
+
+
+	pu_SetRegion(0, 0x00000000 | PU_PAGE_128M | 1);
+	pu_SetRegion(1, 0x0b000000 | PU_PAGE_16K | 1);
+	pu_SetRegion(2, 0x02040000 | PU_PAGE_256K | 1);
+	pu_SetRegion(3, 0x02080000 | PU_PAGE_512K | 1);
+	pu_SetRegion(4, 0x02100000 | PU_PAGE_1M | 1);
+	pu_SetRegion(5, 0x02200000 | PU_PAGE_2M | 1);
+	pu_SetRegion(6, 0x0);
+	pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
+
+
+	pu_Enable(); //PU go
+
+
 	DC_FlushAll(); //try it
 	
 	
 	IC_InvalidateAll();
-	
-	//Logsd ("test %x\r\n",pFile);
-	
-	//fputs ("fopen example\r\n",pFile);
-	
-	// 	puSetGbaIWRAM();
-
-#ifdef releas
-	exInit(gbaExceptionHdl);
-#endif
-
-	exInitswisystem(gbaswieulatedbios);
-	exInitundifinedsystem(undifinedresolver);
-
-
-
-	WRAM_CR = 0;
-#ifdef checkclearaddr
-	pu_SetRegion(3, 0x03000000 | PU_PAGE_32K | 1);	/* gba iwram */ //it is the GBA Cart in the original //ichfly for log jumps it is 2 as bit as it should
-#else
-	pu_SetRegion(3, 0x03000000 | PU_PAGE_16M | 1);	/* gba iwram */ //it is the GBA Cart in the original //ichfly for log jumps it is 2 as bit as it should
-#endif
-#ifdef checkclearaddr20
-	pu_SetRegion(6, 0x02000000 | PU_PAGE_4M | 1);    //ram
-#else
-	pu_SetRegion(6, 0x02000000 | PU_PAGE_16M | 1);    //ram
-#endif
-	//pu_SetRegion(7, 0x07000000 | PU_PAGE_16M | 1);
-	pu_SetRegion(1, 0x05000000 | PU_PAGE_16M | 1);
-	pu_SetRegion(7, 0x06000000 | PU_PAGE_32M | 1);	//todo swap
-	//pu_SetRegion(2, 0x05000000 | PU_PAGE_64M | 1);
-	//pu_SetRegion(3, 0x00000000 | PU_PAGE_32M | 1);
-	//pu_SetRegion(4, 0x02040000 | PU_PAGE_8M | 1);
-	//pu_SetRegion(2, 0x00000000 | PU_PAGE_32K | 1);
-
-
-
-	//iprintf("gbainit done\n\r");
 	
 }
 
@@ -409,7 +391,9 @@ void BIOScall(int op,  s32 *R)
 		BIOS_RegisterRamReset();
 		break;
 	  case 0x02:
+#ifdef DEV_VERSION
 	    Log("Halt: IE %x\n",IE);
+#endif
 		//holdState = true;
 		//holdType = -1;
 		//cpuNextEvent = cpuTotalTicks;
@@ -430,7 +414,9 @@ void BIOScall(int op,  s32 *R)
 		
 		break;
 	  case 0x03:
-		  Log("Stop\n");         
+#ifdef DEV_VERSION
+		  Log("Stop\n");
+#endif
 			//holdState = true;
 			//holdType = -1;
 			//stopState = true;
@@ -438,10 +424,11 @@ void BIOScall(int op,  s32 *R)
 			ichflyswiIntrWait(1,(IE & 0x6080));
 		  break;
 	  case 0x04:
+#ifdef DEV_VERSION
 		  Log("IntrWait: 0x%08x,0x%08x\n",
 			  R[0],
 			  R[1]);      
-	
+#endif
 		ichflyswiIntrWait(R[0],R[1]);
 		//CPUSoftwareInterrupt();
 		break;    
@@ -580,68 +567,24 @@ void downgreadcpu()
 }
 
 
- __attribute__((section(".itcm"))) inline void puGba()
+inline void puGba()
 {
-	/* NDS PU REGIONS: 
-	0: io + vram
-	1: bios
-	2: alternate vector base
-	3: DTCM
-	4: ITCM
-	5: new 0x300000 (old gba slot)
-	6: non cacheable main ram
-	7: cacheable main ram
-	*/
-	
-	
-	//REG_IME = IME_DISABLE;
-	
-	//DC_FlushRange((void*)0x02000000, 4 * 1024 * 1024); //slowdown and is not realy needed
-	//pu_SetDataCachability(   B8(0,0,0,0,0,0,1,0)); //ichfly todo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	//pu_SetCodeCachability(   B8(0,0,0,0,0,0,1,0));
-	//pu_GetWriteBufferability(B8(0,0,0,0,0,0,0,0));
-	
-	//pu_SetRegion(0, 0x00000000 | PU_PAGE_4G | 1);	/* fond */ //ichfly wtf
-	//pu_SetRegion(1, 0x04000000 | PU_PAGE_16M | 1);	/* io */
-	//pu_SetDataPermissions(0x36333303);
-	//pu_SetCodePermissions(0x36636303);
-	
-	pu_SetCodePermissions(0x33333330);
-	
-	pu_SetDataPermissions(0x33333330);
 
-	//REG_IME = IME_ENABLE;	//lol don't enable this
+	
+	pu_SetCodePermissions(0x03333333);
+	
+	pu_SetDataPermissions(0x03333333);
 	
 	
 }
- __attribute__((section(".itcm"))) inline void puNds()
+inline void puNds()
 {
-	/* NDS PU REGIONS: 
-	0: io + vram
-	1: bios
-	2: alternate vector base
-	3: DTCM
-	4: ITCM
-	5: new 0x300000 (old gba slot)
-	6: non cacheable main ram
-	7: cacheable main ram
-	*/
 	
 	
 	pu_SetDataPermissions(0x33333333);
 	pu_SetCodePermissions(0x33333333);
 	
 
-	
-	//pu_SetRegion(6, 0x02000000 | PU_PAGE_16M  | 1);	/* main ram */ //why
-	//pu_SetRegion(7, 0x02000000 | PU_PAGE_4M  | 1);	/* main rams */
-	//pu_SetRegion(0, 0x04000000 | PU_PAGE_64M | 1);	/* io + vram */
-	
-	/*pu_SetDataCachability(   B8(1,0,0,0,0,0,1,0)); //ichfly todo
-	pu_SetCodeCachability(   B8(1,0,0,0,0,0,1,0));
-	pu_GetWriteBufferability(B8(1,0,0,0,0,0,0,0));*/
-	
-	//REG_IME = IME_ENABLE;	//ichfy for test
 }
 
 
@@ -676,7 +619,7 @@ void ndsExceptionHdl()
 }
 
 
- __attribute__((section(".itcm")))inline void ndsModeinline()
+inline void ndsModeinline()
 {
 	puNds();
 #ifndef releas
@@ -693,7 +636,7 @@ void ndsMode()
 }
 
 
- __attribute__((section(".itcm"))) void gbaExceptionHdl()
+void gbaExceptionHdl()
 {
 
 	u32 instr;
@@ -772,7 +715,7 @@ if(current == size)current = 0;
 
 
 #ifndef releas
- __attribute__((section(".itcm"))) void gbaMode()
+void gbaMode()
 {
 
 	exInit(gbaExceptionHdl);
@@ -792,7 +735,7 @@ void gbaMode2()
 {
 	puGba();	
 }
-  __attribute__((section(".itcm"))) inline void gbaMode()
+inline void gbaMode()
 {
 	puGba();	
 }
@@ -800,26 +743,6 @@ void gbaMode2()
 
 
 
-
-
-
-void cpupausemode()
-{
-	//undo
-	//Region 1 - System ROM 0xFFFF0000 PAGE_32K   
-	//--> Standard Palettes 0x05000000  (2KByte DS) (1KByte gba)  PAGE_16M
-	pu_SetRegion(1, 0xFFFF0000 | PU_PAGE_32K | 1);
-	cpu_SetCP15Cnt(cpu_GetCP15Cnt() | BIT(13));
-
-}
-void cpupausemodeexit()
-{
-	//do
-	//Region 1 - System ROM 0xFFFF0000 PAGE_32K   
-	//--> Standard Palettes 0x05000000  (2KByte DS) (1KByte gba)  PAGE_16M
-	cpu_SetCP15Cnt(cpu_GetCP15Cnt() &~BIT(13));
-	pu_SetRegion(1, 0x05000000 | PU_PAGE_16M | 1);
-}
 
 
 
