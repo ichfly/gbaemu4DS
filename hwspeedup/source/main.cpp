@@ -87,8 +87,52 @@ char* memoryWaitrealram[8] =
 
 extern "C" u32 cpuSetramreg(u32 inp);
 
+int ignorenextY = 0;
+
+char* seloptions [2] = {"save save","Continue (Beta)"};
+
+void pausemenue()
+{
+	int pressed;
+	int ausgewauhlt = 0;
+	while(1)
+	{
+		iprintf("\x1b[2J");
+		iprintf("Pause\n");
+		iprintf ("--------------------------------");
+		for(int i = 0; i < 2; i++)
+		{
+			if(i == ausgewauhlt) iprintf("->");
+			else iprintf("  ");
+			iprintf(seloptions[i]);
+			iprintf("\n");
+		}
+		do {
+			if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+			while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+			scanKeys();
+			pressed = (keysDownRepeat()& ~0xFC00);
+		} while (!pressed); //no communication here with arm7 so no more update
+		//iprintf("%x",ausgewauhlt);
+		if (pressed&KEY_A)
+		{
+			switch(ausgewauhlt)
+				{
+				case 0:
+					if(savePath[0] == 0)sprintf(savePath,"%s.save.bin",szFile);
+					CPUWriteBatteryFile(savePath);
+					break;
+				case 1:
+					return; //and return
+				}
+		}
+		if (pressed&KEY_DOWN && ausgewauhlt != 1){ ausgewauhlt++;}
+		if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
+
+	}
 
 
+}
 
 void speedtest()
 {	
@@ -253,11 +297,34 @@ void VblankHandler(void) {
 			//if(lastDISPCNT != DISPCNT)REG_DISPCNT = (DISPCNT | 0x10010); //need 0x10010 //the old
 			if(lastDISPCNT != DISPCNT) //we don't need to waste power
 			{
-				u32 dsValue; //new better way
-				if((DISPCNT & 7) == 0)dsValue  = DISPCNT & 0xFF87; //this is a filter //fast to check this this way BG 0123
-				else if((DISPCNT & 7) == 1)dsValue  = DISPCNT & 0xF787; //BG 012-
-				else if((DISPCNT & 7) == 2)dsValue  = DISPCNT & 0xFC87; //BG --23
-				//dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */ //no more needed
+				//reset BG3HOFS and BG3VOFS
+				REG_BG3HOFS = BG3HOFS;
+				REG_BG3VOFS = BG3VOFS;
+
+				//reset
+				REG_BG3CNT = BG3CNT;
+				REG_BG2CNT = BG2CNT;
+				REG_BLDCNT = BLDMOD;
+				WIN_IN = WININ;
+				WIN_OUT = WINOUT;
+
+				REG_BG2PA = BG2PA;
+				REG_BG2PB = BG2PB;
+				REG_BG2PC = BG2PC;
+				REG_BG2PD = BG2PD;
+				REG_BG2X = (BG2X_L | (BG2X_H << 16));
+				REG_BG2Y = (BG2Y_L | (BG2Y_H << 16));
+
+				REG_BG3PA = BG3PA;
+				REG_BG3PB = BG3PB;
+				REG_BG3PC = BG3PC;
+				REG_BG3PD = BG3PD;
+				REG_BG3X = (BG3X_L | (BG3X_H << 16));
+				REG_BG3Y = (BG3Y_L | (BG3Y_H << 16));
+
+				u32 dsValue;
+				dsValue  = DISPCNT & 0xFF87;
+				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
 				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
 				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
 				REG_DISPCNT = dsValue; 
@@ -274,20 +341,50 @@ void VblankHandler(void) {
 		{
 			if(lastDISPCNT != DISPCNT)
 			{
-				//REG_DISPCNT = (DISPCNT | 0x02010010) & ~0x400; //need 0x10010
-				u32 dsValue; //new better way
-				dsValue  =DISPCNT & 0xF087;//DISPCNT & 0xFB87; //old disable BG2 new disable all exeption BG2 newer not so good mode all no exeption
-				//dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */ //no more needed
+				//reset BG3HOFS and BG3VOFS
+				REG_BG3HOFS = 0;
+				REG_BG3VOFS = 0;
+
+				//BLDCNT(2 enabeled bits)
+				int tempBLDMOD = BLDMOD & ~0x404;
+				tempBLDMOD = tempBLDMOD | ((BLDMOD & 0x404) << 1);
+				REG_BLDCNT = tempBLDMOD;
+
+				//WINOUT(2 enabeled bits)
+				int tempWINOUT = WINOUT & ~0x404;
+				tempWINOUT = tempWINOUT | ((WINOUT & 0x404) << 1);
+				WIN_OUT = tempWINOUT;
+
+				//WININ(2 enabeled bits)
+				int tempWININ = WININ & ~0x404;
+				tempWININ = tempWININ | ((WININ & 0x404) << 1);
+				WIN_IN = tempWININ;
+
+				//swap LCD I/O BG Rotation/Scaling
+
+				REG_BG3PA = BG2PA;
+				REG_BG3PB = BG2PB;
+				REG_BG3PC = BG2PC;
+				REG_BG3PD = BG2PD;
+				REG_BG3X = (BG2X_L | (BG2X_H << 16));
+				REG_BG3Y = (BG2Y_L | (BG2Y_H << 16));
+
+
+				u32 dsValue;
+				dsValue  = DISPCNT & 0xF087;
+				//dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
 				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
 				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
-				REG_DISPCNT = dsValue;
-
-				iprintf("%x",dsValue);
-
-
-				if((DISPCNT & 7) == 4)  bgInit(3, BgType_Bmp8, BgSize_B8_256x256,0,0); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
-				else /*if((DISPCNT & 7) == 3)*/ bgInit(3, BgType_Bmp16, BgSize_B16_256x256,0,0);
-				//else if((DISPCNT & 7) == 5) bgInit(3, BgType_Bmp16, BgSize_B16_256x256,0,0);
+				REG_DISPCNT = dsValue; //workaroundwrite32(dsValue, (u32*)&REG_DISPCNT);
+                                       //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x02010010) & ~0x400; //need 0x10010
+				if((DISPCNT & 7) == 4)
+				
+				{
+					bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
+				}
+				else if((DISPCNT & 7) == 3)bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				else if((DISPCNT & 7) == 5)bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				REG_BG3CNT = REG_BG3CNT | (BG2CNT & 0x43); //swap BG2CNT (BG Priority and Mosaic) 
 			}
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
 			{
@@ -331,14 +428,26 @@ void VblankHandler(void) {
 		}*/
 		
 		
-		
-		
 	framewtf = 0;
 	}
 	else
 	{
 		framewtf++;
 	}
+
+		scanKeys();
+  
+  u32 joy = keysCurrent();		
+	if((joy & KEY_A) && (joy & KEY_B) && (joy & KEY_R) && (joy & KEY_L))
+	{
+		if(ignorenextY == 0)
+		{
+			pausemenue();
+			ignorenextY = 60; // 1 sec break time
+		}
+		else {ignorenextY -= 1;}
+	}
+
 	//iprintf("%x\r\n",BG2CNT);
 	//iprintf("%x %x %x %x %x %x %x %x %x %x \r\n",DISPCNT,BG2CNT, BG2X_L, BG2X_H, BG2Y_L, BG2Y_H,BG2PA, BG2PB, BG2PC, BG2PD);
 }
