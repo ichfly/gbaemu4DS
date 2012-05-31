@@ -29,8 +29,6 @@ readbankedsp:
 	
 	msr	cpsr, r3	@ back to normal mode @ on revient au mode "normal"
 	
-	@swi 0x2D0000
-	
 	pop {r1-r4}
 	
 	bx lr
@@ -254,6 +252,7 @@ ichflyswiIntrWait:
 	blne	testirq
 
 wait_irq:
+
 	@swi	#(6<<16) @ichfly my code
 	
 	mov r12 ,#0
@@ -280,7 +279,7 @@ wait_irq:
 	add sp,sp,#0x58
 	
 	mov r12,sp
-	
+
 	msr	cpsr,r3 @irq
 	msr cpsr,r2
 	

@@ -1,6 +1,8 @@
 #include <nds.h>
 #include <stdio.h>
 #include "ichflysettings.h"
+#include "main.h"
+
 #ifdef arm9advsound
 extern "C" int SPtoload;
 extern "C" int SPtemp;
@@ -35,5 +37,17 @@ extern "C" int SPtemp;
 
 	//DMA0_DEST = REG_IPC_FIFO_RX;
 	//DMA0_CR = REG_IPC_FIFO_RX;
+}
+#else
+void arm7dmareq()
+{
+	if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //nothing here move along
+	{
+		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
+		u32 src = REG_IPC_FIFO_RX;
+		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))src = REG_IPC_FIFO_RX;
+		//iprintf("in");
+		VblankHandler();
+	}
 }
 #endif

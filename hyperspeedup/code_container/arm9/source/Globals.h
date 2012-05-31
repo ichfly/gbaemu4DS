@@ -24,6 +24,14 @@
 
 #include "ichflysettings.h"
 
+
+#ifdef lastdebug
+extern u32 lasttime[6];
+extern int lastdebugcurrent;
+extern int lastdebugsize;
+#endif
+
+
 #define VERBOSE_SWI                  1
 #define VERBOSE_UNALIGNED_MEMORY     2
 #define VERBOSE_ILLEGAL_WRITE        4
@@ -40,8 +48,6 @@ extern FILE* ichflyfilestream;
 #endif
 
 extern int romSize;
-
-extern u8 IF_VBl;
 
 extern reg_pair reg[45];
 extern bool ioReadable[0x400];

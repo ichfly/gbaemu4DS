@@ -77,26 +77,26 @@ u32 CPUReadMemoryQuick(u32 addr);
 
 static u32 CPUReadMemoryreal(u32 address);
 
-__attribute__((section(".itcm"))) static inline u32 CPUReadMemory(u32 address)
+static inline u32 CPUReadMemory(u32 address)
  {
 	return CPUReadMemoryreal(address);
  }
 
 static u32 CPUReadHalfWordreal(u32 address);
 
-__attribute__((section(".itcm"))) static inline u32 CPUReadHalfWord(u32 address)
+static inline u32 CPUReadHalfWord(u32 address)
  {
 	return CPUReadHalfWordreal(address);
  }
 static u8 CPUReadBytereal(u32 address);
 
-__attribute__((section(".itcm"))) static inline u8 CPUReadByte(u32 address)
+static inline u8 CPUReadByte(u32 address)
  {
 	return CPUReadBytereal(address);
  }
 
 
-__attribute__((section(".itcm"))) static inline void updateVC()
+static inline void updateVC()
 {
 		u16 temp = REG_VCOUNT;
 		u16 temp2 = REG_DISPSTAT;
@@ -193,12 +193,6 @@ __attribute__((section(".itcm"))) static inline void updateVC()
 	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
 		updateVC();
-	}
-
-	if((address & ~0x3) == 0x4000200)//ichfly update
-	{
-		IF = ((REG_IF & 0x3FFF) |IF_VBl); //VBlanc
-		UPDATE_REG(0x202, IF);
 	}
     if((address < 0x4000400) && ioReadable[address & 0x3fc]) {
       if(ioReadable[(address & 0x3fc) + 2])
@@ -379,11 +373,11 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 		updateVC();
 	}
 	
-	if(address == 0x4000202)//ichfly update
+	/*if(address == 0x4000202)//ichfly update
 	{
-		IF = ((REG_IF & 0x3FFF) |IF_VBl); //VBlanc
+		IF = (REG_IF & 0x3FFF); //VBlanc
 		UPDATE_REG(0x202, IF);
-	}
+	}*/
 	
     if((address < 0x4000400) && ioReadable[address & 0x3fe])
     {
@@ -531,11 +525,11 @@ iprintf("r8 %02x\n",address);
 	{
 		updateVC();
 	}
-	if(address == 0x4000202 || address == 0x4000203)//ichfly update
+	/*if(address == 0x4000202 || address == 0x4000203)//ichfly update
 	{
-		IF = ((REG_IF & 0x3FFF) |IF_VBl); //VBlanc
+		IF = (REG_IF & 0x3FFF); //VBlanc
 		UPDATE_REG(0x202, IF);
-	}
+	}*/
     if((address < 0x4000400) && ioReadable[address & 0x3ff])
       return ioMem[address & 0x3ff];
     else goto unreadable;

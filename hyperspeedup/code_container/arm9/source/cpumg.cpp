@@ -28,7 +28,6 @@ void BIOScall(int op,  s32 *R);
 extern "C" void cpu_SetCP15Cnt(u32 v);
 extern "C" u32 cpu_GetCP15Cnt();
 
-
 #include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
@@ -54,6 +53,13 @@ extern "C" u32 cpu_GetCP15Cnt();
 
 #include "anothercpu.h"
 
+
+#define debugandhalt()\
+  {\
+					REG_IME = IME_DISABLE;\
+    			debugDump();\
+		while(1);\
+  }\
 
 extern "C" void swiHalt(void);
 
@@ -172,8 +178,8 @@ char disbuffer[0x2000];
 
 #ifdef lastdebug
 u32 lasttime[6];
-int current = 0;
-int size = 6;
+int lastdebugcurrent = 0;
+int lastdebugsize = 6;
 #endif
 
 //extern "C" void exMain(); 
@@ -194,6 +200,7 @@ extern s32  __attribute__((section(".dtcm"))) BIOSDBG_SPSR;
 int durchlauf = 0;
 void debugDump()
 {
+#ifdef ichflyDebugdumpon
 // 	Log("dbgDump\n");
 // 	return;
 	//readbankedextra(cpuGetSPSR());
@@ -225,16 +232,17 @@ DC_FlushAll();
 	Log("irqBank %08x %08x\n",readbankedlr(0x12),readbankedsp(0x12));
 	Log("userBank %08x %08x\n",readbankedlr(0x1F),readbankedsp(0x1F));
 #ifdef lastdebug
-	int ipr = current - 1;
-	if(ipr < 0)ipr= size - 1;
-	while(ipr != current)
+	int ipr = lastdebugcurrent - 1;
+	if(ipr < 0)ipr= lastdebugsize - 1;
+	while(ipr != lastdebugcurrent)
 	{
 		Log("run %08X\n",lasttime[ipr]);
 		ipr--;
-		if(ipr < 0)ipr= size - 1;
+		if(ipr < 0)ipr= lastdebugsize - 1;
 	}
-	Log("run %08X\n",lasttime[current]); //last
+	Log("run %08X\n",lasttime[lastdebugcurrent]); //last
 #endif
+	Log("IEF: %08X\n",CPUReadMemoryreal(0x4000200));
 	  u32 joy = ((~REG_KEYINPUT)&0x3ff);
 	if((joy & KEY_B) && (joy & KEY_R) && (joy & KEY_L))
 	{
@@ -249,15 +257,16 @@ DC_FlushAll();
 					fwrite((u8*)(0x06000000), 1, 0x18000, file); //can't get this with half dumps
 					fwrite((u8*)(0x02000000), 1, 0x40000, file); //can't get this with half dumps
 	}
+#endif
 }
 
 
 extern "C" void failcpphandler()
 {
 	iprintf("something failed\r\n");
+	REG_IME = IME_DISABLE;
 	debugDump();
 	Log("SSP %08x SLR %08x\n",savedsp,savedlr);
-			REG_IME = IME_DISABLE;
 		while(1);
 }
 
@@ -363,15 +372,16 @@ void gbaswieulatedbios()
 
 //while(1);
 
-	//Log("%08X S\n", exRegs[15]);
+	//Log("%08X S\n", readbankedsp(0x12));
 
 
 	u16 tempforwtf = *(u16*)(exRegs[15] - 2);
 	BIOScall(tempforwtf,  exRegs);
 #ifdef lastdebug
-lasttime[current] = exRegs[15];
-current++;
-if(current == size)current = 0;
+	if(readbankedsp(0x12) < 0x1000000)debugandhalt();
+lasttime[lastdebugcurrent] = exRegs[15] | 0x80000000;
+lastdebugcurrent++;
+if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 #endif
 
 	gbaMode();
@@ -399,13 +409,6 @@ void BIOScall(int op,  s32 *R)
 		//cpuNextEvent = cpuTotalTicks;
 		
 		ichflyswiHalt();
-		if(!(IE & 0x1))
-		{
-			while(!(REG_IF & ~0x1))
-			{
-				ichflyswiHalt();
-			}
-		}
 		//durchlauf = 1;
 		
 		//debugDump();
@@ -434,7 +437,7 @@ void BIOScall(int op,  s32 *R)
 		break;    
 	  case 0x05:
 	#ifdef DEV_VERSION
-		  Log("VBlankIntrWait:\n");
+		  Log("VBlankIntrWait: 0x%08X 0x%08X\n",REG_IE,anytimejmpfilter);
 		  //VblankHandler(); //todo
 	#endif
 		//if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
@@ -644,11 +647,16 @@ void gbaExceptionHdl()
 	
 	ndsModeinline();
 	cpuMode = BIOSDBG_SPSR & 0x20;
-	
-	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80; //sorry but this must be done
-	
-	//Log("%08X\r\n",exRegs[15]);
+	//Log("IEF: %08X\n",CPUReadMemoryreal(0x4000200));
 
+	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80; //sorry but this must be done
+
+	//Log("%08X %08X %08X\r\n",exRegs[15],REG_VCOUNT,REG_IE);
+	/*int i;
+	for(i = 0; i <= 15; i++) {
+		Log("R%d=%X ", i, exRegs[i]);
+	} 
+	Log("\n");*/
 
 
 #ifndef unsave
@@ -702,11 +710,11 @@ void gbaExceptionHdl()
 	//}
 
 #ifdef lastdebug
-lasttime[current] = exRegs[15];
-current++;
-if(current == size)current = 0;
+			if(readbankedsp(0x12) < 0x1000000)debugandhalt();
+lasttime[lastdebugcurrent] = exRegs[15];
+lastdebugcurrent++;
+if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 #endif
-
 	gbaMode();
 }
 

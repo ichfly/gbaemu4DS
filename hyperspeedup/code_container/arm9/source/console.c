@@ -544,6 +544,7 @@ PrintConsole* consoleDemoInit(void) {
 	return consoleInit(NULL, defaultConsole.bgLayer, BgType_Text4bpp, BgSize_T_256x256, defaultConsole.mapBase, defaultConsole.gfxBase, false, true);
 }
 
+
 //---------------------------------------------------------------------------------
 static void newRow() {
 //---------------------------------------------------------------------------------

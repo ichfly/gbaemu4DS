@@ -65,7 +65,21 @@ findIRQ:
 @---------------------------------------------------------------------------------
 no_handler:
 @---------------------------------------------------------------------------------
-	@str	r1, [r12, #4]	@ IF Clear @not us so do nothing
+	str	r1, [r12, #4]	@ IF Clear
+	@help the emu
+	
+	ldr r0, =IF
+	ldrh r2, [r0]
+	orr r1,r1,r2
+	strh r1, [r0]
+	ldr r0, =ioMem
+	ldr r0,[r0]
+	add	r0, r0, #0x200
+	add	r0, r0, #0x2 @don't like todo
+	strh r1,[r0]
+	
+	
+	
 	ldmfd   sp!, {r0,lr}	@ {spsr, lr_irq}
 	
 	mov	pc,lr
@@ -82,7 +96,7 @@ jump_intr:
 got_handler:
 @---------------------------------------------------------------------------------
 
-	str	r0, [r12, #4]	@ IF Clear @done no more todo
+	str	r0, [r12, #4]	@ IF Clear
 
 	@leave irq mode
 

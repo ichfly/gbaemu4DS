@@ -204,8 +204,6 @@ nop
 	add    LR,PC,#0            @retadr for USER handler
 	ldr    PC,[R0, #-0x4]      @jump to [03FFFFFC] USER handler
 #endif
-	@s:
-	@B s
 	
 	ldr	r1, =_exMain_tmpPuplain @ichfly einschub
 	ldr	r2, [r1] @ichfly
@@ -388,7 +386,7 @@ inter_data:
 	ldr	r1, [r0]	@ charge le SPSR
 	MSR spsr,r1
 	ldr	r0, =(exRegs + 13 * 4)
-	cmp r1,#0x10 @ichfly user is system
+	cmp r1,#0x10 @ichfly user is system  @todo need that?
 	moveq r1,#0x1F
 	@change mode to the saved mode @ on change de mode (on se mets dans le mode qui était avant l'exception)
 	mrs	r3, cpsr

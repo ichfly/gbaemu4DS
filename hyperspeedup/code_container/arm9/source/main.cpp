@@ -327,12 +327,13 @@ void VblankHandler(void) {
 
 
 	//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
-#ifdef arm9advsound
-	if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //inter sounddma
-	{
-		arm7dmareq();
-	}
+
+#ifdef lastdebug
+lasttime[lastdebugcurrent] = 0x0000000;
+lastdebugcurrent++;
+if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 #endif
+
 	CPUCheckDMA(1, 0x0f);
 	
 	//Log("VB %X %X ",SPtoload,SPtemp);
@@ -547,8 +548,6 @@ void VblankHandler(void) {
 	}*/
 
 	//pu_Enable();
-	
-	if(IE & 1)IF_VBl = 1;
 
 	
 	//iprintf("test"); //sorry no write here
@@ -562,6 +561,12 @@ void VblankHandler(void) {
 	}*/
 	
 	//iprintf("%x %x %x %x %x %x %x %x %x %x \r\n",DISPCNT,BG2CNT, BG2X_L, BG2X_H, BG2Y_L, BG2Y_H,BG2PA, BG2PB, BG2PC, BG2PD);
+
+#ifdef lastdebug
+lasttime[lastdebugcurrent] = 0x0000001;
+lastdebugcurrent++;
+if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
+#endif
 }
 
 
@@ -709,7 +714,8 @@ char* seloptions [3] = {"save save","show mem","Continue (Beta)"};
 
 void pausemenue()
 {
-	irqDisable(IRQ_VBLANK);
+	REG_IME = IME_DISABLE;
+	//irqDisable(IRQ_VBLANK);
 	//cpupausemode(); //don't need that
 	int pressed;
 	int ausgewauhlt = 0;
@@ -748,8 +754,9 @@ void pausemenue()
 				case 2:
 					//cpupausemodeexit();
 					iprintf("\x1b[2J");
-					while(REG_VCOUNT != 192); //wait for Vblanc
-					irqEnable( IRQ_VBLANK);
+					//while(REG_VCOUNT != 192); //wait for Vblanc
+					//irqEnable( IRQ_VBLANK);
+					REG_IME = IME_ENABLE;
 					return; //and return
 				}
 		}
@@ -796,10 +803,10 @@ int main(void) {
 
 
 
-#ifdef arm9advsound
-	irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareq);
+
+
+	irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareq); //todo async
 	irqEnable(IRQ_FIFO_NOT_EMPTY);
-#endif
 
 	
 //the other start at 0x06880000 - 0x068A3FFF
@@ -809,6 +816,9 @@ int main(void) {
 
 	REG_POWERCNT &= ~((POWER_3D_CORE | POWER_MATRIX) & 0xFFFF);//powerOff(POWER_3D_CORE | POWER_MATRIX); //3D use power so that is not needed
 
+	//consoleDemoInitsubsc();
+	//iprintf("gbaemu4DS for r4i gold (3DS) (r4ids.cn) by ichfly\nBuildday" __DATE__);
+	//consoleDemoInit();
 	//soundEnable(); //sound finaly
 	//fifoSetDatamsgHandler(FIFO_USER_02, arm7debugMsgHandler, 0);
 
@@ -992,7 +1002,24 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 		if (isdaas&KEY_DOWN && frameskip != 0) frameskip--;
 	}
 	//iprintf("\x1b[2J");
-	
+
+	int syncline =159;
+	while(1) 
+	{
+		iprintf("\x1b[2J");
+		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+		iprintf("Videosyncline %i\n",syncline);
+		//swiWaitForVBlank();
+		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+		scanKeys();
+		int isdaas = keysDownRepeat();
+		if (isdaas&KEY_A) break;
+		if (isdaas&KEY_UP) syncline++;
+		if (isdaas&KEY_DOWN && syncline != 0) syncline--;
+	}
+
+
 
   iprintf("\x1b[2J");
 
@@ -1065,6 +1092,12 @@ REG_IPC_FIFO_TX = 0x7654321;
 
 	dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
 	
+	iprintf("arm7init\n");
+
+	REG_IPC_FIFO_TX = 0x1FFFFFFF; //cmd
+	REG_IPC_FIFO_TX = syncline;
+
+
 	iprintf("irqinit\n");
 
 	anytimejmpfilter = 0;
@@ -1098,9 +1131,9 @@ REG_IPC_FIFO_TX = 0x3333333;
 				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
 	iprintf("irqSet\n");
 
-	irqSet(IRQ_VBLANK, VblankHandler);
+	//irqSet(IRQ_VBLANK, VblankHandler);
 
-	irqEnable(IRQ_VBLANK);
+	//irqEnable(IRQ_VBLANK);
 /*REG_IPC_FIFO_TX = 0; //test backcall
 REG_IPC_FIFO_TX = 0x4444444;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround

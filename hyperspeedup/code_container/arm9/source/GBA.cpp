@@ -1791,9 +1791,10 @@ void CPUUpdateRegister(u32 address, u16 value)
   case 0x04:
     DISPSTAT = (value & 0xFF38) | (DISPSTAT & 7);
     UPDATE_REG(0x04, DISPSTAT);
+	*(u16 *)(0x4000004) = (value & 0xFF38);
     break;
   case 0x06:
-    // not writable
+    // not writable in NDS mode bzw not possible todo
     break;
   case 0x08:
     BG0CNT = (value & 0xDFCF);
@@ -2521,17 +2522,16 @@ void CPUUpdateRegister(u32 address, u16 value)
     /*if ((IME & 1) && (IF & IE) && armIrqEnable)
       cpuNextEvent = cpuTotalTicks;*/
 	  
-	REG_IE = 1 | IE | (REG_IE & 0xFFFF0000); //todo filter the 1
+	REG_IE = IE | (REG_IE & 0xFFFF0000);
 	
 	anytimejmpfilter = IE;
 	
     break;
   case 0x202:
-	REG_IF = value;
-	if(value & 1)IF_VBl = 0;
+	//REG_IF = value; //ichfly update at read outdated
 	//IF = REG_IF;
-    //IF ^= (value & IF);
-    //UPDATE_REG(0x202, IF); //ichfly update at read
+    IF ^= (value & IF);
+    UPDATE_REG(0x202, IF);
     break;
   case 0x204:
     { //ichfly can't emulate that
