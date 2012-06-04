@@ -1833,6 +1833,7 @@ void CPUUpdateRegister(u32 address, u16 value)
   case 0x14:
     BG1HOFS = value & 511;
     UPDATE_REG(0x14, BG1HOFS);
+	*(u16 *)(0x4000014) = value;
     break;
   case 0x16:
     BG1VOFS = value & 511;
@@ -2530,8 +2531,12 @@ void CPUUpdateRegister(u32 address, u16 value)
   case 0x202:
 	//REG_IF = value; //ichfly update at read outdated
 	//IF = REG_IF;
+#ifdef gba_handel_IRQ_correct
+	REG_IF = value;
+#else
     IF ^= (value & IF);
     UPDATE_REG(0x202, IF);
+#endif
     break;
   case 0x204:
     { //ichfly can't emulate that
@@ -2581,11 +2586,14 @@ void CPUUpdateRegister(u32 address, u16 value)
   case 0x208:
     IME = value & 1;
     UPDATE_REG(0x208, IME);
-    if ((IME & 1) && (IF & IE) && armIrqEnable)
-      cpuNextEvent = cpuTotalTicks;
+#ifdef gba_handel_IRQ_correct
+	REG_IME = IME;
+#endif
+    /*if ((IME & 1) && (IF & IE) && armIrqEnable)
+      cpuNextEvent = cpuTotalTicks;*/
     break;
   case 0x300:
-    if(value != 0)
+    if(value != 0) //ichfly this is todo
       value &= 0xFFFE;
     UPDATE_REG(0x300, value);
     break;

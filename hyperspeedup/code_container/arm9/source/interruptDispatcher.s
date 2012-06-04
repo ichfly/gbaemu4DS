@@ -23,11 +23,21 @@
 
 ---------------------------------------------------------------------------------*/
 
+#include "ichflysettings.h"
+
+
 	.section .itcm,"ax",%progbits
 
 	.extern	irqTable
 	.code 32
+	
 
+#ifdef gba_handel_IRQ_correct
+	.global inirq
+inirq:
+	.word	0
+#endif
+	
 	.global	IntrMain, __cpsr_mask
     .type   IntrMain STT_FUNC
 @---------------------------------------------------------------------------------
@@ -65,6 +75,7 @@ findIRQ:
 @---------------------------------------------------------------------------------
 no_handler:
 @---------------------------------------------------------------------------------
+#ifndef gba_handel_IRQ_correct
 	str	r1, [r12, #4]	@ IF Clear
 	@help the emu
 	
@@ -77,7 +88,7 @@ no_handler:
 	add	r0, r0, #0x200
 	add	r0, r0, #0x2 @don't like todo
 	strh r1,[r0]
-	
+#endif
 	
 	
 	ldmfd   sp!, {r0,lr}	@ {spsr, lr_irq}
@@ -97,6 +108,43 @@ got_handler:
 @---------------------------------------------------------------------------------
 
 	str	r0, [r12, #4]	@ IF Clear
+
+
+#ifdef gba_handel_IRQ_correct
+	ldr r12,=inirq
+	ldr r3,[r12]
+	cmp r3,#0
+	BNE exitichfly @already here
+	str r0,[r12] @stor not 0 here
+	
+	@leave irq mode
+	
+	mrs	r3, cpsr
+	bic	r3, r3, #0xdf		@ \__
+	orr	r3, r3, #0x11		@ /  --> Enable IRQ & FIQ. Set CPU mode to Fiq. @so the pointer don't swap
+	msr	cpsr,r3
+
+
+	ldr sp,=SPtoload
+	ldr sp,[sp]
+	
+	adr	lr, IntrRet
+	bx	r1
+
+@---------------------------------------------------------------------------------
+IntrRet:
+@---------------------------------------------------------------------------------
+	
+	mrs	r2, cpsr
+	bic	r2, r2, #0xdf		@ \__
+	orr	r2, r2, #0xd2		@ /  --> Disable IRQ & FIQ. Set CPU mode to IRQ. @so the pointer don't swap
+	msr	cpsr,r2
+	
+	ldr r12,=inirq @stor 0 here
+	mov r2,#0
+	str r2,[r12]
+	
+#else
 
 	@leave irq mode
 
@@ -137,16 +185,21 @@ IntrRet:
 	
 	mov sp,r0
 
+
+	
+	
 	
 	pop	{r2}
-    @swi 0x2F0000
-
 	msr	cpsr, r2
+
+#endif
+
+
+
+exitichfly:
+
 	ldmfd   sp!, {r0,lr}	@ {spsr, lr_irq}
 	msr	spsr, r0		@ restore spsr
-	
-	@ldr r2,=SPtemp
-	@str r1,[r2]
 	
 	mov	pc,lr
 

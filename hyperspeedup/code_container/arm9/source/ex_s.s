@@ -95,7 +95,94 @@ SPtoload:
 SPtemp: @lol not realy
 	.word 0
 
+#ifdef gba_handel_IRQ_correct
 
+inter_irq:
+	stmfd  SP!, {R0-R3,R12,LR} @save registers to SP_irq
+
+	MRC P15, 0 ,r0, c9,c1,0 @get addr
+	Mov r0, r0, LSR #0xC
+	Mov r0, r0, LSL #0xC
+	ADD r0,r0, #0x4000
+	
+	mrc	p15, 0, r2, c5, c0, 2 @set pu
+	ldr	r1,=0x33333333
+	mcr	p15, 0, r1, c5, c0, 2
+	ldr	r1, =_exMain_tmpPuplain
+	str	r2, [r1]
+	
+
+	
+	ADD lr,pc,#0  @jump
+	LDR pc, [r0, #-0x4]
+	
+	mov	r12, #0x4000000		@ REG_BASE
+	ldr	r0, [r12, #0x214]	@get IF
+	
+	
+	
+	ldr	r1, =_exMain_tmpPuplain @set pu back
+	ldr	r2, [r1] @ichfly
+	mcr	p15, 0, r2, c5, c0, 2
+	
+		
+
+	
+	ldr	r2, =anytimejmpfilter
+	ldr r2, [r2]
+	ands r0,r0,r2 @ anytimejmpfilter und IF
+	BNE	got_over_gba_handler
+
+
+	LDMIA SP!, {R0-R3,R12,LR} @exit
+	SUBS pc, lr, #0x4
+	
+	
+got_over_gba_handler:
+
+	ldr	r1, =0x03333333          @set pu
+	mcr	p15, 0, r1, c5, c0, 2
+
+
+nop @need this nops
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+
+	@original from gba
+#ifdef checkclearaddr
+
+	ldr    R1,=0x03008000
+	mov    R0,#0x4000000       @ptr+4 to 03FFFFFC (mirror of 03007FFC)
+	add    LR,PC,#0            @retadr for USER handler
+	ldr    PC,[R1, #-0x4]      @jump to [03FFFFFC] USER handler
+
+#else
+
+	mov    R0,#0x4000000       @ptr+4 to 03FFFFFC (mirror of 03007FFC)
+	add    LR,PC,#0            @retadr for USER handler
+	ldr    PC,[R0, #-0x4]      @jump to [03FFFFFC] USER handler
+#endif
+	
+	ldr	r1, =_exMain_tmpPuplain @set pu back @ichfly einschub
+	ldr	r2, [r1] @ichfly
+	mcr	p15, 0, r2, c5, c0, 2	
+
+	  
+	ldmfd  SP!, {R0-R3,R12,LR} @restore registers from SP_irq  
+	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
+
+#else
 inter_irq:
 	str sp,[pc, #-0xC] @ichfly sizechange
 	ldr sp,=SPtoload
@@ -214,7 +301,7 @@ nop
 	  
 	ldmfd  SP!, {R0-R3,R12,LR} @restore registers from SP_irq  
 	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
-
+#endif
 
 .global SPtoloadswi
 SPtoloadswi:

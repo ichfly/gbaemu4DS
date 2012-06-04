@@ -1,4 +1,16 @@
+//functions
+
 #define uppern_read_emulation
+
+
+
+
+
+//settings
+
+
+
+
 
 #define ichflytestkeypossibillity
 
@@ -6,6 +18,9 @@
 
 //#define unsave
 
+//#define emulate_cpu_speed // pu current is  try to reach 0x020E6000
+
+#define gba_handel_IRQ_correct
 
 
 

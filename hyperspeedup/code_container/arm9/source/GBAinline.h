@@ -123,10 +123,10 @@ static inline void updateVC()
 		if(VCOUNT == (DISPSTAT >> 8)) //update by V-Count Setting
 		{
 			DISPSTAT |= 4;
-			if(DISPSTAT & 0x20) {
+			/*if(DISPSTAT & 0x20) {
 			  IF |= 4;
 			  UPDATE_REG(0x202, IF);
-			}
+			}*/
 		  } else {
 			DISPSTAT &= 0xFFFB;
 		}
@@ -189,7 +189,15 @@ static inline void updateVC()
 		value = *(u32 *)(address);
 		break;
 	}
-	
+#ifdef gba_handel_IRQ_correct
+	if(address == 0x4000202 || address == 0x4000200)//ichfly update
+	{
+		IF = (REG_IF & 0x3FFF); //VBlanc
+		UPDATE_REG(0x202, IF);
+	}
+#endif	
+
+
 	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
 		updateVC();
@@ -373,11 +381,13 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 		updateVC();
 	}
 	
-	/*if(address == 0x4000202)//ichfly update
+#ifdef gba_handel_IRQ_correct
+	if(address == 0x4000202)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF); //VBlanc
+		IF = (REG_IF & 0x3FFF);
 		UPDATE_REG(0x202, IF);
-	}*/
+	}
+#endif
 	
     if((address < 0x4000400) && ioReadable[address & 0x3fe])
     {
@@ -525,11 +535,13 @@ iprintf("r8 %02x\n",address);
 	{
 		updateVC();
 	}
-	/*if(address == 0x4000202 || address == 0x4000203)//ichfly update
+#ifdef gba_handel_IRQ_correct
+	if(address == 0x4000202 || address == 0x4000203)//ichfly update
 	{
 		IF = (REG_IF & 0x3FFF); //VBlanc
 		UPDATE_REG(0x202, IF);
-	}*/
+	}
+#endif
     if((address < 0x4000400) && ioReadable[address & 0x3ff])
       return ioMem[address & 0x3ff];
     else goto unreadable;

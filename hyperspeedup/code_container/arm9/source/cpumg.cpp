@@ -326,11 +326,15 @@ void gbaInit()
 
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu while configurating pu
 
-
+#ifdef emulate_cpu_speed
+	pu_SetDataCachability(   0b01111100);
+	pu_SetCodeCachability(   0b01111100);
+	pu_GetWriteBufferability(0b01111100);
+#else
 	pu_SetDataCachability(   0b00111100);
 	pu_SetCodeCachability(   0b00111100);
 	pu_GetWriteBufferability(0b00111100);
-	
+#endif	
 
 
 #ifdef releas
@@ -344,7 +348,16 @@ void gbaInit()
 
 	WRAM_CR = 0; //swap wram in
 
-
+#ifdef emulate_cpu_speed
+	pu_SetRegion(0, 0x00000000 | PU_PAGE_128M | 1);
+	pu_SetRegion(1, 0x0b000000 | PU_PAGE_16K | 1);
+	pu_SetRegion(2, 0x02040000 | PU_PAGE_256K | 1);
+	pu_SetRegion(3, 0x02080000 | PU_PAGE_256K | 1);
+	pu_SetRegion(4, 0x020C0000 | PU_PAGE_128K | 1);
+	pu_SetRegion(5, 0x020E0000 | PU_PAGE_16K | 1);
+	pu_SetRegion(6, 0x020E4000 | PU_PAGE_8K | 1);
+	pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
+#else
 	pu_SetRegion(0, 0x00000000 | PU_PAGE_128M | 1);
 	pu_SetRegion(1, 0x0b000000 | PU_PAGE_16K | 1);
 	pu_SetRegion(2, 0x02040000 | PU_PAGE_256K | 1);
@@ -353,7 +366,7 @@ void gbaInit()
 	pu_SetRegion(5, 0x02200000 | PU_PAGE_2M | 1);
 	pu_SetRegion(6, 0x0);
 	pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
-
+#endif
 
 	pu_Enable(); //PU go
 
@@ -647,9 +660,11 @@ void gbaExceptionHdl()
 	
 	ndsModeinline();
 	cpuMode = BIOSDBG_SPSR & 0x20;
-	//Log("IEF: %08X\n",CPUReadMemoryreal(0x4000200));
+	//Log("%08X\n",exRegs[15]);
 
+#ifndef gba_handel_IRQ_correct
 	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80; //sorry but this must be done
+#endif
 
 	//Log("%08X %08X %08X\r\n",exRegs[15],REG_VCOUNT,REG_IE);
 	/*int i;
