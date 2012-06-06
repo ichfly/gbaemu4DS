@@ -18,7 +18,7 @@
 
 //#define unsave
 
-//#define emulate_cpu_speed // pu current is  try to reach 0x020E6000
+//#define emulate_cpu_speed // pu current is 0x020E6000 try to reach 0x020E6000
 
 #define gba_handel_IRQ_correct
 
@@ -30,7 +30,7 @@
 
 
 
-
+//#define print_uppern_read_emulation
 
 #define ichflyDebugdumpon
 

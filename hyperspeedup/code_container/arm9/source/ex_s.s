@@ -100,10 +100,10 @@ SPtemp: @lol not realy
 inter_irq:
 	stmfd  SP!, {R0-R3,R12,LR} @save registers to SP_irq
 
-	MRC P15, 0 ,r0, c9,c1,0 @get addr
-	Mov r0, r0, LSR #0xC
-	Mov r0, r0, LSL #0xC
-	ADD r0,r0, #0x4000
+	@MRC P15, 0 ,r0, c9,c1,0 @get addr
+	@Mov r0, r0, LSR #0xC
+	@Mov r0, r0, LSL #0xC
+	@ADD r0,r0, #0x4000
 	
 	mrc	p15, 0, r2, c5, c0, 2 @set pu
 	ldr	r1,=0x33333333
@@ -113,8 +113,9 @@ inter_irq:
 	
 
 	
-	ADD lr,pc,#0  @jump
-	LDR pc, [r0, #-0x4]
+	@ADD lr,pc,#0  @jump
+	@LDR pc, [r0, #-0x4]
+	BL IntrMain
 	
 	mov	r12, #0x4000000		@ REG_BASE
 	ldr	r0, [r12, #0x214]	@get IF
@@ -143,23 +144,6 @@ got_over_gba_handler:
 	ldr	r1, =0x03333333          @set pu
 	mcr	p15, 0, r1, c5, c0, 2
 
-
-nop @need this nops
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-
-	@original from gba
 #ifdef checkclearaddr
 
 	ldr    R1,=0x03008000
@@ -169,6 +153,7 @@ nop
 
 #else
 
+	@original from gba
 	mov    R0,#0x4000000       @ptr+4 to 03FFFFFC (mirror of 03007FFC)
 	add    LR,PC,#0            @retadr for USER handler
 	ldr    PC,[R0, #-0x4]      @jump to [03FFFFFC] USER handler
@@ -473,15 +458,12 @@ inter_data:
 	ldr	r1, [r0]	@ charge le SPSR
 	MSR spsr,r1
 	ldr	r0, =(exRegs + 13 * 4)
-	cmp r1,#0x10 @ichfly user is system  @todo need that?
+	cmp r1,#0x10 @ichfly user is system
 	moveq r1,#0x1F
 	@change mode to the saved mode @ on change de mode (on se mets dans le mode qui était avant l'exception)
 	mrs	r3, cpsr
 	bic	r4, r3, #0x1F
 	and	r1, r1, #0x1F
-	
-	cmp r1,#0x10 @ichfly user is system
-	moveq r1,#0x1F
 	
 	orr	r4, r4, r1
 	msr	cpsr, r4	@ hop, c'est fait

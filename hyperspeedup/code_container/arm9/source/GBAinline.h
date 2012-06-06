@@ -233,7 +233,7 @@ static inline void updateVC()
 #ifdef checkclearaddrrw
 	if(address > 0x07000400)goto unreadable;
 #endif
-    value = READ32LE(((u32 *)&oam[address & 0x3FC]));
+    value = READ32LE(((u32 *)&emultoroam[address & 0x3FC]));
     break;
   case 8:
   case 9:
@@ -243,7 +243,9 @@ static inline void updateVC()
 #ifdef uppern_read_emulation
 	if((address&0x1FFFFFC) > romSize)
 	{
-		//iprintf("high word read");
+#ifdef print_uppern_read_emulation
+		iprintf("high r32 %08x\n",address);
+#endif
 		fseek (ichflyfilestream , address&0x1FFFFFC , SEEK_SET);
 		fread (&value,1,4,ichflyfilestream);
 	}
@@ -317,7 +319,7 @@ extern u32 myROM[];
 static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
-	iprintf("r16 %04x\n",address);
+	iprintf("r16 %08x\n",address);
 #endif
 #ifdef DEV_VERSION      
   if(address & 1) {
@@ -419,7 +421,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 #ifdef checkclearaddrrw
 	if(address > 0x07000400)goto unreadable;
 #endif
-    value = READ16LE(((u16 *)&oam[address & 0x3fe]));
+    value = READ16LE(((u16 *)&emultoroam[address & 0x3fe]));
     break;
   case 8:
   case 9:
@@ -433,7 +435,9 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 #ifdef uppern_read_emulation
 	if((address&0x1FFFFFE) > romSize)
 	{
-		//iprintf("high hword read");
+#ifdef print_uppern_read_emulation
+		iprintf("high r16 %08x\n",address);
+#endif
 		fseek (ichflyfilestream , address&0x1FFFFFE , SEEK_SET);
 		fread (&value,1,2,ichflyfilestream);
 	}
@@ -564,7 +568,7 @@ iprintf("r8 %02x\n",address);
 #ifdef checkclearaddrrw
 	if(address > 0x07000400)goto unreadable;
 #endif
-    return oam[address & 0x3ff];
+    return emultoroam[address & 0x3ff];
   case 8:
   case 9:
   case 10:
@@ -574,7 +578,9 @@ iprintf("r8 %02x\n",address);
 #ifdef uppern_read_emulation
 	if((address&0x1FFFFFF) > romSize)
 	{
-		//iprintf("high byte read %08X %08X\r\n", address,romSize);
+#ifdef print_uppern_read_emulation
+		iprintf("high r8 %08x\n",address);
+#endif
 		u8 temp = 0;
 		fseek (ichflyfilestream , address&0x1FFFFFF , SEEK_SET);
 		fread (&temp,1,1,ichflyfilestream);
@@ -728,7 +734,7 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
                         value);
     else
 #endif
-    WRITE32LE(((u32 *)&oam[address & 0x3fc]), value);
+    WRITE32LE(((u32 *)&emultoroam[address & 0x3fc]), value);
     break;
   case 0x0D:
     if(cpuEEPROMEnabled) {

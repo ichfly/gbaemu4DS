@@ -575,8 +575,8 @@ static bool CPUWriteState(gzFile file)
   utilGzWrite(file, paletteRAM, 0x400);
   utilGzWrite(file, workRAM, 0x40000);
   utilGzWrite(file, vram, 0x20000);
-  utilGzWrite(file, oam, 0x400);
-  utilGzWrite(file, pix, 4*241*162);
+  utilGzWrite(file, emultoroam, 0x400);
+  //utilGzWrite(file, pix, 4*241*162);
   utilGzWrite(file, ioMem, 0x400);
 
   eepromSaveGame(file);
@@ -693,11 +693,11 @@ static bool CPUReadState(gzFile file)
   utilGzRead(file, paletteRAM, 0x400);
   utilGzRead(file, workRAM, 0x40000);
   utilGzRead(file, vram, 0x20000);
-  utilGzRead(file, oam, 0x400);
-  if(version < SAVE_GAME_VERSION_6)
+  utilGzRead(file, emultoroam, 0x400);
+  /*if(version < SAVE_GAME_VERSION_6)
     utilGzRead(file, pix, 4*240*160);
   else
-    utilGzRead(file, pix, 4*241*162);
+    utilGzRead(file, pix, 4*241*162);*/ //todo ignore
   utilGzRead(file, ioMem, 0x400);
 
   eepromReadGame(file, version);
@@ -1053,49 +1053,9 @@ void CPUCleanUp()
   }
 #endif
   
-  if(rom != NULL) {
-    free(rom);
-    rom = NULL;
-  }
-
-  if(vram != NULL) {
-    free(vram);
-    vram = NULL;
-  }
-
-  if(paletteRAM != NULL) {
-    free(paletteRAM);
-    paletteRAM = NULL;
-  }
-  
-  if(internalRAM != NULL) {
-    free(internalRAM);
-    internalRAM = NULL;
-  }
-
-  if(workRAM != NULL) {
-    free(workRAM);
-    workRAM = NULL;
-  }
-
   if(bios != NULL) {
     free(bios);
     bios = NULL;
-  }
-
-  if(pix != NULL) {
-    free(pix);
-    pix = NULL;
-  }
-
-  if(oam != NULL) {
-    free(oam);
-    oam = NULL;
-  }
-
-  if(ioMem != NULL) {
-    free(ioMem);
-    ioMem = NULL;
   }
   
   //elfCleanUp();
@@ -1116,7 +1076,7 @@ int CPULoadRom(const char *szFile,bool extram)
 	  romSize = 0x02400000 - ((u32)getHeapEnd() + 0x5000 + 0x7000);
 	  rom = (u8 *)(getHeapEnd() + 0x5000/*for the other malloc here*/ + 0x7000/*28K for futur alloc*/);              //rom = (u8 *)0x02180000; //old
 #endif
-  workRAM = (u8*)0x02000000;/*(u8 *)calloc(1, 0x40000);
+  /*workRAM = (u8*)0x02000000;(u8 *)calloc(1, 0x40000);
   if(workRAM == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "WRAM");
@@ -1124,8 +1084,8 @@ int CPULoadRom(const char *szFile,bool extram)
   }*/
 #ifdef loadindirect
   u8 *whereToLoad = rom;
-  if(cpuIsMultiBoot)
-    whereToLoad = workRAM;
+  if(cpuIsMultiBoot)whereToLoad = workRAM;
+
 		if(!utilLoad(szFile,
 						  utilIsGBAImage,
 						  whereToLoad,
@@ -1144,31 +1104,31 @@ rom = (u8*)puzzleorginal_bin;  //rom = (u8*)puzzleorginal_bin;
     CPUCleanUp();
     return 0;
   }    
-  internalRAM = (u8 *)0x03000000;//calloc(1,0x8000);
-  /*if(internalRAM == NULL) {
+  /*internalRAM = (u8 *)0x03000000;//calloc(1,0x8000);
+  if(internalRAM == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "IRAM");
     CPUCleanUp();
     return 0;
   }*/
-  paletteRAM = (u8 *)0x05000000;//calloc(1,0x400);
-  /*if(paletteRAM == NULL) {
+  /*paletteRAM = (u8 *)0x05000000;//calloc(1,0x400);
+  if(paletteRAM == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "PRAM");
     CPUCleanUp();
     return 0;
   }*/      
-  vram = (u8 *)0x06000000;//calloc(1, 0x20000);
-  /*if(vram == NULL) {
+  /*vram = (u8 *)0x06000000;//calloc(1, 0x20000);
+  if(vram == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "VRAM");
     CPUCleanUp();
     return 0;
   }*/      
-  oam = (u8 *)0x07000000;/*calloc(1, 0x400); //ichfly test
-  if(oam == NULL) {
+  /*emultoroam = (u8 *)0x07000000;calloc(1, 0x400); //ichfly test
+  if(emultoroam == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
-                  "OAM");
+                  "emultoroam");
     CPUCleanUp();
     return 0;
   }      
@@ -1179,13 +1139,13 @@ rom = (u8*)puzzleorginal_bin;  //rom = (u8*)puzzleorginal_bin;
     CPUCleanUp();
     return 0;
   }  */
-  ioMem = (u8 *)calloc(1, 0x400);
+  /*ioMem = (u8 *)calloc(1, 0x400);
   if(ioMem == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
                   "IO");
     CPUCleanUp();
     return 0;
-  }      
+  }*/      
 
   flashInit();
   eepromInit();
@@ -1425,7 +1385,9 @@ void doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veral
 
 			if(((s&0x1FFFFFF) + c*4) > romSize) //slow
 			{
-				//iprintf("highdmaread %08X %08X %08X %08X %08X %X\r\n",s,d,c,si,di,transfer32);
+#ifdef print_uppern_read_emulation
+				iprintf("highdmaread %X %X %X %X %X %X\r\n",s,d,c,si,di,transfer32);
+#endif
 				if(di == -4 || si == -4)//this can't work the slow way so use the
 				{
 					doDMAslow(s, d, si, di, c, transfer32); //very slow way
@@ -1515,11 +1477,11 @@ void CPUCheckDMA(int reason, int dmamask)
             DM0CNT_H & 0x0400);
       cpuDmaHack = true;
 
-      if(DM0CNT_H & 0x4000) {
+      /*if(DM0CNT_H & 0x4000) {
         IF |= 0x0100;
         UPDATE_REG(0x202, IF);
         cpuNextEvent = cpuTotalTicks;
-      }
+      }*/ //ichfly todo
       
       if(((DM0CNT_H >> 5) & 3) == 3) {
         dma0Dest = DM0DAD_L | (DM0DAD_H << 16);
@@ -1584,11 +1546,11 @@ void CPUCheckDMA(int reason, int dmamask)
       }
       cpuDmaHack = true;
 
-      if(DM1CNT_H & 0x4000) {
+      /*if(DM1CNT_H & 0x4000) {
         IF |= 0x0200;
         UPDATE_REG(0x202, IF);
         cpuNextEvent = cpuTotalTicks;
-      }
+      }*/ //ichfly todo
       
       if(((DM1CNT_H >> 5) & 3) == 3) {
         dma1Dest = DM1DAD_L | (DM1DAD_H << 16);
@@ -1654,11 +1616,11 @@ void CPUCheckDMA(int reason, int dmamask)
       }
       cpuDmaHack = true;
 
-      if(DM2CNT_H & 0x4000) {
+      /*if(DM2CNT_H & 0x4000) {
         IF |= 0x0400;
         UPDATE_REG(0x202, IF);
         cpuNextEvent = cpuTotalTicks;
-      }
+      }*/ //ichfly todo
 
       if(((DM2CNT_H >> 5) & 3) == 3) {
         dma2Dest = DM2DAD_L | (DM2DAD_H << 16);
@@ -1709,11 +1671,11 @@ void CPUCheckDMA(int reason, int dmamask)
       doDMA(dma3Source, dma3Dest, sourceIncrement, destIncrement,
             DM3CNT_L ? DM3CNT_L : 0x10000,
             DM3CNT_H & 0x0400);
-      if(DM3CNT_H & 0x4000) {
+      /*if(DM3CNT_H & 0x4000) {
         IF |= 0x0800;
         UPDATE_REG(0x202, IF);
         cpuNextEvent = cpuTotalTicks;
-      }
+      }*/ //ichfly todo
 
       if(((DM3CNT_H >> 5) & 3) == 3) {
         dma3Dest = DM3DAD_L | (DM3DAD_H << 16);
@@ -2701,7 +2663,7 @@ iprintf("w16 %04x to %08x\r\n",value,address);
 #ifdef checkclearaddrrw
 	if(address > 0x07000400)goto unwritable;
 #endif
-    WRITE16LE(((u16 *)&oam[address & 0x3fe]), value);
+    WRITE16LE(((u16 *)&emultoroam[address & 0x3fe]), value);
     break;
   case 8:
   case 9:
@@ -2879,7 +2841,7 @@ void CPUWriteByte(u32 address, u8 b)
 #endif
     // no need to switch
     // byte writes to OAM are ignored
-    //    *((u16 *)&oam[address & 0x3FE]) = (b << 8) | b;
+    //    *((u16 *)&emultoroam[address & 0x3FE]) = (b << 8) | b;
     break;    
   case 13:
     if(cpuEEPROMEnabled) {
@@ -3031,7 +2993,7 @@ void CPUReset()
   // clean registers
   memset(&reg[0], 0, sizeof(reg));
   // clean OAM
-  //memset(oam, 0, 0x400);
+  //memset(emultoroam, 0, 0x400);
   // clean palette
   //memset(paletteRAM, 0, 0x400);
   // clean picture
@@ -3229,7 +3191,7 @@ void CPUReset()
   map[5].mask = 0x3FF;
   map[6].address = vram;
   map[6].mask = 0x1FFFF;
-  map[7].address = oam;
+  map[7].address = emultoroam;
   map[7].mask = 0x3FF;
   map[8].address = rom;
   map[8].mask = 0x1FFFFFF;

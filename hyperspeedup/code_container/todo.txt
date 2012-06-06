@@ -1,7 +1,6 @@
-remove nops in ex_s.s
+remove nops in ex_s.s  //buggy
+impr ex_s.s
 impr Vblanc joy read
 clean interruptDispatcher.s
 todo gbainline.h timeshift
 swi some more asyncsync
-todo multi IRQ at once
-make iomem static it is faster

@@ -863,7 +863,7 @@ void BIOS_RegisterRamReset(u32 flags)
     }
     if(flags & 0x10) {
       // clean OAM
-      memset(oam, 0, 0x400);
+      memset(emultoroam, 0, 0x400);
     }
 
     if(flags & 0x80) {

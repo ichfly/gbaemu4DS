@@ -78,13 +78,12 @@ extern bool mirroringEnable;
 
 extern u8 *bios;
 extern u8 *rom;
-extern u8 *internalRAM;
-extern u8 *workRAM;
-extern u8 *paletteRAM;
-extern u8 *vram;
-extern u8 *pix;
-extern u8 *oam;
-extern u8 *ioMem;
+#define internalRAM ((u8*)0x03000000)
+#define workRAM ((u8*)0x02000000)
+#define paletteRAM ((u8*)0x05000000)
+#define vram ((u8*)0x06000000)
+#define emultoroam ((u8*)0x07000000)
+extern u8 ioMem[0x400];
 
 extern volatile u16 DISPCNT;
 extern u16 DISPSTAT;

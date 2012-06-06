@@ -46,20 +46,13 @@ IntrMain:
 	mov	r12, #0x4000000		@ REG_BASE
 	
 	mrs	r0, spsr
-	@ldr r1,=SPtemp
-	@ldr r1,[r1]
 	stmfd	sp!, {r0,lr}	@ {spsr, lr_irq}
 	
 	add	r12, r12, #0x210
 	ldmia	r12, {r1,r2}
 	ands	r1, r1, r2
-	@ldr	r0, =__irq_flags	@ defined by linker script @ichfly gbadas
 	ldr	r2, =irqTable
 
-@setflags:
-	@ldr	r3,[r0]
-	@orr	r3,r3,r1
-	@str	r3,[r0]
 
 @---------------------------------------------------------------------------------
 findIRQ:
