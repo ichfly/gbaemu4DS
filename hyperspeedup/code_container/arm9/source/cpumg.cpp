@@ -658,9 +658,11 @@ void gbaExceptionHdl()
 	u32 instr;
 	u32 cpuMode;
 	
-	ndsModeinline();
+	//ndsModeinline();
 	cpuMode = BIOSDBG_SPSR & 0x20;
 	//Log("%08X\n",exRegs[15]);
+	
+	//Log("enter\n");
 
 #ifndef gba_handel_IRQ_correct
 	BIOSDBG_SPSR = BIOSDBG_SPSR & ~0x80; //sorry but this must be done
@@ -699,38 +701,29 @@ void gbaExceptionHdl()
 		}
 	}
 #endif
-	
-	/*if(exRegs[15] & 0x08000000)
+
+	if(cpuMode)
 	{
-		exRegs[15] = (exRegs[15] & 0x07FFFFFF) + (s32)rom;
+		instr = *(u16*)(exRegs[15] - 8);
+		exRegs[15] -= 2;
+		{
+			emuInstrTHUMB(instr, exRegs);
+		}		
 	}
 	else
-	{*/		
-			if(cpuMode)
-			{
-				instr = *(u16*)(exRegs[15] - 8);
-				exRegs[15] -= 2;
-				{
-					emuInstrTHUMB(instr, exRegs);
-				}
-				//exRegs[15] -= 2;
-				
-			}
-			else
-			{
-				instr = *(u32*)(exRegs[15] - 8);
-				emuInstrARM(instr, exRegs);
-			}
-			
-	//}
+	{
+		instr = *(u32*)(exRegs[15] - 8);
+		emuInstrARM(instr, exRegs);
+	}
 
 #ifdef lastdebug
-			if(readbankedsp(0x12) < 0x1000000)debugandhalt();
-lasttime[lastdebugcurrent] = exRegs[15];
-lastdebugcurrent++;
-if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
+	if(readbankedsp(0x12) < 0x1000000)debugandhalt();
+	lasttime[lastdebugcurrent] = exRegs[15];
+	lastdebugcurrent++;
+	if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 #endif
-	gbaMode();
+	//gbaMode();
+	//Log("exit\n");
 }
 
 

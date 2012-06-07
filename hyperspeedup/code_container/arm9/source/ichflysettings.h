@@ -16,7 +16,7 @@
 
 //#define powerpatches //do some hacky things that give the emulator more Vb in some cases.
 
-//#define unsave
+#define unsave
 
 //#define emulate_cpu_speed // pu current is 0x020E6000 try to reach 0x020E6000
 

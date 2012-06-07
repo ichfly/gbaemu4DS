@@ -441,16 +441,6 @@ inter_data:
 	blx	r12
       
 	
-	@ need a better solution 
-	mrc	p15, 0, r0, c5, c0, 2
-	ldr	r1, =_exMain_tmpPu
-	
-	str	r0, [r1]
-	
-	
-	
-	ldr	r0,=0x33333333
-	mcr	p15, 0, r0, c5, c0, 2
 	
 
 	@ restore SPSR @ on restaure les bankés
@@ -473,10 +463,10 @@ inter_data:
 	msr	cpsr, r3	@chagne to mode "normal"@ on revient au mode "normal"
 	
 
-	ldr	r12, =_exMain_tmpPu
-	ldr	SP, [r12]
-	
-	mcr	p15, 0, SP, c5, c0, 2	
+
+
+	ldr	SP, =0x03333333	
+	mcr	p15, 0, SP, c5, c0, 2
 
 
 
