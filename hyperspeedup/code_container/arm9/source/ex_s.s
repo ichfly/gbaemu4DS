@@ -458,12 +458,14 @@ inter_data:
 	ldr	r1, [r0]	@ charge le SPSR
 	MSR spsr,r1
 	ldr	r0, =(exRegs + 13 * 4)
-	cmp r1,#0x10 @ichfly user is system
-	moveq r1,#0x1F
+
 	@change mode to the saved mode @ on change de mode (on se mets dans le mode qui était avant l'exception)
 	mrs	r3, cpsr
 	bic	r4, r3, #0x1F
 	and	r1, r1, #0x1F
+	
+	cmp r1,#0x10 @ichfly user is system
+	moveq r1,#0x1F	
 	
 	orr	r4, r4, r1
 	msr	cpsr, r4	@ hop, c'est fait
