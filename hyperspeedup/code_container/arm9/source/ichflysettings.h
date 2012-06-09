@@ -20,7 +20,7 @@
 
 //#define emulate_cpu_speed // pu current is 0x020E6000 try to reach 0x020E6000
 
-#define gba_handel_IRQ_correct
+//#define gba_handel_IRQ_correct
 
 
 
@@ -28,7 +28,7 @@
 
 //debug
 
-
+#define directcpu //rename anothercpu.cpp to anothercpu.h
 
 //#define print_uppern_read_emulation
 

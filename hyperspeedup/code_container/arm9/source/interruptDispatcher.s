@@ -44,10 +44,7 @@ inirq:
 IntrMain:
 @---------------------------------------------------------------------------------
 	mov	r12, #0x4000000		@ REG_BASE
-	
-	mrs	r0, spsr
-	stmfd	sp!, {r0,lr}	@ {spsr, lr_irq}
-	
+		
 	add	r12, r12, #0x210
 	ldmia	r12, {r1,r2}
 	ands	r1, r1, r2
@@ -82,10 +79,7 @@ no_handler:
 	add	r0, r0, #0x2 @don't like todo
 	strh r1,[r0]
 #endif
-	
-	
-	ldmfd   sp!, {r0,lr}	@ {spsr, lr_irq}
-	
+		
 	mov	pc,lr
 
 @---------------------------------------------------------------------------------
@@ -101,6 +95,10 @@ got_handler:
 @---------------------------------------------------------------------------------
 
 	str	r0, [r12, #4]	@ IF Clear
+
+
+	mrs	r12, spsr
+	stmfd	sp!, {r12,lr}	@ {spsr, lr_irq}
 
 
 #ifdef gba_handel_IRQ_correct

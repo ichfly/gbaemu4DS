@@ -1,7 +1,7 @@
 //ichfly all //ARITHMETIC_DATA_OPCODE disabeled
 
 ////armNextPC disabeled 
-
+//
 
 
 
@@ -3030,7 +3030,11 @@ extern u8 cpuBitsSet[256];
 
 
 
-inline void emuInstrARM(u32 opcode, s32 *R) //to big for inline
+#ifdef directcpu
+void __attribute__ ((hot)) emuInstrARM(u32 opcode, s32 *R)
+#else
+inline void emuInstrARM(u32 opcode, s32 *R)
+#endif
 		{
 
 reg_pair* myregs = (reg_pair*)R;
@@ -8622,7 +8626,12 @@ if(cond_res) {*/
 
 }
 
-inline void emuInstrTHUMB(u16 opcode, s32 *R)
+
+#ifdef directcpu
+void __attribute__ ((hot)) emuInstrTHUMB(u16 opcode, s32 *R) 
+#else
+inline void emuInstrTHUMB(u16 opcode, s32 *R) 
+#endif
 {
 
 reg_pair* myregs = (reg_pair*)R;

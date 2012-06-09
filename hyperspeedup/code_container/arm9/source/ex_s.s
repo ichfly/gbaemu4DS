@@ -1,21 +1,3 @@
-	@MRS SP, CPSR
-	@ORR SP, SP, #0xC0 @don't need that no FIRQ 
-	@MSR CPSR_fsxc, SP
-	@LDR SP, =0x27FFD9C
-	@ADD SP, SP, #1 @dont know why this is not working
-	@STMDB SP!, {r12,lr}
-	@MRS lr,spsr
-	@MRC P15, 0 ,r12, c1,c0,0
-	@STMDB SP!, {r12,lr}
-	@BIC r12, r12, #0x1
-	@MCR P15,0,r12,c1,c0,0
-	@BIC r12,sp, #0x1
-	@LDR r12, [r12, #0x10]
-	@cmp r12, #0x0 @speedup
-	@ldr r12, =exMain
-	@BLX r12
-	@LDMIA SP!, {r12,lr}
-
 
 #include "ichflysettings.h"
 
@@ -54,15 +36,15 @@ __sp_irq	=	__sp_svc  - 0x1000; @ichfly @ 1.024 Byte each
 	
 		.global irqhandler2
 irqhandler2:
-b	inter_Reset
-b	inter_undefined
-b	inter_swi
-b	inter_fetch
-b	inter_data
-b	inter_res
-b	inter_irq
-b	inter_fast
-b	inter_res2
+b	inter_Reset + 0x1000000
+b	inter_undefined + 0x1000000
+b	inter_swi + 0x1000000
+b	inter_fetch + 0x1000000
+b	inter_data + 0x1000000
+b	inter_res + 0x1000000
+b	inter_irq + 0x1000000
+b	inter_fast + 0x1000000
+b	inter_res2 + 0x1000000
 
 somethingfailed:
 
@@ -77,7 +59,9 @@ inter_res2:
 	str sp,[lr]
 	b dointerwtf
 	
-	
+
+
+
 .global savedsp
 savedsp:
 	.word 0
@@ -98,14 +82,9 @@ SPtemp: @lol not realy
 #ifdef gba_handel_IRQ_correct
 
 inter_irq:
-	stmfd  SP!, {R0-R3,R12,LR} @save registers to SP_irq
-
-	@MRC P15, 0 ,r0, c9,c1,0 @get addr
-	@Mov r0, r0, LSR #0xC
-	@Mov r0, r0, LSL #0xC
-	@ADD r0,r0, #0x4000
+	stmfd  SP!, {R0-R3,R12,LR}     @save registers to SP_irq
 	
-	mrc	p15, 0, r2, c5, c0, 2 @set pu
+	mrc	p15, 0, r2, c5, c0, 2      @set pu
 	ldr	r1,=0x33333333
 	mcr	p15, 0, r1, c5, c0, 2
 	ldr	r1, =_exMain_tmpPuplain
@@ -113,18 +92,10 @@ inter_irq:
 	
 
 	
-	@ADD lr,pc,#0  @jump
-	@LDR pc, [r0, #-0x4]
 	BL IntrMain
 	
 	mov	r12, #0x4000000		@ REG_BASE
 	ldr	r0, [r12, #0x214]	@get IF
-	
-	
-	
-	ldr	r1, =_exMain_tmpPuplain @set pu back
-	ldr	r2, [r1] @ichfly
-	mcr	p15, 0, r2, c5, c0, 2
 	
 		
 
@@ -132,14 +103,10 @@ inter_irq:
 	ldr	r2, =anytimejmpfilter
 	ldr r2, [r2]
 	ands r0,r0,r2 @ anytimejmpfilter und IF
-	BNE	got_over_gba_handler
-
-
-	LDMIA SP!, {R0-R3,R12,LR} @exit
-	SUBS pc, lr, #0x4
+	BEQ	irqexitdirect
 	
 	
-got_over_gba_handler:
+gba_handler:
 
 	ldr	r1, =0x03333333          @set pu
 	mcr	p15, 0, r1, c5, c0, 2
@@ -153,7 +120,6 @@ got_over_gba_handler:
 
 #else
 
-	@original from gba
 	mov    R0,#0x4000000       @ptr+4 to 03FFFFFC (mirror of 03007FFC)
 	add    LR,PC,#0            @retadr for USER handler
 	ldr    PC,[R0, #-0x4]      @jump to [03FFFFFC] USER handler
@@ -163,7 +129,17 @@ got_over_gba_handler:
 	ldr	r2, [r1] @ichfly
 	mcr	p15, 0, r2, c5, c0, 2	
 
-	  
+	ldmfd  SP!, {R0-R3,R12,LR} @restore registers from SP_irq  
+	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
+	
+	
+
+irqexitdirect:
+	
+	ldr	r1, =_exMain_tmpPuplain  @set pu back
+	ldr	r2, [r1] @ichfly
+	mcr	p15, 0, r2, c5, c0, 2 
+	 
 	ldmfd  SP!, {R0-R3,R12,LR} @restore registers from SP_irq  
 	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
 
@@ -406,14 +382,18 @@ inter_data:
 	
 
 	
+
+	MRS r1,spsr
+
 	
-	MRS r1,spsr	
+	mov r6,SP
+#ifdef directcpu
+	mov r5,r1
+#else
 	ldr r0, =BIOSDBG_SPSR
-
-	
-	mov r2,SP
-
 	str	r1, [r0]	@ charge le SPSR
+#endif
+
 	@ change the mode  @ on change de mode (on se mets dans le mode qui était avant l'exception)
 	mrs	r3, cpsr
 	bic	r4, r3, #0x1F
@@ -426,40 +406,69 @@ inter_data:
 	orr	r4, r4, r1
 	msr	cpsr, r4	@ hop, c'est fait
 	
-	stmia r2, {r13-r14} @save the registrers	@ on sauvegarde les registres bankés (r13 et r14)
+	stmia r6, {r13-r14} @save the registrers	@ on sauvegarde les registres bankés (r13 et r14)
 	msr	cpsr, r3	@ back to normal mode @ on revient au mode "normal"
 
 
 
+#ifdef directcpu
+	
+#ifndef gba_handel_IRQ_correct
+	BIC r5,r5,#0x80
+#endif
+	
+	@ldr r1,=exRegs
+	sub r1,SP,#13 * 4
+	
+	lsls r2,r5, #0x1A
+	BMI itisTHUMB
+	
+itisARM:
+
+	ldr r0, [LR, #-0x8]
+	ldr	sp, =__sp_undef	@ use the new stack
+	BL _Z11emuInstrARMjPi @ is emuInstrARM(u32 opcode, s32 *R)
+	B exitdirectcpu
+itisTHUMB:
+	ldrh r0, [LR,#-0x8]
+	sub LR, #0x2
+	str LR, [r1, #15*4]
+	ldr	sp, =__sp_undef	@ use the new stack
+	BL _Z13emuInstrTHUMBtPi @ is emuInstrTHUMB(u16 opcode, s32 *R)
+exitdirectcpu:
+#else
+
+	ldr	sp, =__sp_undef	@ use the new stack
 
 	@ jump into the personal handler @ on appelle l'handler perso
 	ldr	r12, =exHandler
 	ldr	r12, [r12]
-	
-	ldr	sp, =__sp_undef	@ use the new stack
+
 
 	blx	r12
-      
 	
+#endif      
+
 	
 
 	@ restore SPSR @ on restaure les bankés
+#ifndef directcpu
 	ldr r0, =BIOSDBG_SPSR
-	ldr	r1, [r0]	@ charge le SPSR
-	MSR spsr,r1
-	ldr	r0, =(exRegs + 13 * 4)
+	ldr	r5, [r0]	@ charge le SPSR
+#endif
+	MSR spsr,r5
 
 	@change mode to the saved mode @ on change de mode (on se mets dans le mode qui était avant l'exception)
 	mrs	r3, cpsr
 	bic	r4, r3, #0x1F
-	and	r1, r1, #0x1F
+	and	r5, r5, #0x1F
 	
-	cmp r1,#0x10 @ichfly user is system
-	moveq r1,#0x1F	
+	cmp r5,#0x10 @ichfly user is system
+	moveq r5,#0x1F	
 	
-	orr	r4, r4, r1
+	orr	r4, r4, r5
 	msr	cpsr, r4	@ hop, c'est fait
-	ldmia r0, {r13-r14}	@restor r13 and r14  @ on restaure les registres bankés (r13 et r14). /!\ N'allons pas croire qu'on les a restauré dans notre contexte: en effet, on a changé de mode là !
+	ldmia r6, {r13-r14}	@restor r13 and r14  @ on restaure les registres bankés (r13 et r14). /!\ N'allons pas croire qu'on les a restauré dans notre contexte: en effet, on a changé de mode là !
 	msr	cpsr, r3	@chagne to mode "normal"@ on revient au mode "normal"
 	
 

@@ -535,7 +535,7 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 		}
 		else {ignorenextY -= 1;}
 	}
-    P1 = 0x03FF ^ joy;             
+    P1 = (0x03FF ^ joy) & 0x3FF;             
     UPDATE_REG(0x130, P1);
 
 	//cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu to write to the internalRAM
@@ -845,7 +845,7 @@ if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0
 else
 {	
 	//antysoftreset
-	if(*(u32*)((u8*)(IntrMain) + 0x18) == 0xE51FF004)
+	/*if(*(u32*)((u8*)(IntrMain) + 0x18) == 0xE51FF004)
 	{
 		int oldIME = enterCriticalSection();
 		*(u32*)((u8*)(IntrMain) + 0x18) = 0xE14F0000;
@@ -858,7 +858,7 @@ else
 	  //fifoSendValue32(FIFO_USER_01,0xAF8CA2B8);
 
 
-	}
+	}*/
 }
 //data protbuff
 #ifdef arm9advsound

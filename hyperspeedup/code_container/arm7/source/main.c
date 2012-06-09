@@ -43,6 +43,9 @@ int main() {
 	// Start the RTC tracking IRQ
 	initClockIRQ();
 
+	REG_IPC_SYNC = 0;
+	REG_IPC_FIFO_CR = IPC_FIFO_ENABLE;
+	REG_IPC_FIFO_CR = IPC_FIFO_SEND_CLEAR | IPC_FIFO_ENABLE | IPC_FIFO_ERROR;
 	//enableSound();
 
 	while (true) {

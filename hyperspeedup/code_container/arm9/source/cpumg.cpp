@@ -51,7 +51,9 @@ extern "C" u32 cpu_GetCP15Cnt();
 
 #include "main.h"
 
+#ifndef directcpu
 #include "anothercpu.h"
+#endif
 
 
 #define debugandhalt()\
