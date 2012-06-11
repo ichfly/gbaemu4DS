@@ -7820,6 +7820,8 @@ if(cond_res) {*/
 
         myregs[15].I = CPUReadMemory(address);
 
+		myregs[15].I += 4;
+
         //CPUSwitchMode(myregs[17].I & 0x1f, false);
         /*if(armState) {  //ichfly don't need that
           //armNextPC = myregs[15].I & 0xFFFFFFFC;
@@ -7897,6 +7899,8 @@ if(cond_res) {*/
         if(!(opcode & (1 << base)))    
           myregs[base].I = temp;
 
+
+		myregs[15].I += 4;
         //CPUSwitchMode(myregs[17].I & 0x1f, false);
         /*if(armState) { //ichfly don't need that
           //armNextPC = myregs[15].I & 0xFFFFFFFC;
@@ -8043,6 +8047,8 @@ if(cond_res) {*/
 
         myregs[15].I = CPUReadMemory(address);
 
+
+		myregs[15].I += 4;
         //CPUSwitchMode(myregs[17].I & 0x1f, false);
         /*if(armState) { //ichfly don't need that
           //armNextPC = myregs[15].I & 0xFFFFFFFC;
@@ -8119,6 +8125,8 @@ if(cond_res) {*/
         if(!(opcode & (1 << base)))    
           myregs[base].I = temp;
 
+
+		myregs[15].I += 4;
         //CPUSwitchMode(myregs[17].I & 0x1f, false);
         /*if(armState) {
           //armNextPC = myregs[15].I & 0xFFFFFFFC;
@@ -8270,6 +8278,8 @@ if(cond_res) {*/
 
         myregs[15].I = CPUReadMemory(address);
 
+
+		myregs[15].I += 4;
         //CPUSwitchMode(myregs[17].I & 0x1f, false);
         /*if(armState) { //ichfly don't need that
           //armNextPC = myregs[15].I & 0xFFFFFFFC;
@@ -8346,6 +8356,8 @@ if(cond_res) {*/
         if(!(opcode & (1 << base)))    
           myregs[base].I = temp;
 
+
+		myregs[15].I += 4;
         //CPUSwitchMode(myregs[17].I & 0x1f, false);
         /*if(armState) { //ichfly don't need that
           //armNextPC = myregs[15].I & 0xFFFFFFFC;
@@ -8482,6 +8494,8 @@ if(cond_res) {*/
 
         myregs[15].I = CPUReadMemory(address);
 
+
+		myregs[15].I += 4;
         //CPUSwitchMode(myregs[17].I & 0x1f, false);
         /*if(armState) { //ichfly don't need that
           //armNextPC = myregs[15].I & 0xFFFFFFFC;
@@ -8555,6 +8569,7 @@ if(cond_res) {*/
         if(!(opcode & (1 << base)))    
           myregs[base].I = temp;
 
+		myregs[15].I += 4;
         //CPUSwitchMode(myregs[17].I & 0x1f, false);
         /*if(armState) { //ichfly don't need that
           //armNextPC = myregs[15].I & 0xFFFFFFFC;
@@ -8608,7 +8623,7 @@ if(cond_res) {*/
 
       Log("Undefined ARM instruction %08x\n", opcode);
 	 
-	 u32 offset = myregs[15].I - 8;
+	/*u32 offset = myregs[15].I - 8;
 	if(offset > 0x02040000) offset = myregs[15].I - 8 - (u32)rom + 0x08000000;
 	disArm(offset - 4,disbuffer,DIS_VIEW_ADDRESS);
 	Log(disbuffer);
@@ -8618,7 +8633,8 @@ if(cond_res) {*/
 	Log("\r\n");
 	disArm(offset + 4,disbuffer,DIS_VIEW_ADDRESS);
 	Log(disbuffer);
-	Log("\r\n");	
+	Log("\r\n");*/
+	REG_IME = IME_DISABLE;
 	debugDump();
 	while(1);
     // END
@@ -9256,7 +9272,7 @@ case 0x28:
      }
    }
    break;*/
- case 0x48:
+ /*case 0x48:
  case 0x49:
  case 0x4a:
  case 0x4b:
@@ -9270,7 +9286,7 @@ case 0x28:
      u32 address = (myregs[15].I & 0xFFFFFFFC) + ((opcode & 0xFF) << 2);
      myregs[myregsist].I = CPUReadMemoryQuick(address);
    }
-   break;
+   break;*/
  case 0x50:
  case 0x51:
    // STR Rd, [Rs, Rn]
@@ -9572,7 +9588,7 @@ case 0x28:
      POP_myregs(128, 7);
      myregs[15].I = (CPUReadMemory(address) & 0xFFFFFFFE);
      //armNextPC = myregs[15].I;
-     myregs[15].I += 2;
+     myregs[15].I += 4;
      myregs[13].I = temp;
      ////THUMB_PREFETCH;
    }
@@ -9909,7 +9925,7 @@ void unknowndebugprint(reg_pair *myregs)
 
     Log("Undefined THUMB instruction %04x\n", *(u16*)(myregs[15].I - 6));
 	 
-	u32 offset = myregs[15].I - 6;
+	/*u32 offset = myregs[15].I - 6;
 	if(offset > 0x02040000) offset = myregs[15].I - 6 - (u32)rom + 0x08000000;
 	disArm(offset - 2,disbuffer,DIS_VIEW_ADDRESS);
 	Log(disbuffer);
@@ -9919,7 +9935,8 @@ void unknowndebugprint(reg_pair *myregs)
 	Log("\r\n");
 	disArm(offset + 2,disbuffer,DIS_VIEW_ADDRESS);
 	Log(disbuffer);
-	Log("\r\n");	
+	Log("\r\n");*/
+	REG_IME = IME_DISABLE;
 	debugDump();
 	while(1);
 }

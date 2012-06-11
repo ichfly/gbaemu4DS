@@ -282,13 +282,6 @@ In BG modes 4,5, one Frame may be displayed (selected by DISPCNT Bit 4), the oth
 
 
 
-
-int bgrouid;
-
-
-
-
-
 int frameskip = 10;
 
 int framewtf = 0;
@@ -354,7 +347,7 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 		fifoGetDatamsg(FIFO_USER_02, 100, msg);
 		iprintf((char*)msg);*/
 		//iprintf("exit");
-		while(dmaBusy(3)); // ichfly wait for dma 3
+		//while(dmaBusy(3)); // ichfly wait for dma 3 not needed
 //#ifndef public
 		//iprintf("DISPCNT %x %x\r\n",DISPCNT,REG_DISPCNT);
 //#endif
@@ -415,9 +408,6 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 		}
 		else
 		{
-#ifndef public
-			//iprintf("%x\r\n",*(u32*)(0x0640403C));
-#endif
 			if(lastDISPCNT != DISPCNT)
 			{
 				//reset BG3HOFS and BG3VOFS
@@ -459,10 +449,12 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 				if((DISPCNT & 7) == 4)
 				
 				{
-					bgrouid = bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
+					bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); 
 				}
-				else if((DISPCNT & 7) == 3)bgrouid = bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
-				else if((DISPCNT & 7) == 5)bgrouid = bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				else 
+				{
+					bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				}
 				REG_BG3CNT = REG_BG3CNT | (BG2CNT & 0x43); //swap BG2CNT (BG Priority and Mosaic) 
 			}
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
@@ -517,16 +509,16 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 	
 		//scanKeys();
   
-  u32 joy = ((~REG_KEYINPUT)&0x3ff);
+  u32 joy = REG_KEYINPUT&0x3ff;
 #ifdef ichflytestkeypossibillity  
   
-  // disallow L+R or U+D of being pressed at the same time
-  if((joy & 48) == 48)
-    joy &= ~16;
-  if((joy & 192) == 192)
-    joy &= ~128;
+  // disallow Left+Right or Up+Down of being pressed at the same time
+  if((joy & 0x30) == 0)
+    joy |= 0x10;
+  if((joy & 0xC0) == 0)
+    joy |= 0x80;
 #endif
-	if((joy & KEY_A) && (joy & KEY_B) && (joy & KEY_R) && (joy & KEY_L))
+	if(!(joy & KEY_A) && !(joy & KEY_B) && !(joy & KEY_R) && !(joy & KEY_L))
 	{
 		if(ignorenextY == 0)
 		{
@@ -535,7 +527,7 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 		}
 		else {ignorenextY -= 1;}
 	}
-    P1 = (0x03FF ^ joy) & 0x3FF;             
+    P1 = joy;             
     UPDATE_REG(0x130, P1);
 
 	//cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu to write to the internalRAM
@@ -660,12 +652,13 @@ void frameasyncsync(void) {
 				REG_DISPCNT = dsValue; //workaroundwrite32(dsValue, (u32*)&REG_DISPCNT);
                                        //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x02010010) & ~0x400; //need 0x10010
 				if((DISPCNT & 7) == 4)
-				
 				{
-					bgrouid = bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
+					bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
 				}
-				else if((DISPCNT & 7) == 3)bgrouid = bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
-				else if((DISPCNT & 7) == 5)bgrouid = bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				else
+				{
+					bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
+				}
 				REG_BG3CNT = REG_BG3CNT | (BG2CNT & 0x43); //swap BG2CNT (BG Priority and Mosaic) 
 			}
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
@@ -1094,9 +1087,10 @@ REG_IPC_FIFO_TX = 0x7654321;
 	
 	iprintf("arm7init\n");
 
+
 	REG_IPC_FIFO_TX = 0x1FFFFFFF; //cmd
 	REG_IPC_FIFO_TX = syncline;
-
+	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))u32 src = REG_IPC_FIFO_RX;
 
 	iprintf("irqinit\n");
 

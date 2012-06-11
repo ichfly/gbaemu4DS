@@ -366,9 +366,6 @@ dointerwtf:
 
 inter_data:
 	
-	@ change the PU to nds mode
-	ldr	SP,=0x33333333	@ see cpumg.cpp for meanings protections
-	mcr	p15, 0, SP, c5, c0, 2
 
 	
 	ldr	SP, =exRegs
@@ -380,16 +377,17 @@ inter_data:
 	@ save the registres 0->12
 	stmia	SP!, {r0-r12}
 	
+	@ change the PU to nds mode
+	ldr	r7,=0x33333333	@ see cpumg.cpp for meanings protections
+	mcr	p15, 0, r7, c5, c0, 2
 
 	
 
-	MRS r1,spsr
+	MRS r5,spsr
 
 	
 	mov r6,SP
-#ifdef directcpu
-	mov r5,r1
-#else
+#ifndef directcpu
 	ldr r0, =BIOSDBG_SPSR
 	str	r1, [r0]	@ charge le SPSR
 #endif
@@ -397,7 +395,7 @@ inter_data:
 	@ change the mode  @ on change de mode (on se mets dans le mode qui était avant l'exception)
 	mrs	r3, cpsr
 	bic	r4, r3, #0x1F
-	and	r1, r1, #0x1F
+	and	r1, r5, #0x1F
 	
 	
 	cmp r1,#0x10 @ichfly user is system
@@ -474,13 +472,14 @@ exitdirectcpu:
 
 
 
-	ldr	SP, =0x03333333	
+	
+	BIC SP,r7,#0x30000000 @ldr	SP, =0x03333333
 	mcr	p15, 0, SP, c5, c0, 2
 
 
 
 	@restore r0-r12 easy
-	ldr	lr, =exRegs
+	sub lr,r6,#13 * 4 @ldr	lr, =exRegs
 	ldmia	lr, {r0-r12}
 			
 	@restore PU from the handler @ restaure la protection du PU, comme voulue par l'handler perso

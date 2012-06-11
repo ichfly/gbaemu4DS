@@ -1,6 +1,8 @@
-remove nops in ex_s.s  //buggy
+remove nops in ex_s.s
 impr ex_s.s
-impr Vblanc joy read
 clean interruptDispatcher.s
 todo gbainline.h timeshift
 swi some more asyncsync
+hwreg 0x301 in CPUWriteByte
+fix cpu pc rel reads/writes
+usermode reads firq and mode sw

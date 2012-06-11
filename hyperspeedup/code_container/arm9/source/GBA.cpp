@@ -77,7 +77,6 @@ bool ichflytest = false;
 #include "elf.h"
 #include "Util.h"
 #include "Port.h"
-#include "agbprint.h"
 #ifdef PROFILING
 #include "prof/prof.h"
 #endif
@@ -208,7 +207,7 @@ const int TIMER_TICKS[4] = {
   10
 };
 
-const u32  objTilesAddress [3] = {0x010000, 0x014000, 0x014000};
+//const u32  objTilesAddress [3] = {0x010000, 0x014000, 0x014000}; //now in GBAinline
 const u8 gamepakRamWaitState[4] = { 4, 3, 2, 8 };
 const u8 gamepakWaitState[4] =  { 4, 3, 2, 8 };
 const u8 gamepakWaitState0[2] = { 2, 1 };
@@ -1328,7 +1327,7 @@ void CPUSwitchMode(int mode, bool saveState)
 {
   CPUSwitchMode(mode, saveState, true);
 }
-void doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
+void  __attribute__ ((hot)) doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
 {
 
   if(transfer32) {
@@ -1371,7 +1370,7 @@ void doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly v
   }
 
 }
-void doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
+void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
 {
 	if(si == 0 || di == 0 || s < 0x02000000 || d < 0x02000000 || (d & ~0xFFFFFF) == 0x04000000 || (s & ~0xFFFFFF) == 0x04000000 || s > 0x0E000000 || d > 0x0E000000)
 	{
@@ -1421,7 +1420,7 @@ void doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veral
 			s = (u32)(rom +  (s & 0x01FFFFFF));
 #endif
 		}
-		while(dmaBusy(3)); // ichfly wait for dma 3
+		//while(dmaBusy(3)); // ichfly wait for dma 3 not needed
 		DMA3_SRC = s;
 		DMA3_DEST = d;
 
@@ -1435,7 +1434,7 @@ void doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veral
 
 }
 
-void CPUCheckDMA(int reason, int dmamask)
+void  __attribute__ ((hot)) CPUCheckDMA(int reason, int dmamask)
 {
   // DMA 0
   if((DM0CNT_H & 0x8000) && (dmamask & 1)) {
@@ -1689,7 +1688,7 @@ void CPUCheckDMA(int reason, int dmamask)
   }
 }
 
-void CPUUpdateRegister(u32 address, u16 value)
+void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 {
   	/*if(0x60 > address && address > 0x7)
 	{
@@ -2561,312 +2560,6 @@ void CPUUpdateRegister(u32 address, u16 value)
     break;
   default:
     UPDATE_REG(address&0x3FE, value);
-    break;
-  }
-}
-
-void CPUWriteHalfWord(u32 address, u16 value)
-{
-#ifdef printreads
-iprintf("w16 %04x to %08x\r\n",value,address);
-#endif
-
-#ifdef DEV_VERSION
-  if(address & 1) {
-    if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
-      Log("Unaligned halfword write: %04x to %08x from %08x\n",
-          value,
-          address,
-          armMode ? armNextPC - 4 : armNextPC - 2);
-    }
-  }
-#endif
-  
-  switch(address >> 24) {
-  case 2:
-#ifdef BKPT_SUPPORT
-    if(*((u16 *)&freezeWorkRAM[address & 0x3FFFE]))
-      cheatsWriteHalfWord(address & 0x203FFFE,
-                          value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address >0x023FFFFF)goto unwritable;
-#endif
-      WRITE16LE(((u16 *)&workRAM[address & 0x3FFFE]),value);
-    break;
-  case 3:
-#ifdef BKPT_SUPPORT
-    if(*((u16 *)&freezeInternalRAM[address & 0x7ffe]))
-      cheatsWriteHalfWord(address & 0x3007ffe,
-                          value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unwritable;
-#endif
-      WRITE16LE(((u16 *)&internalRAM[address & 0x7ffe]), value);
-    break;    
-  case 4:
-  
-	/*if(address > 0x40000FF && address < 0x4000110)
-	{
-		*(u16 *)(address) = value;
-		break;
-	}*/ //don't need that
-  
-  	/*if(0x4000060 > address && address > 0x4000008)
-	{
-			iprintf("16 %x %x\r\n",address,value);
-		    *(u16 *)((address & 0x3FF) + 0x4000000) = value;
-	}*/ //dont do dobble
-    if(address < 0x4000400)
-      CPUUpdateRegister(address & 0x3fe, value);
-    else goto unwritable;
-    break;
-  case 5:
-#ifdef BKPT_SUPPORT
-    if(*((u16 *)&freezePRAM[address & 0x03fe]))
-      cheatsWriteHalfWord(address & 0x70003fe,
-                          value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address > 0x05000400)goto unwritable;
-#endif
-    WRITE16LE(((u16 *)&paletteRAM[address & 0x3fe]), value);
-    break;
-  case 6:
-#ifdef checkclearaddrrw
-	if(address > 0x06020000)goto unwritable;
-#endif
-    address = (address & 0x1fffe);
-    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
-        return;
-    if ((address & 0x18000) == 0x18000)
-      address &= 0x17fff;
-#ifdef BKPT_SUPPORT
-    if(*((u16 *)&freezeVRAM[address]))
-      cheatsWriteHalfWord(address + 0x06000000,
-                          value);
-    else
-#endif
-    WRITE16LE(((u16 *)&vram[address]), value); 
-    break;
-  case 7:
-#ifdef BKPT_SUPPORT
-    if(*((u16 *)&freezeOAM[address & 0x03fe]))
-      cheatsWriteHalfWord(address & 0x70003fe,
-                          value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address > 0x07000400)goto unwritable;
-#endif
-    WRITE16LE(((u16 *)&emultoroam[address & 0x3fe]), value);
-    break;
-  case 8:
-  case 9:
-    if(address == 0x80000c4 || address == 0x80000c6 || address == 0x80000c8) {
-      if(!rtcWrite(address, value))
-        goto unwritable;
-    } else if(!agbPrintWrite(address, value)) goto unwritable;
-    break;
-  case 13:
-    if(cpuEEPROMEnabled) {
-      eepromWrite(address, (u8)value);
-      break;
-    }
-    goto unwritable;
-  case 14:
-    if(!eepromInUse | cpuSramEnabled | cpuFlashEnabled) {
-      (*cpuSaveGameFunc)(address, (u8)value);
-      break;
-    }
-    goto unwritable;
-  default:
-  unwritable:
-#ifdef checkclearaddrrw
-      //Log("Illegal word read: %08x at %08x\n", address,reg[15].I);
-	  Log("Illegal hword write: %04x to %08x\n",value, address);
-	  REG_IME = IME_DISABLE;
-	  debugDump();
-	  while(1);
-#endif
-    break;
-  }
-}
-
-void CPUWriteByte(u32 address, u8 b)
-{
-#ifdef printreads
-	iprintf("w8 %02x to %08x\r\n",b,address);
-#endif
-  switch(address >> 24) {
-  case 2:
-#ifdef BKPT_SUPPORT
-      if(freezeWorkRAM[address & 0x3FFFF])
-        cheatsWriteByte(address & 0x203FFFF, b);
-      else
-#endif
-#ifdef checkclearaddrrw
-	if(address >0x023FFFFF)goto unwritable;
-#endif
-        workRAM[address & 0x3FFFF] = b;
-    break;
-  case 3:
-#ifdef BKPT_SUPPORT
-    if(freezeInternalRAM[address & 0x7fff])
-      cheatsWriteByte(address & 0x3007fff, b);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unwritable;
-#endif
-      internalRAM[address & 0x7fff] = b;
-    break;
-  case 4:
-  
-    if(address < 0x4000400) {
-      switch(address & 0x3FF) {
-      case 0x301:
-	if(b == 0x80)
-	  stopState = true;
-	holdState = 1;
-	holdType = -1;
-  cpuNextEvent = cpuTotalTicks;
-	break;
-      case 0x60:
-      case 0x61:
-      case 0x62:
-      case 0x63:
-      case 0x64:
-      case 0x65:
-      case 0x68:
-      case 0x69:
-      case 0x6c:
-      case 0x6d:
-      case 0x70:
-      case 0x71:
-      case 0x72:
-      case 0x73:
-      case 0x74:
-      case 0x75:
-      case 0x78:
-      case 0x79:
-      case 0x7c:
-      case 0x7d:
-      case 0x80:
-      case 0x81:
-      case 0x84:
-      case 0x85:
-      case 0x90:
-      case 0x91:
-      case 0x92:
-      case 0x93:
-      case 0x94:
-      case 0x95:
-      case 0x96:
-      case 0x97:
-      case 0x98:
-      case 0x99:
-      case 0x9a:
-      case 0x9b:
-      case 0x9c:
-      case 0x9d:
-      case 0x9e:
-      case 0x9f:      
-	//soundEvent(address&0xFF, b);  //ichfly disable sound
-#ifdef printsoundwrites
-		  iprintf("b %02x to %08x\r\n",b,address);
-#endif
-	  #ifdef arm9advsound
-		  REG_IPC_FIFO_TX = (address | 0x40000000);
-		  REG_IPC_FIFO_TX = (b | 0x80000000); //faster in case we send a 0
-		#endif
-	break;
-      default:
-	/*if((0x4000060 > address && address > 0x4000008) || (address > 0x40000FF && address < 0x4000110))
-	{
-			//iprintf("8 %x %x\r\n",address,b);
-		    *(u8 *)(address) = b;
-	}*/ //ichfly don't need that
-	if(address & 1)
-	{
-	  CPUUpdateRegister(address & 0x3fe,
-			    ((READ16LE(((u16 *)&ioMem[address & 0x3fe])))
-			     & 0x00FF) |
-			    b<<8);
-
-	}
-	else
-	  CPUUpdateRegister(address & 0x3fe,
-			    ((READ16LE(((u16 *)&ioMem[address & 0x3fe])) & 0xFF00) | b));
-      }
-      break;
-    } else goto unwritable;
-    break;
-  case 5:
-#ifdef checkclearaddrrw
-	if(address > 0x05000400)goto unwritable;
-#endif
-    // no need to switch
-    *((u16 *)&paletteRAM[address & 0x3FE]) = (b << 8) | b;
-    break;
-  case 6:
-#ifdef checkclearaddrrw
-	if(address > 0x06020000)goto unwritable;
-#endif
-    address = (address & 0x1fffe);
-    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
-        return;
-    if ((address & 0x18000) == 0x18000)
-      address &= 0x17fff;
-
-    // no need to switch 
-    // byte writes to OBJ VRAM are ignored
-    if ((address) < objTilesAddress[((DISPCNT&7)+1)>>2])
-    {
-#ifdef BKPT_SUPPORT
-      if(freezeVRAM[address])
-        cheatsWriteByte(address + 0x06000000, b);
-      else
-#endif  
-            *((u16 *)&vram[address]) = (b << 8) | b;
-    }
-    break;
-  case 7:
-#ifdef checkclearaddrrw
-	goto unwritable;
-#endif
-    // no need to switch
-    // byte writes to OAM are ignored
-    //    *((u16 *)&emultoroam[address & 0x3FE]) = (b << 8) | b;
-    break;    
-  case 13:
-    if(cpuEEPROMEnabled) {
-      eepromWrite(address, b);
-      break;
-    }
-    goto unwritable;
-  case 14:
-      if (!(saveType == 5) && (!eepromInUse | cpuSramEnabled | cpuFlashEnabled)) {
-
-    //if(!cpuEEPROMEnabled && (cpuSramEnabled | cpuFlashEnabled)) { 
-
-        (*cpuSaveGameFunc)(address, b);
-      break;
-    }
-    // default
-  default:
-  unwritable:
-#ifdef checkclearaddrrw
-      //Log("Illegal word read: %08x at %08x\n", address,reg[15].I);
-	  Log("Illegal byte write: %02x to %08x\n",b, address);
-	  REG_IME = IME_DISABLE;
-	  debugDump();
-	  while(1);
-#endif
     break;
   }
 }

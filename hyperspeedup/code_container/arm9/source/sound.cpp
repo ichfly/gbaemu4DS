@@ -44,10 +44,10 @@ void arm7dmareq()
 	if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //nothing here move along
 	{
 		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
-		u32 src = REG_IPC_FIFO_RX;
-		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))src = REG_IPC_FIFO_RX;
 		//iprintf("in");
 		VblankHandler();
+		u32 src = REG_IPC_FIFO_RX; //send ack
+		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))src = REG_IPC_FIFO_RX;
 	}
 }
 #endif
