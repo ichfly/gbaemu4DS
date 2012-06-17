@@ -75,8 +75,6 @@ typedef struct
 
 
 
-//copy protection
-
 #include <nds/arm9/dldi.h>
 
 // The only built in driver
@@ -108,7 +106,6 @@ int framenummer;
    #define DEFAULT_SECTORS_PAGE 8
 
 #define public
-struct EmulatedSystem emulator;
 
 char* rootdirnames [3] = {"nitro:/","fat:/","sd:/"};
 bool rootenabelde[3];
@@ -147,13 +144,6 @@ extern "C" u32 pu_Enable();
 
 int ignorenextY = 0;
 
-void speedtest()
-{	
-	/*(volatile u32*)0x4000214 = 0x8;
-	iprintf("\x1b[2J");
-	iprintf("fps %d",framenummer);
-	framenummer = 0;*/
-}
 
 
 
@@ -288,38 +278,16 @@ int framewtf = 0;
 
 
 int oldmode = 0;
-u16 lastDISPCNT = 0;
 
 
 extern "C" int SPtoload;
 extern "C" int SPtemp;
 
-//---------------------------------------------------------------------------------
-void HblankHandler(void) {
-//---------------------------------------------------------------------------------
-	CPUCheckDMA(2, 0x0f);
-	/*if(IME & 1 && IE & 2)
-	{
-		IE &= 2;
-		gbaMode();
-		cpu_ArmJump(*(u32*)0x3007FFC, 0);
-		ndsMode();
-	}*/
-	//*(volatile u32*)0x4000214 = 0x2;
-	//iprintf("test");
-}
+
 //---------------------------------------------------------------------------------
 void VblankHandler(void) {
 //---------------------------------------------------------------------------------
 	
-		//*(volatile u32*)0x4000214 = 0x1;
-		//while(1);
-	
-	  /*fifoSendValue32(FIFO_USER_01,0x80000000); //request data
-	  fifoSendValue32(FIFO_USER_01,0x80000000); //dummy*/
-
-
-	//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
 
 #ifdef lastdebug
 lasttime[lastdebugcurrent] = 0x0000000;
@@ -327,136 +295,18 @@ lastdebugcurrent++;
 if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 #endif
 
-	CPUCheckDMA(1, 0x0f);
-	
-	//Log("VB %X %X ",SPtoload,SPtemp);
-	//iprintf("i%x %x %x %x %x %x\r\n",IE,IF_VBl,anytimejmpfilter,REG_IE,REG_IF,IME);
-
-
-	//iprintf("DISPCNT2fly %x %x\r\n",DISPCNT,workaroundread16((u16*)&DISPCNT));
-	//iprintf("%x",workaroundread16((u16*)&DISPCNT));	
+	CPUCheckDMA(1, 0x0f);	
 	
 	if(framewtf == frameskip)
 	{
-	//iprintf("%x %x %x %x %x %x\r\n",IE,IF_VBl,anytimejmpfilter,REG_IE,REG_IF,IME);
-		//REG_IPC_FIFO_TX = 0x80000000;
-		//REG_IPC_FIFO_TX = 0x5B468E37;
-	  //iprintf("enter");
-		/*u8 msg[255]; //max 255
-		//iprintf("enter");
-		fifoGetDatamsg(FIFO_USER_02, 100, msg);
-		iprintf((char*)msg);*/
-		//iprintf("exit");
-		//while(dmaBusy(3)); // ichfly wait for dma 3 not needed
-//#ifndef public
-		//iprintf("DISPCNT %x %x\r\n",DISPCNT,REG_DISPCNT);
-//#endif
-
-
 		framewtf = 0;
-		//iprintf("DISPCNT2fly %x %x\r\n",&DISPCNT,workaroundread16((u16*)&DISPCNT));
-		/*for(int iy = 0; iy <0x200 ; iy++)
-		{
-			*(u16 *)(0x07000000 + 2*iy) = *(u16 *)(oam + 2*iy);
-		}
-			for(int iy = 0; iy <0x200 ; iy++)
-		{
-			*(u16 *)(0x05000000 + 2*iy) = *(u16 *)(paletteRAM + 2*iy);
-			
-		}*/
-		
 		if((DISPCNT & 7) < 3)
 		{
 			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
-			if(lastDISPCNT != DISPCNT)
-			{
-				//reset BG3HOFS and BG3VOFS
-				REG_BG3HOFS = BG3HOFS;
-				REG_BG3VOFS = BG3VOFS;
-
-				//reset
-				REG_BG3CNT = BG3CNT;
-				REG_BG2CNT = BG2CNT;
-				REG_BLDCNT = BLDMOD;
-				WIN_IN = WININ;
-				WIN_OUT = WINOUT;
-
-				REG_BG2PA = BG2PA;
-				REG_BG2PB = BG2PB;
-				REG_BG2PC = BG2PC;
-				REG_BG2PD = BG2PD;
-				REG_BG2X = (BG2X_L | (BG2X_H << 16));
-				REG_BG2Y = (BG2Y_L | (BG2Y_H << 16));
-
-				REG_BG3PA = BG3PA;
-				REG_BG3PB = BG3PB;
-				REG_BG3PC = BG3PC;
-				REG_BG3PD = BG3PD;
-				REG_BG3X = (BG3X_L | (BG3X_H << 16));
-				REG_BG3Y = (BG3Y_L | (BG3Y_H << 16));
-
-				u32 dsValue;
-				dsValue  = DISPCNT & 0xFF87;
-				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
-				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
-				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
-				REG_DISPCNT = dsValue; 
-			}
-			//iprintf("%08x %08x %08x %08x %08x\n",workaroundread16((u16*)&DISPCNT),*(u32*)(0x05000204),*(u32*)(0x07000004),workaroundread32((u32*)&REG_DISPCNT)/*REG_DISPCNT*/,*(u32*)(0x6014020));
-			//dmaCopyWordsAsynch(0,vram,(void*)0x06000000,0x10000);
-			lastDISPCNT = DISPCNT;
 		}
 		else
 		{
-			if(lastDISPCNT != DISPCNT)
-			{
-				//reset BG3HOFS and BG3VOFS
-				REG_BG3HOFS = 0;
-				REG_BG3VOFS = 0;
-
-				//BLDCNT(2 enabeled bits)
-				int tempBLDMOD = BLDMOD & ~0x404;
-				tempBLDMOD = tempBLDMOD | ((BLDMOD & 0x404) << 1);
-				REG_BLDCNT = tempBLDMOD;
-
-				//WINOUT(2 enabeled bits)
-				int tempWINOUT = WINOUT & ~0x404;
-				tempWINOUT = tempWINOUT | ((WINOUT & 0x404) << 1);
-				WIN_OUT = tempWINOUT;
-
-				//WININ(2 enabeled bits)
-				int tempWININ = WININ & ~0x404;
-				tempWININ = tempWININ | ((WININ & 0x404) << 1);
-				WIN_IN = tempWININ;
-
-				//swap LCD I/O BG Rotation/Scaling
-
-				REG_BG3PA = BG2PA;
-				REG_BG3PB = BG2PB;
-				REG_BG3PC = BG2PC;
-				REG_BG3PD = BG2PD;
-				REG_BG3X = (BG2X_L | (BG2X_H << 16));
-				REG_BG3Y = (BG2Y_L | (BG2Y_H << 16));
-
-
-				u32 dsValue;
-				dsValue  = DISPCNT & 0xF087;
-				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
-				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
-				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
-				REG_DISPCNT = dsValue; //workaroundwrite32(dsValue, (u32*)&REG_DISPCNT);
-                                       //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x02010010) & ~0x400; //need 0x10010
-				if((DISPCNT & 7) == 4)
-				
-				{
-					bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); 
-				}
-				else 
-				{
-					bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
-				}
-				REG_BG3CNT = REG_BG3CNT | (BG2CNT & 0x43); //swap BG2CNT (BG Priority and Mosaic) 
-			}
+			dmaCopyWordsAsynch(1,(void*)0x06014000,(void*)0x06404000,0x4000);
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
@@ -464,41 +314,33 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
 					pointertobild+=480;
 				}
-			}	
-			if((DISPCNT & 7) == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
+			}
+			else
 			{
-				u8 *pointertobild = (u8 *)(0x6000000);
-				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
-				for(int iy = 0; iy <160; iy++){
-					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 240);
-					pointertobild+=240;
-					//pointertobild+=120;
+				if((DISPCNT & 7) == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
+				{
+					u8 *pointertobild = (u8 *)(0x6000000);
+					if(BIT(4) & DISPCNT)pointertobild+=0xA000;
+					for(int iy = 0; iy <160; iy++){
+						dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 240);
+						pointertobild+=240;
+						//pointertobild+=120;
+					}
+				}
+				else
+				{
+					//if((DISPCNT & 7) == 5) //BG Mode 5 - 160x128 pixels, 32768 colors //ichfly can't be other mode
+					{
+						u8 *pointertobild = (u8 *)(0x6000000);
+						if(BIT(4) & DISPCNT)pointertobild+=0xA000;
+						for(int iy = 0; iy <128; iy++){
+							dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
+							pointertobild+=320;
+						}
+					}
 				}
 			}
-			if((DISPCNT & 7) == 5) //BG Mode 5 - 160x128 pixels, 32768 colors
-			{
-				u8 *pointertobild = (u8 *)(0x6000000);
-				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
-				for(int iy = 0; iy <128; iy++){
-					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
-					pointertobild+=320;
-				}
-			}
-			//iprintf("b");
-			//iprintf("DISPCNT5fly %x\r\n",workaroundread16((u16*)&DISPCNT));
-			
-			//iprintf("DISPCNT2.5 %x\r\n",workaroundread16((u16*)&DISPCNT));
-			
-			//dmaCopyWordsAsynch(0,vram,(void*)0x06000000,0x14000);
-			dmaCopyWordsAsynch(1,(void*)0x06014000,(void*)0x06404000,0x4000);
-			//dmaCopy(vram, bgGetGfxPtr(bgrouid), 240*160);
-			lastDISPCNT = DISPCNT;
 		}
-		//iprintf("c");
-		/*if(DISPCNT != 0)
-		{
-			iprintf("DISPCNT3 %x\r\n",workaroundread16((u16*)&DISPCNT));
-		}*/
 	}
 	else
 	{
@@ -507,18 +349,17 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 	
 
 	
-		//scanKeys();
   
-  u32 joy = REG_KEYINPUT&0x3ff;
+    P1 = REG_KEYINPUT&0x3ff;
 #ifdef ichflytestkeypossibillity  
   
   // disallow Left+Right or Up+Down of being pressed at the same time
-  if((joy & 0x30) == 0)
-    joy |= 0x10;
-  if((joy & 0xC0) == 0)
-    joy |= 0x80;
+  if((P1 & 0x30) == 0)
+    P1 |= 0x10;
+  if((P1 & 0xC0) == 0)
+    P1 |= 0x80;
 #endif
-	if(!(joy & KEY_A) && !(joy & KEY_B) && !(joy & KEY_R) && !(joy & KEY_L))
+	if(!(P1 & KEY_A) && !(P1 & KEY_B) && !(P1 & KEY_R) && !(P1 & KEY_L))
 	{
 		if(ignorenextY == 0)
 		{
@@ -526,33 +367,9 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 			ignorenextY = 60; // 1 sec break time
 		}
 		else {ignorenextY -= 1;}
-	}
-    P1 = joy;             
+	}            
     UPDATE_REG(0x130, P1);
 
-	//cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu to write to the internalRAM
-
-
-	/*while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))
-	{
-		u32 temprx = REG_IPC_FIFO_RX;
-		iprintf("%08X %08X\r\n",temprx,*(u32*)temprx);
-	}*/
-
-	//pu_Enable();
-
-	
-	//iprintf("test"); //sorry no write here
-	//*(u32*)0x2003000 = *(u32*)0x2003000 + 1;
-	/*if(IME & 1 && IE & 1)
-	{
-		IE &= 1;
-		gbaMode();
-		cpu_ArmJump(*(u32*)0x3007FFC, 0);
-		ndsMode();
-	}*/
-	
-	//iprintf("%x %x %x %x %x %x %x %x %x %x \r\n",DISPCNT,BG2CNT, BG2X_L, BG2X_H, BG2Y_L, BG2Y_H,BG2PA, BG2PB, BG2PC, BG2PD);
 
 #ifdef lastdebug
 lasttime[lastdebugcurrent] = 0x0000001;
@@ -569,98 +386,14 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 
 void frameasyncsync(void) {
 //---------------------------------------------------------------------------------
-	
-		while(dmaBusy(3)); // ichfly wait for dma 3
 		framewtf = 0;
 		if((DISPCNT & 7) < 3)
 		{
 			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
-			if(lastDISPCNT != DISPCNT)
-			{
-				//reset BG3HOFS and BG3VOFS
-				REG_BG3HOFS = BG3HOFS;
-				REG_BG3VOFS = BG3VOFS;
-
-				//reset
-				REG_BG3CNT = BG3CNT;
-				REG_BG2CNT = BG2CNT;
-				REG_BLDCNT = BLDMOD;
-				WIN_IN = WININ;
-				WIN_OUT = WINOUT;
-
-				REG_BG2PA = BG2PA;
-				REG_BG2PB = BG2PB;
-				REG_BG2PC = BG2PC;
-				REG_BG2PD = BG2PD;
-				REG_BG2X = (BG2X_L | (BG2X_H << 16));
-				REG_BG2Y = (BG2Y_L | (BG2Y_H << 16));
-
-				REG_BG3PA = BG3PA;
-				REG_BG3PB = BG3PB;
-				REG_BG3PC = BG3PC;
-				REG_BG3PD = BG3PD;
-				REG_BG3X = (BG3X_L | (BG3X_H << 16));
-				REG_BG3Y = (BG3Y_L | (BG3Y_H << 16));
-
-				u32 dsValue;
-				dsValue  = DISPCNT & 0xFF87;
-				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
-				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
-				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
-				REG_DISPCNT = dsValue; 
-			}
-			lastDISPCNT = DISPCNT;
 		}
 		else
 		{
-			if(lastDISPCNT != DISPCNT)
-			{
-				//reset BG3HOFS and BG3VOFS
-				REG_BG3HOFS = 0;
-				REG_BG3VOFS = 0;
-
-				//BLDCNT(2 enabeled bits)
-				int tempBLDMOD = BLDMOD & ~0x404;
-				tempBLDMOD = tempBLDMOD | ((BLDMOD & 0x404) << 1);
-				REG_BLDCNT = tempBLDMOD;
-
-				//WINOUT(2 enabeled bits)
-				int tempWINOUT = WINOUT & ~0x404;
-				tempWINOUT = tempWINOUT | ((WINOUT & 0x404) << 1);
-				WIN_OUT = tempWINOUT;
-
-				//WININ(2 enabeled bits)
-				int tempWININ = WININ & ~0x404;
-				tempWININ = tempWININ | ((WININ & 0x404) << 1);
-				WIN_IN = tempWININ;
-
-				//swap LCD I/O BG Rotation/Scaling
-
-				REG_BG3PA = BG2PA;
-				REG_BG3PB = BG2PB;
-				REG_BG3PC = BG2PC;
-				REG_BG3PD = BG2PD;
-				REG_BG3X = (BG2X_L | (BG2X_H << 16));
-				REG_BG3Y = (BG2Y_L | (BG2Y_H << 16));
-
-
-				u32 dsValue;
-				dsValue  = DISPCNT & 0xF087;
-				dsValue |= (DISPCNT & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
-				dsValue |= (DISPCNT & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
-				dsValue |= (DISPCNT & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
-				REG_DISPCNT = dsValue; //workaroundwrite32(dsValue, (u32*)&REG_DISPCNT);
-                                       //REG_DISPCNT = (workaroundread16((u16*)&DISPCNT) | 0x02010010) & ~0x400; //need 0x10010
-				if((DISPCNT & 7) == 4)
-				{
-					bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); //(3, BgType_Bmp16, BgSize_B16_256x256, 0,0); //sassert(tileBase == 0 || type < BgType_Bmp8, "Tile base is unused for bitmaps.  Can be offset using mapBase * 16KB"); kind of not needed
-				}
-				else
-				{
-					bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
-				}
-				REG_BG3CNT = REG_BG3CNT | (BG2CNT & 0x43); //swap BG2CNT (BG Priority and Mosaic) 
-			}
+			dmaCopyWordsAsynch(1,(void*)0x06014000,(void*)0x06404000,0x4000);
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
@@ -668,28 +401,32 @@ void frameasyncsync(void) {
 					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
 					pointertobild+=480;
 				}
-			}	
-			if((DISPCNT & 7) == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
+			}
+			else
 			{
-				u8 *pointertobild = (u8 *)(0x6000000);
-				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
-				for(int iy = 0; iy <160; iy++){
-					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 240);
-					pointertobild+=240;
-					//pointertobild+=120;
+				if((DISPCNT & 7) == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
+				{
+					u8 *pointertobild = (u8 *)(0x6000000);
+					if(BIT(4) & DISPCNT)pointertobild+=0xA000;
+					for(int iy = 0; iy <160; iy++){
+						dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 240);
+						pointertobild+=240;
+						//pointertobild+=120;
+					}
+				}
+				else
+				{
+					//if((DISPCNT & 7) == 5) //BG Mode 5 - 160x128 pixels, 32768 colors //ichfly can't be other mode
+					{
+						u8 *pointertobild = (u8 *)(0x6000000);
+						if(BIT(4) & DISPCNT)pointertobild+=0xA000;
+						for(int iy = 0; iy <128; iy++){
+							dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
+							pointertobild+=320;
+						}
+					}
 				}
 			}
-			if((DISPCNT & 7) == 5) //BG Mode 5 - 160x128 pixels, 32768 colors
-			{
-				u8 *pointertobild = (u8 *)(0x6000000);
-				if(BIT(4) & DISPCNT)pointertobild+=0xA000;
-				for(int iy = 0; iy <128; iy++){
-					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
-					pointertobild+=320;
-				}
-			}
-			dmaCopyWordsAsynch(1,(void*)0x06014000,(void*)0x06404000,0x4000);
-			lastDISPCNT = DISPCNT;
 		}
 	}
 
@@ -703,11 +440,16 @@ bool gbamode = false;
 
 
 
-char* seloptions [3] = {"save save","show mem","Continue (Beta)"};
+char* seloptions [3] = {"save save","show mem","Continue"};
 
 void pausemenue()
 {
-	REG_IME = IME_DISABLE;
+	REG_IE = 0; //no irq
+	u16 tempvcount = REG_VCOUNT;
+	TIMER0_CR = TIMER0_CR & ~TIMER_ENABLE; //timer off
+	TIMER1_CR = TIMER1_CR & ~TIMER_ENABLE;
+	TIMER2_CR = TIMER2_CR & ~TIMER_ENABLE;
+	TIMER3_CR = TIMER3_CR & ~TIMER_ENABLE;
 	//irqDisable(IRQ_VBLANK);
 	//cpupausemode(); //don't need that
 	int pressed;
@@ -742,14 +484,19 @@ void pausemenue()
 					CPUWriteBatteryFile(savePath);
 					break;
 				case 1:
+#ifndef noichflydebugger
 					show_mem();
+#endif
 					break;
 				case 2:
-					//cpupausemodeexit();
 					iprintf("\x1b[2J");
-					//while(REG_VCOUNT != 192); //wait for Vblanc
-					//irqEnable( IRQ_VBLANK);
-					REG_IME = IME_ENABLE;
+					while(REG_VCOUNT != tempvcount); //wait for VCOUNT
+					TIMER0_CR = timer0Value; //timer on
+					TIMER1_CR = timer1Value;
+					TIMER2_CR = timer2Value;
+					TIMER3_CR = timer3Value;
+					REG_IE = IE | IRQ_FIFO_NOT_EMPTY; //irq on
+					while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))u32 src = REG_IPC_FIFO_RX; //get sync irqs back
 					return; //and return
 				}
 		}
@@ -1034,7 +781,6 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	  }
 	  iprintf("OK\n");
 	  	//iprintf("Hello World2!");
-       emulator = GBASystem;
 
 		iprintf("CPUInit\n");
 		CPUInit(biosPath, useBios,extraram);

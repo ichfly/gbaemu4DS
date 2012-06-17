@@ -59,36 +59,36 @@ typedef signed __int64 s64;
 typedef signed long long s64;
 #endif
 */
-struct EmulatedSystem {
+//struct EmulatedSystem {
   // main emulation function
   //void (*emuMain)(int);
   // reset emulator
-  void (*emuReset)();
+  //void (*emuReset)();
   // clean up memory
-  void (*emuCleanUp)();
+  //void (*emuCleanUp)();
   // load battery file
-  bool (*emuReadBattery)(const char *);
+  //bool (*emuReadBattery)(const char *);
   // write battery file
-  bool (*emuWriteBattery)(const char *);
+  //bool (*emuWriteBattery)(const char *);
   // load state
-  bool (*emuReadState)(const char *);  
+  //bool (*emuReadState)(const char *);  
   // save state
-  bool (*emuWriteState)(const char *);
+  //bool (*emuWriteState)(const char *);
   // load memory state (rewind)
-  bool (*emuReadMemState)(char *, int);
+  //bool (*emuReadMemState)(char *, int);
   // write memory state (rewind)
-  bool (*emuWriteMemState)(char *, int);
+  //bool (*emuWriteMemState)(char *, int);
   // write PNG file
-  bool (*emuWritePNG)(const char *);
+  //bool (*emuWritePNG)(const char *);
   // write BMP file
-  bool (*emuWriteBMP)(const char *);
+  //bool (*emuWriteBMP)(const char *);
   // emulator update CPSR (ARM only)
-  void (*emuUpdateCPSR)();
+  //void (*emuUpdateCPSR)();
   // emulator has debugger
-  bool emuHasDebugger;
+  //bool emuHasDebugger;
   // clock ticks to emulate
-  int emuCount;
-};
+  //int emuCount;
+//};
 
 extern void log(const char *,...);
 

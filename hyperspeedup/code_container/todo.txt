@@ -6,3 +6,4 @@ swi some more asyncsync
 hwreg 0x301 in CPUWriteByte
 fix cpu pc rel reads/writes
 usermode reads firq and mode sw
+need extern volatile u16 DISPCNT;

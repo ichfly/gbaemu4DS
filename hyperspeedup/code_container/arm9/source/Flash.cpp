@@ -88,23 +88,6 @@ void flashReset()
   flashBank = 0;
 }
 
-void flashSaveGame(gzFile file)
-{
-  utilWriteData(file, flashSaveData3);
-}
-
-void flashReadGame(gzFile file, int version)
-{
-  if(version < SAVE_GAME_VERSION_5)
-    utilReadData(file, flashSaveData);
-  else if(version < SAVE_GAME_VERSION_7) {
-    utilReadData(file, flashSaveData2);
-    flashBank = 0;
-    flashSetSize(flashSize);
-  } else {
-    utilReadData(file, flashSaveData3);
-  }
-}
 
 void flashSetSize(int size)
 {

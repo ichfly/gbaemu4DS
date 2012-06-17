@@ -61,10 +61,26 @@ int main() {
 			int val = (REG_IPC_FIFO_RX &  ~0x80000000); //Value skip add for speedup
 			switch(addr)
 			{
-			case 0x1FFFFFFF:
-			callline = val;
-			default:
-			break;
+				case 0x1FFFFFFFD: //getkeys
+					{
+						touchPosition tempPos = {0};
+						u16 keys= REG_KEYXY;
+						if(!touchPenDown()) {
+							keys |= KEY_TOUCH;
+  						} else {
+							keys &= ~KEY_TOUCH;
+						}
+						touchReadXY(&tempPos);	
+						REG_IPC_FIFO_TX = 1; //send cmd 1
+						REG_IPC_FIFO_TX = keys;
+						REG_IPC_FIFO_TX = tempPos.px;
+						REG_IPC_FIFO_TX = tempPos.py;
+					}
+
+				case 0x1FFFFFFF: //set callline
+				callline = val;
+				default:
+				break;
 			}
 		}
 	}

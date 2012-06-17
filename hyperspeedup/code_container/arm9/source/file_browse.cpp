@@ -223,7 +223,7 @@ void printgbainfo (const char* filename)  {
 	iprintf("Cartridge Key Number MSB %u\r\n",(gbaheader.logo[154] & 0x3));
 	if(gbaheader.logo[152] == 0xA5)iprintf("Debugging Enabled\r\n");
 	if(gbaheader.logo[152] == 0x21)iprintf("Debugging Disabled\r\n");
-	if((gbaheader.entryPoint & 0xFE000000) == 0xEA000000){iprintf("entrypoint %08x\r\n",0x08000000 + (gbaheader.entryPoint & 0x00FFFFFF));}
+	if((gbaheader.entryPoint & 0xFE000000) == 0xEA000000){iprintf("entrypoint %08x\r\n",0x08000000 + (gbaheader.entryPoint & 0x00FFFFFF)*4 + 8);}
 	else {iprintf("entrypoint not detected\r\n");}
 	iprintf ("--------------------------------");
 	fclose(file);

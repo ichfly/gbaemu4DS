@@ -54,7 +54,6 @@ extern bool utilIsRarFile(const char *);
 extern void utilGetBaseName(const char *, char *);
 //extern IMAGE_TYPE utilFindType(const char *);
 extern u8 *utilLoad(const char *,
-                    bool (*)(const char*),
                     u8 *,
                     int &,bool);
 

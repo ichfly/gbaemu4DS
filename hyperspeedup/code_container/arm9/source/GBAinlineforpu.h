@@ -16,7 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software Foundation,
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-
 #ifndef VBA_GBAinline_H
 #define VBA_GBAinline_H
 
@@ -69,38 +68,8 @@ u16 CPUReadHalfWordQuick(u32 addr);
 u32 CPUReadMemoryQuick(u32 addr);
 */
 
-#define CPUReadByteQuick(addr) \
-  map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]
 
-#define CPUReadHalfWordQuick(addr) \
-  READ16LE(((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
-
-#define CPUReadMemoryQuick(addr) \
-  READ32LE(((u32*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
-
-
-static u32 CPUReadMemoryreal(u32 address);
-
-static inline u32 CPUReadMemory(u32 address)
- {
-	return CPUReadMemoryreal(address);
- }
-
-static u32 CPUReadHalfWordreal(u32 address);
-
-static inline u32 CPUReadHalfWord(u32 address)
- {
-	return CPUReadHalfWordreal(address);
- }
-static u8 CPUReadBytereal(u32 address);
-
-static inline u8 CPUReadByte(u32 address)
- {
-	return CPUReadBytereal(address);
- }
-
-
-static inline void updateVC()
+void updateVCsub()
 {
 		u16 temp = REG_VCOUNT;
 		u16 temp2 = REG_DISPSTAT;
@@ -140,7 +109,7 @@ static inline void updateVC()
 }
 
 
- static inline u32 CPUReadMemoryreal(u32 address) //ichfly not inline is faster because it is smaler
+inline u32 CPUReadMemoryrealpu(u32 address)
 {
 #ifdef DEV_VERSION
   if(address & 3) {  
@@ -157,34 +126,6 @@ static inline void updateVC()
   
   u32 value;
   switch(address >> 24) {
-  case 0:
-    if(reg[15].I >> 24) {
-      if(address < 0x4000) {
-#ifdef DEV_VERSION
-        if(systemVerbose & VERBOSE_ILLEGAL_READ) {
-          Log("Illegal word read: %08x at %08x\n", address, armMode ?
-              armNextPC - 4 : armNextPC - 2);
-        }
-#endif
-        
-        value = READ32LE(((u32 *)&biosProtected));
-      }
-      else goto unreadable;
-    } else
-      value = READ32LE(((u32 *)&bios[address & 0x3FFC]));
-    break;
-  case 2:
-#ifdef checkclearaddrrw
-	if(address >0x023FFFFF)goto unreadable;
-#endif
-    value = READ32LE(((u32 *)&workRAM[address & 0x3FFFC]));
-    break;
-  case 3:
-#ifdef checkclearaddrrw
-	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
-#endif
-    value = READ32LE(((u32 *)&internalRAM[address & 0x7ffC]));
-    break;
   case 4:
   
 	if(address > 0x40000FF && address < 0x4000111)
@@ -204,7 +145,7 @@ static inline void updateVC()
 
 	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
-		updateVC();
+		updateVCsub();
 	}
     if((address < 0x4000400) && ioReadable[address & 0x3fc]) {
       if(ioReadable[(address & 0x3fc) + 2])
@@ -212,32 +153,6 @@ static inline void updateVC()
       else
         value = READ16LE(((u16 *)&ioMem[address & 0x3fc]));
     } else goto unreadable;
-    break;
-  case 5:
-#ifdef checkclearaddrrw
-	if(address > 0x05000400)goto unreadable;
-#endif
-    value = READ32LE(((u32 *)&paletteRAM[address & 0x3fC]));
-    break;
-  case 6:
-#ifdef checkclearaddrrw
-	if(address > 0x06020000)goto unreadable;
-#endif
-    address = (address & 0x1fffc);
-    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
-    {
-        value = 0;
-        break;
-    }
-    if ((address & 0x18000) == 0x18000)
-      address &= 0x17fff;
-    value = READ32LE(((u32 *)&vram[address]));
-    break;
-  case 7:
-#ifdef checkclearaddrrw
-	if(address > 0x07000400)goto unreadable;
-#endif
-    value = READ32LE(((u32 *)&emultoroam[address & 0x3FC]));
     break;
   case 8:
   case 9:
@@ -282,7 +197,7 @@ static inline void updateVC()
 	  while(1);
 #endif
 
-    if(cpuDmaHack) {
+    /*if(cpuDmaHack) { //ichly won't work
       value = cpuDmaLast;
     } else {
       if(armState) {
@@ -291,7 +206,8 @@ static inline void updateVC()
         value = CPUReadHalfWordQuick(reg[15].I) |
           CPUReadHalfWordQuick(reg[15].I) << 16;
       }
-    }
+    }*/
+	  break;
   }
 
   if(address & 3) {
@@ -320,7 +236,7 @@ static inline void updateVC()
 
 extern u32 myROM[];
 
-static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster because it is smaler
+inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
 	iprintf("r16 %08x\n",address);
@@ -337,32 +253,6 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
   u32 value;
   
   switch(address >> 24) {
-  case 0:
-    if (reg[15].I >> 24) {
-      if(address < 0x4000) {
-#ifdef DEV_VERSION
-        if(systemVerbose & VERBOSE_ILLEGAL_READ) {
-          Log("Illegal halfword read: %08x at %08x\n", address, armMode ?
-              armNextPC - 4 : armNextPC - 2);
-        }
-#endif
-        value = READ16LE(((u16 *)&biosProtected[address&2]));
-      } else goto unreadable;
-    } else
-      value = READ16LE(((u16 *)&bios[address & 0x3FFE]));
-    break;
-  case 2:
-#ifdef checkclearaddrrw
-	if(address >0x023FFFFF)goto unreadable;
-#endif
-    value = READ16LE(((u16 *)&workRAM[address & 0x3FFFE]));
-    break;
-  case 3:
-#ifdef checkclearaddrrw
-	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
-#endif
-    value = READ16LE(((u16 *)&internalRAM[address & 0x7ffe]));
-    break;
   case 4:
   
 	if(address > 0x40000FF && address < 0x4000111)
@@ -384,7 +274,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
   
 	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
-		updateVC();
+		updateVCsub();
 	}
 	
 #ifdef gba_handel_IRQ_correct
@@ -400,32 +290,6 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 		value =  READ16LE(((u16 *)&ioMem[address & 0x3fe]));
     }
     else goto unreadable;
-    break;
-  case 5:
-#ifdef checkclearaddrrw
-	if(address > 0x05000400)goto unreadable;
-#endif
-    value = READ16LE(((u16 *)&paletteRAM[address & 0x3fe]));
-    break;
-  case 6:
-#ifdef checkclearaddrrw
-	if(address > 0x06020000)goto unreadable;
-#endif
-    address = (address & 0x1fffe);
-    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
-    {
-        value = 0;
-        break;
-    }
-    if ((address & 0x18000) == 0x18000)
-      address &= 0x17fff;
-    value = READ16LE(((u16 *)&vram[address]));
-    break;
-  case 7:
-#ifdef checkclearaddrrw
-	if(address > 0x07000400)goto unreadable;
-#endif
-    value = READ16LE(((u16 *)&emultoroam[address & 0x3fe]));
     break;
   case 8:
   case 9:
@@ -474,7 +338,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 	  while(1);
 #endif
 
-    if(cpuDmaHack) {
+    /*if(cpuDmaHack) {
       value = cpuDmaLast & 0xFFFF;
     } else {
       if(armState) {
@@ -482,7 +346,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
       } else {
         value = CPUReadHalfWordQuick(reg[15].I);
       }
-    }
+    }*/
     break;
   }
 
@@ -493,44 +357,13 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
   return value;
 }
 
-static inline u16 CPUReadHalfWordSigned(u32 address)
-{
-  u16 value = CPUReadHalfWord(address);
-  if((address & 1))
-    value = (s8)value;
-  return value;
-}
-
-static inline u8 CPUReadBytereal(u32 address) //ichfly not inline is faster because it is smaler
+inline u8 CPUReadByterealpu(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
 iprintf("r8 %02x\n",address);
 #endif
 
   switch(address >> 24) {
-  case 0:
-    if (reg[15].I >> 24) {
-      if(address < 0x4000) {
-#ifdef DEV_VERSION
-        if(systemVerbose & VERBOSE_ILLEGAL_READ) {
-          Log("Illegal byte read: %08x at %08x\n", address, armMode ?
-              armNextPC - 4 : armNextPC - 2);
-        }
-#endif
-        return biosProtected[address & 3];
-      } else goto unreadable;
-    }
-    return bios[address & 0x3FFF];
-  case 2:
-#ifdef checkclearaddrrw
-	if(address >0x023FFFFF)goto unreadable;
-#endif
-    return workRAM[address & 0x3FFFF];
-  case 3:
-#ifdef checkclearaddrrw
-	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
-#endif
-    return internalRAM[address & 0x7fff];
   case 4:
   
 	if(address > 0x40000FF && address < 0x4000111)
@@ -541,7 +374,7 @@ iprintf("r8 %02x\n",address);
   
   	if(address > 0x4000003 && address < 0x4000008)//ichfly update
 	{
-		updateVC();
+		updateVCsub();
 	}
 #ifdef gba_handel_IRQ_correct
 	if(address == 0x4000202 || address == 0x4000203)//ichfly update
@@ -553,26 +386,6 @@ iprintf("r8 %02x\n",address);
     if((address < 0x4000400) && ioReadable[address & 0x3ff])
       return ioMem[address & 0x3ff];
     else goto unreadable;
-  case 5:
-#ifdef checkclearaddrrw
-	if(address > 0x05000400)goto unreadable;
-#endif
-    return paletteRAM[address & 0x3ff];
-  case 6:
-#ifdef checkclearaddrrw
-	if(address > 0x06020000)goto unreadable;
-#endif
-    address = (address & 0x1ffff);
-    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
-        return 0;
-    if ((address & 0x18000) == 0x18000)
-      address &= 0x17fff;
-    return vram[address];
-  case 7:
-#ifdef checkclearaddrrw
-	if(address > 0x07000400)goto unreadable;
-#endif
-    return emultoroam[address & 0x3ff];
   case 8:
   case 9:
   case 10:
@@ -627,7 +440,7 @@ iprintf("r8 %02x\n",address);
 	  while(1);
 #endif
 
-    if(cpuDmaHack) {
+    /*if(cpuDmaHack) {
       return cpuDmaLast & 0xFF;
     } else {
       if(armState) {
@@ -635,12 +448,12 @@ iprintf("r8 %02x\n",address);
       } else {
         return CPUReadByteQuick(reg[15].I+(address & 1));
       }
-    }
+    }*/
     break;
   }
 }
 
-static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is faster because it is smaler
+inline void CPUWriteMemorypu(u32 address, u32 value) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
     iprintf("w32 %08x to %08x\n",value,address);
@@ -659,30 +472,6 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
 #endif
   
   switch(address >> 24) {
-  case 0x02:
-#ifdef BKPT_SUPPORT
-    if(*((u32 *)&freezeWorkRAM[address & 0x3FFFC]))
-      cheatsWriteMemory(address & 0x203FFFC,
-                        value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address >0x023FFFFF)goto unreadable;
-#endif
-      WRITE32LE(((u32 *)&workRAM[address & 0x3FFFC]), value);
-    break;
-  case 0x03:
-#ifdef BKPT_SUPPORT
-    if(*((u32 *)&freezeInternalRAM[address & 0x7ffc]))
-      cheatsWriteMemory(address & 0x3007FFC,
-                        value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
-#endif
-      WRITE32LE(((u32 *)&internalRAM[address & 0x7ffC]), value);
-    break;
   case 0x04:
     if(address < 0x4000400) {
 
@@ -697,48 +486,6 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
       CPUUpdateRegister((address & 0x3FC) + 2, (value >> 16));
     }
 	} else goto unwritable;
-    break;
-  case 0x05:
-#ifdef BKPT_SUPPORT
-    if(*((u32 *)&freezePRAM[address & 0x3fc]))
-      cheatsWriteMemory(address & 0x70003FC,
-                        value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address > 0x05000400)goto unreadable;
-#endif
-    WRITE32LE(((u32 *)&paletteRAM[address & 0x3FC]), value);
-    break;
-  case 0x06:
-#ifdef checkclearaddrrw
-	if(address > 0x06020000)goto unreadable;
-#endif
-    address = (address & 0x1fffc);
-    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
-        return;
-    if ((address & 0x18000) == 0x18000)
-      address &= 0x17fff;
-
-#ifdef BKPT_SUPPORT
-    if(*((u32 *)&freezeVRAM[address]))
-      cheatsWriteMemory(address + 0x06000000, value);
-    else
-#endif
-    
-    WRITE32LE(((u32 *)&vram[address]), value);
-    break;
-  case 0x07:
-#ifdef checkclearaddrrw
-	if(address > 0x07000400)goto unreadable;
-#endif
-#ifdef BKPT_SUPPORT
-    if(*((u32 *)&freezeOAM[address & 0x3fc]))
-      cheatsWriteMemory(address & 0x70003FC,
-                        value);
-    else
-#endif
-    WRITE32LE(((u32 *)&emultoroam[address & 0x3fc]), value);
     break;
   case 0x0D:
     if(cpuEEPROMEnabled) {
@@ -765,7 +512,7 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
     break;
   }
 }
-static inline void CPUWriteHalfWord(u32 address, u16 value)
+inline void CPUWriteHalfWordpu(u32 address, u16 value)
 {
 #ifdef printreads
 iprintf("w16 %04x to %08x\r\n",value,address);
@@ -782,88 +529,11 @@ iprintf("w16 %04x to %08x\r\n",value,address);
   }
 #endif
   
-  switch(address >> 24) {
-  case 2:
-#ifdef BKPT_SUPPORT
-    if(*((u16 *)&freezeWorkRAM[address & 0x3FFFE]))
-      cheatsWriteHalfWord(address & 0x203FFFE,
-                          value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address >0x023FFFFF)goto unwritable;
-#endif
-      WRITE16LE(((u16 *)&workRAM[address & 0x3FFFE]),value);
-    break;
-  case 3:
-#ifdef BKPT_SUPPORT
-    if(*((u16 *)&freezeInternalRAM[address & 0x7ffe]))
-      cheatsWriteHalfWord(address & 0x3007ffe,
-                          value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unwritable;
-#endif
-      WRITE16LE(((u16 *)&internalRAM[address & 0x7ffe]), value);
-    break;    
+  switch(address >> 24) {  
   case 4:
-  
-	/*if(address > 0x40000FF && address < 0x4000110)
-	{
-		*(u16 *)(address) = value;
-		break;
-	}*/ //don't need that
-  
-  	/*if(0x4000060 > address && address > 0x4000008)
-	{
-			iprintf("16 %x %x\r\n",address,value);
-		    *(u16 *)((address & 0x3FF) + 0x4000000) = value;
-	}*/ //dont do dobble
     if(address < 0x4000400)
       CPUUpdateRegister(address & 0x3fe, value);
     else goto unwritable;
-    break;
-  case 5:
-#ifdef BKPT_SUPPORT
-    if(*((u16 *)&freezePRAM[address & 0x03fe]))
-      cheatsWriteHalfWord(address & 0x70003fe,
-                          value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address > 0x05000400)goto unwritable;
-#endif
-    WRITE16LE(((u16 *)&paletteRAM[address & 0x3fe]), value);
-    break;
-  case 6:
-#ifdef checkclearaddrrw
-	if(address > 0x06020000)goto unwritable;
-#endif
-    address = (address & 0x1fffe);
-    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
-        return;
-    if ((address & 0x18000) == 0x18000)
-      address &= 0x17fff;
-#ifdef BKPT_SUPPORT
-    if(*((u16 *)&freezeVRAM[address]))
-      cheatsWriteHalfWord(address + 0x06000000,
-                          value);
-    else
-#endif
-    WRITE16LE(((u16 *)&vram[address]), value); 
-    break;
-  case 7:
-#ifdef BKPT_SUPPORT
-    if(*((u16 *)&freezeOAM[address & 0x03fe]))
-      cheatsWriteHalfWord(address & 0x70003fe,
-                          value);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address > 0x07000400)goto unwritable;
-#endif
-    WRITE16LE(((u16 *)&emultoroam[address & 0x3fe]), value);
     break;
   case 8:
   case 9:
@@ -897,36 +567,13 @@ iprintf("w16 %04x to %08x\r\n",value,address);
   }
 }
 
-static inline void CPUWriteByte(u32 address, u8 b)
+inline void CPUWriteBytepu(u32 address, u8 b)
 {
 #ifdef printreads
 	iprintf("w8 %02x to %08x\r\n",b,address);
 #endif
   switch(address >> 24) {
-  case 2:
-#ifdef BKPT_SUPPORT
-      if(freezeWorkRAM[address & 0x3FFFF])
-        cheatsWriteByte(address & 0x203FFFF, b);
-      else
-#endif
-#ifdef checkclearaddrrw
-	if(address >0x023FFFFF)goto unwritable;
-#endif
-        workRAM[address & 0x3FFFF] = b;
-    break;
-  case 3:
-#ifdef BKPT_SUPPORT
-    if(freezeInternalRAM[address & 0x7fff])
-      cheatsWriteByte(address & 0x3007fff, b);
-    else
-#endif
-#ifdef checkclearaddrrw
-	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unwritable;
-#endif
-      internalRAM[address & 0x7fff] = b;
-    break;
   case 4:
-  
     if(address < 0x4000400) {
       switch(address & 0x3FF) {
       case 0x301:
@@ -1005,44 +652,7 @@ static inline void CPUWriteByte(u32 address, u8 b)
       }
       break;
     } else goto unwritable;
-    break;
-  case 5:
-#ifdef checkclearaddrrw
-	if(address > 0x05000400)goto unwritable;
-#endif
-    // no need to switch
-    *((u16 *)&paletteRAM[address & 0x3FE]) = (b << 8) | b;
-    break;
-  case 6:
-#ifdef checkclearaddrrw
-	if(address > 0x06020000)goto unwritable;
-#endif
-    address = (address & 0x1fffe);
-    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
-        return;
-    if ((address & 0x18000) == 0x18000)
-      address &= 0x17fff;
-
-    // no need to switch 
-    // byte writes to OBJ VRAM are ignored
-    if ((address) < objTilesAddress[((DISPCNT&7)+1)>>2])
-    {
-#ifdef BKPT_SUPPORT
-      if(freezeVRAM[address])
-        cheatsWriteByte(address + 0x06000000, b);
-      else
-#endif  
-            *((u16 *)&vram[address]) = (b << 8) | b;
-    }
-    break;
-  case 7:
-#ifdef checkclearaddrrw
-	goto unwritable;
-#endif
-    // no need to switch
-    // byte writes to OAM are ignored
-    //    *((u16 *)&emultoroam[address & 0x3FE]) = (b << 8) | b;
-    break;    
+    break;   
   case 13:
     if(cpuEEPROMEnabled) {
       eepromWrite(address, b);
@@ -1072,4 +682,11 @@ static inline void CPUWriteByte(u32 address, u8 b)
 }
 
 
+inline u16 CPUReadHalfWordrealpuSigned(u32 address)
+{
+  u16 value = CPUReadHalfWordrealpu(address);
+  if((address & 1))
+    value = (s8)value;
+  return value;
+}
 #endif //VBA_GBAinline_H

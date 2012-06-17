@@ -608,7 +608,7 @@ inline void puNds()
 
 
 
-
+#ifndef releas
 void ndsExceptionHdl()
 {
 	u32 mode = cpuGetCPSR() & 0x1F;
@@ -635,7 +635,7 @@ void ndsExceptionHdl()
 			REG_IME = IME_DISABLE;
 		while(1);
 }
-
+#endif
 
 inline void ndsModeinline()
 {
@@ -766,7 +766,7 @@ inline void gbaMode()
 
 
 
-
+#ifndef releas
 
 //extern things
 
@@ -938,4 +938,4 @@ unsigned long ARMShift(unsigned long value,unsigned char shift) {
 }
 
 
-//b
+#endif

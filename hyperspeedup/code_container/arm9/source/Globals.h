@@ -163,4 +163,10 @@ extern u16 IE;
 extern u16 IF;
 extern u16 IME;
 
+//ichfly
+extern u16 timer0Value;
+extern u16 timer1Value;
+extern u16 timer2Value;
+extern u16 timer3Value;
+
 #endif // VBA_GLOBALS_H

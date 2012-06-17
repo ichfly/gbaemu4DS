@@ -127,7 +127,7 @@ extern void cpuProfil(profile_segment *seg);
 extern void cpuEnableProfiling(int hz);
 #endif
 
-extern struct EmulatedSystem GBASystem;
+//extern struct EmulatedSystem GBASystem;
 
 #define R13_IRQ  18
 #define R14_IRQ  19
