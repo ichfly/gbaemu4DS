@@ -49,7 +49,7 @@ int main() {
 	//enableSound();
 
 	while (true) {
-		if((REG_VCOUNT == callline) && (REG_IPC_FIFO_CR & IPC_FIFO_SEND_EMPTY))
+		if((REG_VCOUNT == callline) && (REG_IPC_FIFO_CR & IPC_FIFO_SEND_EMPTY) && (REG_KEYXY & 0x1)) //X not pressed
 		{
 			REG_IPC_FIFO_TX = 0; //send cmd 0
 			while(REG_VCOUNT == callline); //don't send 2 or more

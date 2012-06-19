@@ -18,7 +18,6 @@
 
 
 
-void __libnds_exit(int rc);
 extern time_t *punixTime;
 
 

@@ -63,7 +63,6 @@ int  systemDebug;
 int  systemVerbose;
 int  systemSaveUpdateCounter;
 int  systemFrameSkip;
-u16  systemGbPalette[24];
 bool systemSoundOn;
 
 int  emulating;
@@ -118,48 +117,8 @@ int systemGetSensorY()
   return 0;
 }
 
-void systemGbPrint(u8 * _puiData,
-                   int  _iPages,
-                   int  _iFeed,
-                   int  _iPalette,
-                   int  _iContrast)
-{
-}
-
-void systemScreenMessage(const char * _csMsg)
-{
-}
-
-bool systemCanChangeSoundQuality()
-{
-  return true;
-}
-
-bool systemPauseOnFrame()
-{
-  return false;
-}
-
-void systemGbBorderOn()
-{
-}
-
-void debuggerMain()
-{
-}
-
-void debuggerSignal(int, int)
-{
-}
-
 void debuggerOutput(char *, u32)
 {
 }
 
-void debuggerBreakOnWrite(u32 address, u32 oldvalue, u32 value, int size, int t)
-{
-}
-
-void (*dbgMain)() = debuggerMain;
-void (*dbgSignal)(int, int) = debuggerSignal;
 void (*dbgOutput)(char *, u32) = debuggerOutput;

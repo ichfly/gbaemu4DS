@@ -58,7 +58,7 @@ const DISC_INTERFACE* dldiGetInternal (void) {
 	return &_io_dldi_stub.ioInterface;
 }
 
-
+/*
 bool dldiIsValid (const DLDI_INTERFACE* io) {
 	int i;
 	
@@ -201,4 +201,4 @@ void dldiFree (DLDI_INTERFACE* dldi) {
 	if (!dldi) return;
 	free(dldi);
 }
-
+*/

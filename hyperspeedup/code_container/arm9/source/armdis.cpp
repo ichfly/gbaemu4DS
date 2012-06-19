@@ -19,6 +19,10 @@
 /************************************************************************/
 /* Arm/Thumb command set disassembler                                   */
 /************************************************************************/
+
+
+#include "ichflysettings.h"
+#ifndef noichflydebugger
 #include <stdio.h>
 
 #include "System.h"
@@ -696,3 +700,4 @@ int disThumb(u32 offset, char *dest, int flags){
   *dest++ = 0;
   return ret;
 }
+#endif
