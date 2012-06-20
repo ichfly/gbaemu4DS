@@ -23,7 +23,7 @@ SOURCES		:=	source \
 INCLUDES	:=	include 
 DATA		:=	data  
 GRAPHICS	:=	gfx  
-NITRODATA	:=	nitrofiles
+@NITRODATA	:=	nitrofiles
 
 # These set the information text in the nds file
 GAME_TITLE		:=	GBAemu4ds
