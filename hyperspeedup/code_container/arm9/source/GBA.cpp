@@ -626,14 +626,18 @@ bool CPUReadBatteryFile(const char *fileName)
 int CPULoadRom(const char *szFile,bool extram)
 {
 
+  bios = (u8 *)calloc(1,0x4000);
+  if(bios == NULL) {
+    systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
+                  "BIOS");
+    //CPUCleanUp();
+    return 0;
+  }    
 
   systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
   
-#ifdef loadindirect
-
-	  romSize = 0x02400000 - ((u32)getHeapEnd() + 0x5000 + 0x7000);
-	  rom = (u8 *)(getHeapEnd() + 0x5000/*for the other malloc here*/ + 0x7000/*28K for futur alloc*/);              //rom = (u8 *)0x02180000; //old
-#endif
+	rom = 0;
+	romSize = 0x40000;
   /*workRAM = (u8*)0x02000000;(u8 *)calloc(1, 0x40000);
   if(workRAM == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
@@ -654,13 +658,6 @@ int CPULoadRom(const char *szFile,bool extram)
 rom = (u8*)puzzleorginal_bin;  //rom = (u8*)puzzleorginal_bin;
 #endif
 
-  bios = (u8 *)calloc(1,0x4000);
-  if(bios == NULL) {
-    systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
-                  "BIOS");
-    //CPUCleanUp();
-    return 0;
-  }    
   /*internalRAM = (u8 *)0x03000000;//calloc(1,0x8000);
   if(internalRAM == NULL) {
     systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),

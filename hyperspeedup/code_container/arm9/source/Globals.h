@@ -24,7 +24,6 @@
 
 #include "ichflysettings.h"
 
-
 #ifdef lastdebug
 extern u32 lasttime[6];
 extern int lastdebugcurrent;
@@ -45,6 +44,7 @@ extern int lastdebugsize;
 
 #ifdef uppern_read_emulation
 extern FILE* ichflyfilestream;
+extern int ichflyfilestreamsize;
 #endif
 
 extern int romSize;

@@ -165,8 +165,17 @@ inline u32 CPUReadMemoryrealpu(u32 address)
 #ifdef print_uppern_read_emulation
 		iprintf("high r32 %08x\n",address);
 #endif
-		fseek(ichflyfilestream , address&0x1FFFFFC , SEEK_SET);
-		fread(&value,1,4,ichflyfilestream);
+		if(ichflyfilestreamsize > (address&0x1FFFFFC))
+		{
+			//fseek(ichflyfilestream , address&0x1FFFFFC , SEEK_SET);
+			//fread(&value,1,4,ichflyfilestream);
+			//ichfly_readfrom(ichflyfilestream,(address&0x1FFFFFC),(char*)&value,4);
+			value = ichfly_readu32(address&0x1FFFFFC);
+		}
+		else
+		{
+			value = 0;
+		}
 	}
 	else
 	{
@@ -306,8 +315,17 @@ inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is faster beca
 #ifdef print_uppern_read_emulation
 		iprintf("high r16 %08x\n",address);
 #endif
-		fseek (ichflyfilestream , address&0x1FFFFFE , SEEK_SET);
-		fread (&value,1,2,ichflyfilestream);
+		if(ichflyfilestreamsize > (address&0x1FFFFFE))
+		{
+			//fseek (ichflyfilestream , address&0x1FFFFFE , SEEK_SET);
+			//fread (&value,1,2,ichflyfilestream);
+			//ichfly_readfrom(ichflyfilestream,(address&0x1FFFFFE),(char*)&value,2);
+			value = ichfly_readu16(address&0x1FFFFFE);
+		}
+		else
+		{
+			value = 0;
+		}
 	}
 	else
 	{
@@ -398,10 +416,18 @@ iprintf("r8 %02x\n",address);
 #ifdef print_uppern_read_emulation
 		iprintf("high r8 %08x\n",address);
 #endif
-		u8 temp = 0;
-		fseek (ichflyfilestream , address&0x1FFFFFF , SEEK_SET);
-		fread (&temp,1,1,ichflyfilestream);
-		return temp;
+		if(ichflyfilestreamsize > (address&0x1FFFFFF))
+		{
+			//u8 temp = 0;
+			//fseek (ichflyfilestream , address&0x1FFFFFF , SEEK_SET);
+			//fread (&temp,1,1,ichflyfilestream);
+			//ichfly_readfrom(ichflyfilestream,(address&0x1FFFFFF),(char*)&temp,1);
+			return ichfly_readu8(address&0x1FFFFFF);
+		}
+		else
+		{
+			return 0;
+		}
 	}
 	else
 	{

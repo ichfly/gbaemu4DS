@@ -22,6 +22,7 @@
 
 #ifdef uppern_read_emulation
 FILE* ichflyfilestream;
+int ichflyfilestreamsize;
 #endif
 
 

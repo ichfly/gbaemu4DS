@@ -21,6 +21,8 @@
 #include <string.h>
 //#include <zlib.h> //todo ichfly
 
+#include <unistd.h>    // for sbrk()
+
 #include <fat.h>
 
 extern "C" {
@@ -567,6 +569,15 @@ u8 *utilLoad(const char *file, //ichfly todo
   int fileSize = ftell(f);
   fseek(f,0,SEEK_SET);
 
+  generatefilemap(fileSize);
+
+  if(data == NULL)
+  {
+	  romSize = 0x02400000 - ((u32)sbrk(0) + 0x5000 + 0x2000);
+	  rom = (u8 *)(sbrk(0) + 0x2000/*8K for futur alloc*/);              //rom = (u8 *)0x02180000; //old
+	  image = data = rom;
+	  size = romSize;
+  }
   size_t read = fileSize <= size ? fileSize : size;
 
 
@@ -588,20 +599,21 @@ u8 *utilLoad(const char *file, //ichfly todo
 
 	r = fread(image, 1, read, f);
 
-
 #ifndef uppern_read_emulation
   fclose(f);
 #else
   ichflyfilestream = f;
 #endif
 
-  if(read != read) {
+  if(r != read) {
     systemMessage(MSG_ERROR_READING_IMAGE,
                   N_("Error reading image %s"), file);
 	while(1);
   }  
-
-  size = fileSize;
+#ifdef uppern_read_emulation
+  ichflyfilestreamsize = fileSize;
+#endif
+  //size = fileSize;
   
   return image;
 }

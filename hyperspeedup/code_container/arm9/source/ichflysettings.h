@@ -2,7 +2,7 @@
 
 #define uppern_read_emulation
 
-#define noichflydebugger
+//#define noichflydebugger
 
 
 

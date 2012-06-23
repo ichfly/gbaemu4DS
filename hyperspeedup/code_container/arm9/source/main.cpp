@@ -467,12 +467,10 @@ void pausemenue()
 			iprintf("\n");
 		}
 		do {
-			for(int asdlkjalksjdf = 0; asdlkjalksjdf < 60;asdlkjalksjdf++)
-			{
-				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-			}
-			pressed = (~REG_KEYINPUT&0x3ff);
+			if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+			while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+			scanKeys();
+			pressed = (keysDownRepeat()& ~0xFC00);
 		} while (!pressed); //no communication here with arm7 so no more update
 		//iprintf("%x",ausgewauhlt);
 		if (pressed&KEY_A)
@@ -520,7 +518,7 @@ void pausemenue()
 }*/
 
 //---------------------------------------------------------------------------------
-int main(void) {
+int main( int argc, char **argv) {
 
   biosPath[0] = 0;
   savePath[0] = 0;
@@ -570,8 +568,15 @@ int main(void) {
 //rootenabelde[2] = fatMountSimple  ("sd", &__io_dsisd); //DSi//sems to be inited by fatInitDefault
  //fatInitDefault();
  //nitroFSInit();
-
-if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0x4E))
+bool temptest = true;
+if (0 != argc )
+{
+	if(argc > 1)
+	{
+		if(argv[1][0] == '1') temptest = false;
+	}
+}
+if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0x4E) && temptest)
 {
 		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
 		iprintf("Warning: you try to run gbaemu DS on %s gbaemu may not work\n press A to continue and ignore this",_io_dldi_stub.friendlyName);
@@ -781,16 +786,12 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	  }
 	  iprintf("OK\n");
 	  	//iprintf("Hello World2!");
-
 		iprintf("CPUInit\n");
 		CPUInit(biosPath, useBios,extraram);
-	  
-	  	
 
 	  iprintf("CPUReset\n");
       CPUReset();
 		  
-
 	  if(savePath[0] != 0)
 	  {
 		  iprintf("CPUReadBatteryFile...");
@@ -801,11 +802,17 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 		  else
 		  {
 			  iprintf("failed\n");
-			  while(1);
+				int i = 0;
+				while(i< 300)
+				{
+					//swiWaitForVBlank();
+					if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+					while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+					i++;
+				}
 		  }
 	  }
 	if(cpuSaveType == 3)flashSetSize(myflashsize);
-	
 	gbaHeader_t *gbaGame;
 
 	
@@ -819,7 +826,6 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 
 	pu_Enable();
 	
-	
 	//memcopy((void*)0x2000000,(void*)rom, 0x40000);
 	
 	iprintf("dmaCopy\n");
@@ -830,14 +836,12 @@ REG_IPC_FIFO_TX = 0x7654321;
 				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
 
 	dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
-	
 	iprintf("arm7init\n");
 
 
 	REG_IPC_FIFO_TX = 0x1FFFFFFF; //cmd
 	REG_IPC_FIFO_TX = syncline;
 	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))u32 src = REG_IPC_FIFO_RX;
-
 	iprintf("irqinit\n");
 
 	anytimejmpfilter = 0;
@@ -855,6 +859,7 @@ REG_IPC_FIFO_TX = 0x1234567;
 REG_IPC_FIFO_TX = 0x1111111;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
+
     iprintf("ndsMode\n");
 
 	ndsMode();
@@ -865,11 +870,15 @@ REG_IPC_FIFO_TX = 0x2222222;
     iprintf("gbaInit\n");
 
 	gbaInit();
+
+
+	//iprintf("\n\r%08X",CPUReadMemoryreal(0x08400000));
+	//while(1);
 /*REG_IPC_FIFO_TX = 0; //test backcall
 REG_IPC_FIFO_TX = 0x3333333;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
-	iprintf("irqSet\n");
+	//iprintf("irqSet\n");
 
 	//irqSet(IRQ_VBLANK, VblankHandler);
 
@@ -883,7 +892,6 @@ REG_IPC_FIFO_TX = 0x4444444;
 gbamode = true;
 	
 	gbaMode2();
-
 
 	iprintf("jump to (%08X)\n\r",rom);
 
