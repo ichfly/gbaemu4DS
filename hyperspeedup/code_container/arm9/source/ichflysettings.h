@@ -6,6 +6,13 @@
 
 
 
+#define ownfilebuffer
+
+//extra settings for ownfilebuffer
+#define chucksizeinsec 1 //sollte nich mehr als 8 sein //should not be more than 8 
+#define buffslots 100
+
+#define chucksize 0x200*chucksizeinsec
 //settings
 
 
@@ -27,6 +34,10 @@
 
 
 //debug
+
+//#define printsaveread
+
+//#define printsavewrite
 
 #define directcpu //rename anothercpu.cpp to anothercpu.h
 

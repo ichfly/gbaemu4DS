@@ -85,7 +85,7 @@ inter_irq:
 	stmfd  SP!, {R0-R3,R12,LR}     @save registers to SP_irq
 	
 	mrc	p15, 0, r2, c5, c0, 2      @set pu
-	ldr	r1,=0x33333333
+	ldr	r1,=0x36333333
 	mcr	p15, 0, r1, c5, c0, 2
 	ldr	r1, =_exMain_tmpPuplain
 	str	r2, [r1]
@@ -108,7 +108,7 @@ inter_irq:
 	
 gba_handler:
 
-	ldr	r1, =0x03333333          @set pu
+	ldr	r1, =0x06333333          @set pu
 	mcr	p15, 0, r1, c5, c0, 2
 
 #ifdef checkclearaddr
@@ -159,7 +159,7 @@ inter_irq:
 	ADD r0,r0, #0x4000
 	
 	mrc	p15, 0, r2, c5, c0, 2 @ ichfly
-	ldr	r1,=0x33333333
+	ldr	r1,=0x36333333
 	mcr	p15, 0, r1, c5, c0, 2
 	ldr	r1, =_exMain_tmpPuplain
 	str	r2, [r1] @ichfly
@@ -214,7 +214,7 @@ got_over_gba_handler:
 	@nop
 	@nop
 
-	ldr	r1, =0x03333333
+	ldr	r1, =0x06333333
 	
 	mcr	p15, 0, r1, c5, c0, 2
 	
@@ -271,7 +271,7 @@ inter_swi:
 
 
 	@ change the PU to nds mode
-	ldr	SP,=0x33333333	@ see cpumg.cpp for meanings protections
+	ldr	SP,=0x36333333	@ see cpumg.cpp for meanings protections
 	mcr	p15, 0, SP, c5, c0, 2
 	ldr	SP, =exRegs
 	
@@ -327,7 +327,7 @@ inter_fetch: @ break function todo
 inter_undefined:
 
 	@ change the PU to nds mode
-	ldr	SP,=0x33333333	@ see cpumg.cpp for meanings protections
+	ldr	SP,=0x36333333	@ see cpumg.cpp for meanings protections
 	mcr	p15, 0, SP, c5, c0, 2
 	ldr	SP, =exRegs
 	
@@ -378,7 +378,7 @@ inter_data:
 	stmia	SP!, {r0-r12}
 	
 	@ change the PU to nds mode
-	ldr	r7,=0x33333333	@ see cpumg.cpp for meanings protections
+	ldr	r7,=0x36333333	@ see cpumg.cpp for meanings protections
 	mcr	p15, 0, r7, c5, c0, 2
 
 	
@@ -473,7 +473,7 @@ exitdirectcpu:
 
 
 	
-	BIC SP,r7,#0x30000000 @ldr	SP, =0x03333333
+	BIC SP,r7,#0x30000000 @ldr	SP, =0x06333333
 	mcr	p15, 0, SP, c5, c0, 2
 
 

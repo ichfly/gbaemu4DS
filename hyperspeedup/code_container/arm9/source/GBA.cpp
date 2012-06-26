@@ -727,6 +727,7 @@ static void CPUSwap(u32 *a, u32 *b)
 void  __attribute__ ((hot)) doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
 {
 
+	cpuDmaCount = c;
   if(transfer32) {
     s &= 0xFFFFFFFC;
     if(s < 0x02000000 && (reg[15].I >> 24)) {
@@ -769,9 +770,10 @@ void  __attribute__ ((hot)) doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int
 }
 void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
 {
-	if(si == 0 || di == 0 || s < 0x02000000 || d < 0x02000000 || (d & ~0xFFFFFF) == 0x04000000 || (s & ~0xFFFFFF) == 0x04000000 || s > 0x0E000000 || d > 0x0E000000)
+	if(si == 0 || di == 0 || s < 0x02000000 || d < 0x02000000 || (d & ~0xFFFFFF) == 0x04000000 || (s & ~0xFFFFFF) == 0x04000000 || s >= 0x0D000000 || d >= 0x0D000000)
 	{
 		doDMAslow(s, d, si, di, c, transfer32); //some checks
+		return;
 	}
 	else
 	{
@@ -787,23 +789,38 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 				if(di == -4 || si == -4)//this can't work the slow way so use the
 				{
 					doDMAslow(s, d, si, di, c, transfer32); //very slow way
+					return;
 				}
 				if(transfer32)
 				{
+#ifdef ownfilebuffer
+					//iprintf("4 %08X %08X %08X %08X ",s,d,c,*(u32 *)d);
+					ichfly_readdma_rom((s&0x1FFFFFF),(u32 *)d,c,4);
+					//iprintf("exit%08X ",*(u32 *)d);
+					//while(1);
+#else
 					//doDMAslow(s, d, si, di, c, transfer32);
 					fseek (ichflyfilestream , (s&0x1FFFFFF) , SEEK_SET);
 					//iprintf("seek %08X\r\n",s&0x1FFFFFF);
 					int dkdkdkdk = fread ((void*)d,1,c * 4,ichflyfilestream); // fist is buggy
 					//iprintf("(%08X %08X %08X) ret %08X\r\n",d,c,ichflyfilestream,dkdkdkdk);
+#endif
 				}
 				else
 				{
+#ifdef ownfilebuffer
+					//iprintf("2 %08X %08X %08X %04X ",s,d,c,*(u16 *)d);
+					ichfly_readdma_rom((s&0x1FFFFFF),(u32 *)d,c,2);
+					//iprintf("exit%04X ",*(u16 *)d);
+					//while(1);
+#else
 					//iprintf("teeees");
 					//doDMAslow(s, d, si, di, c, transfer32);
 					fseek (ichflyfilestream , (s&0x1FFFFFF) , SEEK_SET);
 					//iprintf("seek %08X\r\n",s&0x1FFFFFF);
 					int dkdkdkdk = fread ((void*)d,1,c * 2,ichflyfilestream);
 					//iprintf("(%08X %08X %08X) ret %08X\r\n",d,c,ichflyfilestream,dkdkdkdk);
+#endif
 				}
 				//doDMAslow(s, d, si, di, c, transfer32); //very slow way
 				return;

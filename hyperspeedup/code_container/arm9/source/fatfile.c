@@ -45,6 +45,7 @@
 #include "filetime.h"
 #include "lock.h"
 
+#include "ichflysettings.h"
 
 #include "System.h"
 
@@ -1218,7 +1219,252 @@ int _FAT_fsync_r (struct _reent *r, int fd) {
 	return ret;
 }
 
+#ifdef ownfilebuffer
+PARTITION* partitionlocked;
+FN_MEDIUM_READSECTORS	readSectorslocked;
+u32 current_pointer = 0;
+u32 allocedfild[buffslots];
+u8* greatownfilebuffer;
+void generatefilemap(int size)
+{
+	FILE_STRUCT* file = (FILE_STRUCT*)(lastopen);
+	lastopenlocked = lastopen; //copy
+	PARTITION* partition;
+	uint32_t cluster;
+	int clusCount;
+	partition = file->partition;
+	partitionlocked = partition;
 
+	readSectorslocked = file->partition->disc->readSectors;
+	iprintf("generating file map (size %d Byte)",((size/chucksize) + 1)*8);
+	sectortabel =(u8*)malloc(((size/chucksize) + 1)*8); //alloc for size every Sector has one u32
+	greatownfilebuffer =(u8*)malloc(chucksize * buffslots);
+
+	clusCount = size/partition->bytesPerCluster;
+	cluster = file->startCluster;
+
+
+	//setblanc
+	int i = 0;
+	while(i < (partition->bytesPerCluster/chucksize)*clusCount+1)
+	{
+		sectortabel[i*2 + 1] = 0xFFFFFFFF;
+		i++;
+	}
+	i = 0;
+	while(i < buffslots)
+	{
+		allocedfild[i] = 0x0;
+		i++;
+	}
+
+
+	int mappoffset = 0;
+	i = 0;
+	while(i < (partition->bytesPerCluster/chucksize))
+	{
+		sectortabel[mappoffset*2] = _FAT_fat_clusterToSector(partition, cluster) + i;
+		mappoffset++;
+		i++;
+	}
+	while (clusCount > 0) {
+		clusCount--;
+		cluster = _FAT_fat_nextCluster (partition, cluster);
+
+		i = 0;
+		while(i < (partition->bytesPerCluster/chucksize))
+		{
+			sectortabel[mappoffset*2] = _FAT_fat_clusterToSector(partition, cluster) + i;
+			mappoffset++;
+			i++;
+		}
+	}
+
+}
+u8 ichfly_readu8(int pos) //need lockup
+{
+
+	// Calculate the sector and byte of the current position,
+	// and store them
+	int sectoroffset = pos % chucksize;
+	int mappoffset = pos / chucksize;
+	
+	u8* asd = (u8*)(sectortabel[mappoffset*2 + 1]);
+	
+	if(asd != 0xFFFFFFFF)return asd[sectoroffset]; //found exit here
+
+	sectortabel[allocedfild[current_pointer]] = 0xFFFFFFFF; //reset
+
+	allocedfild[current_pointer] = mappoffset*2 + 1; //set new slot
+	asd = greatownfilebuffer + current_pointer * chucksize;
+	sectortabel[mappoffset*2 + 1] = asd;
+
+	readSectorslocked(sectortabel[mappoffset*2], chucksizeinsec, asd);
+	current_pointer++;
+	if(current_pointer == buffslots)current_pointer = 0;
+	
+	return asd[sectoroffset];
+}
+u16 ichfly_readu16(int pos) //need lockup
+{
+
+	// Calculate the sector and byte of the current position,
+	// and store them
+	int sectoroffset = pos % chucksize;
+	int mappoffset = pos / chucksize;
+	
+	u8* asd = (u8*)(sectortabel[mappoffset*2 + 1]);
+	
+	if(asd != 0xFFFFFFFF)return *(u16*)(&asd[sectoroffset]); //found exit here
+
+	sectortabel[allocedfild[current_pointer]] = 0xFFFFFFFF; //clear old slot
+
+	allocedfild[current_pointer] = mappoffset*2 + 1; //set new slot
+	asd = greatownfilebuffer + current_pointer * chucksize;
+	sectortabel[mappoffset*2 + 1] = asd;
+	
+	readSectorslocked(sectortabel[mappoffset*2], chucksizeinsec, asd);
+
+	current_pointer++;
+	if(current_pointer == buffslots)current_pointer = 0;
+	
+	return *(u16*)(&asd[sectoroffset]);
+}
+u32 ichfly_readu32(int pos) //need lockup
+{
+
+	// Calculate the sector and byte of the current position,
+	// and store them
+	int sectoroffset = pos % chucksize;
+	int mappoffset = pos / chucksize;
+	
+	u8* asd = (u8*)(sectortabel[mappoffset*2 + 1]);
+	
+	if(asd != 0xFFFFFFFF)return *(u32*)(&asd[sectoroffset]); //found exit here
+
+	sectortabel[allocedfild[current_pointer]] = 0xFFFFFFFF;
+
+	allocedfild[current_pointer] = mappoffset*2 + 1; //set new slot
+	asd = greatownfilebuffer + current_pointer * chucksize;
+	sectortabel[mappoffset*2 + 1] = asd;
+
+	readSectorslocked(sectortabel[mappoffset*2], chucksizeinsec, asd);
+	current_pointer++;
+	if(current_pointer == buffslots)current_pointer = 0;
+	
+	return *(u32*)(&asd[sectoroffset]);
+}
+void ichfly_readdma_rom(u32 pos,u8 *ptr,int c,int readal) //need lockup only alined is not working 
+{
+
+	// Calculate the sector and byte of the current position,
+	// and store them
+	int sectoroffset = 0;
+	int mappoffset = 0;
+
+	int currsize = 0;
+
+	if(readal == 4) //32 Bit
+	{
+		while(c > 0)
+		{
+			sectoroffset = (pos % chucksize) /4;
+			mappoffset = pos / chucksize;
+			currsize = (chucksize / 4) - sectoroffset;
+			if(currsize == 0)currsize = chucksize / 4;
+			if(currsize > c) currsize = c;
+			
+
+			u32* asd = (u32*)(sectortabel[mappoffset*2 + 1]);
+			
+			if(asd != 0xFFFFFFFF)//found exit here
+			{
+				int i = 0; //copy
+				while(currsize > i)
+				{
+					*(u32*)(&ptr[i*4]) = asd[sectoroffset + i];
+					i++;
+				}
+				c -= currsize;
+				pos += (currsize * 4);
+				ptr += (currsize * 4);
+				continue;
+			}
+
+			sectortabel[allocedfild[current_pointer]] = 0xFFFFFFFF;
+
+			allocedfild[current_pointer] = mappoffset*2 + 1; //set new slot
+			asd = greatownfilebuffer + current_pointer * chucksize;
+			sectortabel[mappoffset*2 + 1] = asd;
+
+			readSectorslocked(sectortabel[mappoffset*2], chucksizeinsec, asd);
+			current_pointer++;
+			if(current_pointer == buffslots)current_pointer = 0;
+
+			int i = 0; //copy
+			while(currsize > i)
+			{
+				*(u32*)(&ptr[i*4]) = asd[sectoroffset + i];
+				i++;
+			}
+			c -= currsize;
+			pos += (currsize * 4);
+			ptr += (currsize * 4);
+		}
+	}
+	else //16 Bit
+	{
+		while(c > 0)
+		{
+			sectoroffset = (pos % chucksize) / 2;
+			mappoffset = pos / chucksize;
+			currsize = (chucksize / 2) - sectoroffset;
+			if(currsize == 0)currsize = chucksize / 2;
+			if(currsize > c) currsize = c;
+
+			u16* asd = (u16*)(sectortabel[mappoffset*2 + 1]);
+			//iprintf("%X %X %X %X %X %X\n\r",sectoroffset,mappoffset,currsize,pos,c,chucksize);
+			if(asd != 0xFFFFFFFF)//found exit here
+			{
+				int i = 0; //copy
+				while(currsize > i)
+				{
+					*(u16*)(&ptr[i*2]) = asd[sectoroffset + i];
+					i++;
+				}
+				c -= currsize;
+				ptr += (currsize * 2);
+				pos += (currsize * 2);
+				continue;
+			}
+
+			sectortabel[allocedfild[current_pointer]] = 0xFFFFFFFF;
+
+			allocedfild[current_pointer] = mappoffset*2 + 1; //set new slot
+			asd = greatownfilebuffer + current_pointer * chucksize;
+			sectortabel[mappoffset*2 + 1] = asd;
+
+			readSectorslocked(sectortabel[mappoffset*2], chucksizeinsec, asd);
+			current_pointer++;
+			if(current_pointer == buffslots)current_pointer = 0;
+
+			int i = 0; //copy
+			while(currsize > i)
+			{
+				*(u16*)(&ptr[i*2]) = asd[sectoroffset + i];
+				i++;
+			}
+			c -= currsize;
+			ptr += (currsize * 2);
+			pos += (currsize * 2);
+		}
+
+	}
+}
+
+
+
+#else
 /*void ichfly_readfrom(int fd, int pos,char *ptr, size_t len) //need lockup and no checks here !!! //fd->_cookie
 {
 	FILE_STRUCT* file = (FILE_STRUCT*)(lastopen);
@@ -1396,3 +1642,4 @@ void generatefilemap(int size)
 	}
 
 }
+#endif

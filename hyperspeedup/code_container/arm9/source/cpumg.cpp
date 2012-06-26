@@ -322,7 +322,7 @@ void gbaInit()
 	Region 3 - speeduptwo 0x02080000 PU_PAGE_512K
 	Region 4 - speedupthree 0x02100000 PU_PAGE_1M
 	Region 5 - speedupfour 0x02200000 PU_PAGE_2M
-	Region 6 - free
+	Region 6 - ITCM protector 0x00000000 PU_PAGE_16M
 	Region 7 - IO 0x04000000 PU_PAGE_16M
 	*/
 
@@ -357,7 +357,7 @@ void gbaInit()
 	pu_SetRegion(3, 0x02080000 | PU_PAGE_256K | 1);
 	pu_SetRegion(4, 0x020C0000 | PU_PAGE_128K | 1);
 	pu_SetRegion(5, 0x020E0000 | PU_PAGE_16K | 1);
-	pu_SetRegion(6, 0x020E4000 | PU_PAGE_8K | 1);
+	pu_SetRegion(6, 0x00000000 | PU_PAGE_16M | 1);
 	pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
 #else
 	pu_SetRegion(0, 0x00000000 | PU_PAGE_128M | 1);
@@ -366,7 +366,7 @@ void gbaInit()
 	pu_SetRegion(3, 0x02080000 | PU_PAGE_512K | 1);
 	pu_SetRegion(4, 0x02100000 | PU_PAGE_1M | 1);
 	pu_SetRegion(5, 0x02200000 | PU_PAGE_2M | 1);
-	pu_SetRegion(6, 0x0);
+	pu_SetRegion(6, 0x00000000 | PU_PAGE_16M | 1);
 	pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
 #endif
 
@@ -589,9 +589,9 @@ inline void puGba()
 {
 
 	
-	pu_SetCodePermissions(0x03333333);
+	pu_SetCodePermissions(0x06333333);
 	
-	pu_SetDataPermissions(0x03333333);
+	pu_SetDataPermissions(0x06333333);
 	
 	
 }
@@ -599,8 +599,8 @@ inline void puNds()
 {
 	
 	
-	pu_SetDataPermissions(0x33333333);
-	pu_SetCodePermissions(0x33333333);
+	pu_SetDataPermissions(0x36333333);
+	pu_SetCodePermissions(0x36333333);
 	
 
 }

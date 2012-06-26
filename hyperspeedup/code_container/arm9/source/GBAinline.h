@@ -473,11 +473,17 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 	}
     break;    
   case 13:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif
     if(cpuEEPROMEnabled)
       // no need to swap this
       return  eepromRead(address);
     goto unreadable;
   case 14:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif
     if(cpuFlashEnabled | cpuSramEnabled)
       // no need to swap this
       return flashRead(address);
@@ -624,10 +630,16 @@ iprintf("r8 %02x\n",address);
     return rom[address & 0x1FFFFFF];
 #endif        
   case 13:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif
     if(cpuEEPROMEnabled)
       return eepromRead(address);
     goto unreadable;
   case 14:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif
     if(cpuSramEnabled | cpuFlashEnabled)
       return flashRead(address);
     if(cpuEEPROMSensorEnabled) {
@@ -767,12 +779,18 @@ static inline void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is
     WRITE32LE(((u32 *)&emultoroam[address & 0x3fc]), value);
     break;
   case 0x0D:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,value);
+#endif
     if(cpuEEPROMEnabled) {
       eepromWrite(address, value);
       break;
     }
     goto unwritable;
   case 0x0E:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,value);
+#endif
     if(!eepromInUse | cpuSramEnabled | cpuFlashEnabled) {
       (*cpuSaveGameFunc)(address, (u8)value);
       break;
@@ -899,12 +917,18 @@ iprintf("w16 %04x to %08x\r\n",value,address);
     } else if(!agbPrintWrite(address, value)) goto unwritable;
     break;
   case 13:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,value);
+#endif
     if(cpuEEPROMEnabled) {
       eepromWrite(address, (u8)value);
       break;
     }
     goto unwritable;
   case 14:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,value);
+#endif
     if(!eepromInUse | cpuSramEnabled | cpuFlashEnabled) {
       (*cpuSaveGameFunc)(address, (u8)value);
       break;
@@ -1070,12 +1094,19 @@ static inline void CPUWriteByte(u32 address, u8 b)
     //    *((u16 *)&emultoroam[address & 0x3FE]) = (b << 8) | b;
     break;    
   case 13:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,b);
+#endif
+
     if(cpuEEPROMEnabled) {
       eepromWrite(address, b);
       break;
     }
     goto unwritable;
   case 14:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,b);
+#endif
       if (!(saveType == 5) && (!eepromInUse | cpuSramEnabled | cpuFlashEnabled)) {
 
     //if(!cpuEEPROMEnabled && (cpuSramEnabled | cpuFlashEnabled)) { 

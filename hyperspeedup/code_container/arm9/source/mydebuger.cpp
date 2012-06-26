@@ -74,7 +74,7 @@ u32 userinputval(u32 original_val,u32 bits)
 	while(1)
 	{
 		u32 pressed;
-		u32 srctempmulti = 1;
+		u32 srctempmulti = 0x10;
 		do {
 			if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 			while(!(REG_DISPSTAT & DISP_IN_VBLANK));

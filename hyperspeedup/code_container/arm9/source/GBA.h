@@ -99,6 +99,8 @@ extern "C" void ichfly_readfrom(FILE* fd, int pos,char *ptr, size_t len);
 extern "C" u32 ichfly_readu32(int pos);
 extern "C" u16 ichfly_readu16(int pos);
 extern "C" u8 ichfly_readu8(int pos);
+extern "C" void ichfly_readdma_rom(u32 pos,u32 *ptr,int c,int readal);
+
 
 extern bool CPUReadGSASnapshot(const char *);
 extern bool CPUWriteGSASnapshot(const char *, const char *, const char *, const char *);

@@ -295,8 +295,8 @@ lastdebugcurrent++;
 if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 #endif
 
-	CPUCheckDMA(1, 0x0f);	
-	
+	CPUCheckDMA(1, 0x0f); //V-Blank
+
 	if(framewtf == frameskip)
 	{
 		framewtf = 0;
@@ -573,7 +573,10 @@ if (0 != argc )
 {
 	if(argc > 1)
 	{
-		if(argv[1][0] == '1') temptest = false;
+		if(argv[1][0] == '1')
+		{
+			temptest = false;
+		}
 	}
 }
 if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0x4E) && temptest)
