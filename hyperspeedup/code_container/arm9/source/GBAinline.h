@@ -1,3 +1,5 @@
+
+
 // -*- C++ -*-
 // VisualBoyAdvance - Nintendo Gameboy/GameboyAdvance (TM) emulator.
 // Copyright (C) 1999-2003 Forgotten
@@ -20,6 +22,7 @@
 #ifndef VBA_GBAinline_H
 #define VBA_GBAinline_H
 
+#include "fatfileextract.h"
 #include "agbprint.h"
 #include "System.h"
 #include "Port.h"
@@ -196,7 +199,7 @@ static inline void updateVC()
 #ifdef gba_handel_IRQ_correct
 	if(address == 0x4000202 || address == 0x4000200)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF); //VBlanc
+		IF = *(vuint16*)0x04000214; //VBlanc
 		UPDATE_REG(0x202, IF);
 	}
 #endif	
@@ -399,7 +402,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 #ifdef gba_handel_IRQ_correct
 	if(address == 0x4000202)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF);
+		IF = *(vuint16*)0x04000214;
 		UPDATE_REG(0x202, IF);
 	}
 #endif
@@ -570,7 +573,7 @@ iprintf("r8 %02x\n",address);
 #ifdef gba_handel_IRQ_correct
 	if(address == 0x4000202 || address == 0x4000203)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF); //VBlanc
+		IF = *(vuint16*)0x04000214; //VBlanc
 		UPDATE_REG(0x202, IF);
 	}
 #endif

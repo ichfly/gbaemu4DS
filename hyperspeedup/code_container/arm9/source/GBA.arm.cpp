@@ -25,6 +25,8 @@
 // along with this program; if not, write to the Free Software Foundation,
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+
+
 #include <nds.h>
 #include <stdio.h>
 
@@ -795,7 +797,7 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 				{
 #ifdef ownfilebuffer
 					//iprintf("4 %08X %08X %08X %08X ",s,d,c,*(u32 *)d);
-					ichfly_readdma_rom((s&0x1FFFFFF),(u32 *)d,c,4);
+					ichfly_readdma_rom((u32)(s&0x1FFFFFF),(u8 *)d,c,4);
 					//iprintf("exit%08X ",*(u32 *)d);
 					//while(1);
 #else
@@ -810,7 +812,7 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 				{
 #ifdef ownfilebuffer
 					//iprintf("2 %08X %08X %08X %04X ",s,d,c,*(u16 *)d);
-					ichfly_readdma_rom((s&0x1FFFFFF),(u32 *)d,c,2);
+					ichfly_readdma_rom((u32)(s&0x1FFFFFF),(u8 *)d,c,2);
 					//iprintf("exit%04X ",*(u16 *)d);
 					//while(1);
 #else
@@ -1739,7 +1741,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     }
     break;
  case 0x100:
-    timer0Reload = value; //ichfly
+    timer0Reload = value;
 #ifdef printsoundtimer
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
@@ -1749,7 +1751,6 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 #endif
 
 	UPDATE_REG(0x100, value);
-	*(u16 *)(0x4000100) = value;
     break;
   case 0x102:
     timer0Value = value;
@@ -1803,7 +1804,6 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 #endif
 
 	UPDATE_REG(0x104, value);
-	*(u16 *)(0x4000104) = value;
 	break;
   case 0x106:
 #ifdef printsoundtimer
@@ -1891,7 +1891,6 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
   case 0x10C:
     timer3Reload = value;
 	UPDATE_REG(0x10C, value);
-    *(u16 *)(0x400010C) = value;
 	  break;
   case 0x10E:
     timer3Value = value;

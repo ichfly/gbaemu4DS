@@ -94,15 +94,15 @@ inter_irq:
 	
 	BL IntrMain
 	
-	mov	r12, #0x4000000		@ REG_BASE
-	ldr	r0, [r12, #0x214]	@get IF
+	mov	r0, #0x4000000		@ REG_BASE @ptr+4 to 03FFFFFC (mirror of 03007FFC) from gbabios
+	ldr	r1, [r0, #0x214]	@get IF
 	
 		
 
 	
 	ldr	r2, =anytimejmpfilter
 	ldr r2, [r2]
-	ands r0,r0,r2 @ anytimejmpfilter und IF
+	ands r1,r1,r2 @ anytimejmpfilter und IF
 	BEQ	irqexitdirect
 	
 	
@@ -114,13 +114,13 @@ gba_handler:
 #ifdef checkclearaddr
 
 	ldr    R1,=0x03008000
-	mov    R0,#0x4000000       @ptr+4 to 03FFFFFC (mirror of 03007FFC)
+	@mov    R0,#0x4000000       @ptr+4 to 03FFFFFC (mirror of 03007FFC)
 	add    LR,PC,#0            @retadr for USER handler
 	ldr    PC,[R1, #-0x4]      @jump to [03FFFFFC] USER handler
 
 #else
 
-	mov    R0,#0x4000000       @ptr+4 to 03FFFFFC (mirror of 03007FFC)
+	@mov    R0,#0x4000000	   @ REG_BASE @ptr+4 to 03FFFFFC (mirror of 03007FFC) already done
 	add    LR,PC,#0            @retadr for USER handler
 	ldr    PC,[R0, #-0x4]      @jump to [03FFFFFC] USER handler
 #endif

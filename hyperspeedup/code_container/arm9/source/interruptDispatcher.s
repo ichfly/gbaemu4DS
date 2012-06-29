@@ -31,12 +31,6 @@
 	.extern	irqTable
 	.code 32
 	
-
-#ifdef gba_handel_IRQ_correct
-	.global inirq
-inirq:
-	.word	0
-#endif
 	
 	.global	IntrMain, __cpsr_mask
     .type   IntrMain STT_FUNC
@@ -102,11 +96,6 @@ got_handler:
 
 
 #ifdef gba_handel_IRQ_correct
-	ldr r12,=inirq
-	ldr r3,[r12]
-	cmp r3,#0
-	BNE exitichfly @already here
-	str r0,[r12] @stor not 0 here
 	
 	@leave irq mode
 	
@@ -119,8 +108,7 @@ got_handler:
 	ldr sp,=SPtoload
 	ldr sp,[sp]
 	
-	adr	lr, IntrRet
-	bx	r1
+	blx	r1
 
 @---------------------------------------------------------------------------------
 IntrRet:
@@ -131,9 +119,7 @@ IntrRet:
 	orr	r2, r2, #0xd2		@ /  --> Disable IRQ & FIQ. Set CPU mode to IRQ. @so the pointer don't swap
 	msr	cpsr,r2
 	
-	ldr r12,=inirq @stor 0 here
-	mov r2,#0
-	str r2,[r12]
+
 	
 #else
 

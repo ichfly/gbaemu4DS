@@ -10,7 +10,7 @@
 
 //extra settings for ownfilebuffer
 #define chucksizeinsec 1 //sollte nich mehr als 8 sein //should not be more than 8 
-#define buffslots 100
+#define buffslots 255
 
 #define chucksize 0x200*chucksizeinsec
 //settings

@@ -19,6 +19,8 @@
 #ifndef VBA_GBAinline_H
 #define VBA_GBAinline_H
 
+
+#include "fatfileextract.h"
 #include "agbprint.h"
 #include "System.h"
 #include "Port.h"
@@ -137,7 +139,7 @@ inline u32 CPUReadMemoryrealpu(u32 address)
 #ifdef gba_handel_IRQ_correct
 	if(address == 0x4000202 || address == 0x4000200)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF); //VBlanc
+		IF = *(vuint16*)0x04000214; //VBlanc
 		UPDATE_REG(0x202, IF);
 	}
 #endif	
@@ -295,7 +297,7 @@ inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is faster beca
 #ifdef gba_handel_IRQ_correct
 	if(address == 0x4000202)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF);
+		IF = *(vuint16*)0x04000214;
 		UPDATE_REG(0x202, IF);
 	}
 #endif
@@ -407,7 +409,7 @@ iprintf("r8 %02x\n",address);
 #ifdef gba_handel_IRQ_correct
 	if(address == 0x4000202 || address == 0x4000203)//ichfly update
 	{
-		IF = (REG_IF & 0x3FFF); //VBlanc
+		IF = *(vuint16*)0x04000214; //VBlanc
 		UPDATE_REG(0x202, IF);
 	}
 #endif
