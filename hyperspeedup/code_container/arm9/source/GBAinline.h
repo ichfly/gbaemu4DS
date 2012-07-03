@@ -105,37 +105,38 @@ static inline u8 CPUReadByte(u32 address)
 
 static inline void updateVC()
 {
-		u16 temp = REG_VCOUNT;
-		u16 temp2 = REG_DISPSTAT;
+		u32 temp = REG_VCOUNT;
+		u32 temp2 = REG_DISPSTAT;
 		//iprintf("Vcountreal: %08x\n",temp);
-		float help = temp;
 		u16 help3;
+#ifdef usebuffedVcout
+		VCOUNT = VCountdstogba[temp];
+#else
 		if(temp < 192)
 		{
-			VCOUNT = help * (1./1.2); //1.15350877;
+			VCOUNT = ((temp * 214) >> 8);//VCOUNT = help * (1./1.2); //1.15350877;
 			//help3 = (help + 1) * (1./1.2); //1.15350877;  // ichfly todo it is to slow
 		}
 		else
 		{
-			VCOUNT = ((help - 192) * (1./ 1.04411764)) + 160; //1.15350877;
+			VCOUNT = (((temp - 192) * 246) >>  8)+ 160;//VCOUNT = ((temp - 192) * (1./ 1.04411764)) + 160 //* (1./ 1.04411764)) + 160; //1.15350877;
 			//help3 = ((help - 191) *  (1./ 1.04411764)) + 160; //1.15350877;  // ichfly todo it is to slow			
 		}
-		DISPSTAT &= 0xFFFC; //reset h-blanc and V-Blanc
+#endif
+		DISPSTAT &= 0xFFF8; //reset h-blanc and V-Blanc and V-Count Setting
 		//if(help3 == VCOUNT) //else it is a extra long V-Line // ichfly todo it is to slow
 		//{
-			DISPSTAT |= (temp2 & 0x2); //temporary patch
+			DISPSTAT |= (temp2 & 0x3); //temporary patch get original settings
 		//}
-		if(VCOUNT > 160 && VCOUNT != 227)DISPSTAT |= 1;//V-Blanc
+		//if(VCOUNT > 160 && VCOUNT != 227)DISPSTAT |= 1;//V-Blanc
 		UPDATE_REG(0x06, VCOUNT);
 		if(VCOUNT == (DISPSTAT >> 8)) //update by V-Count Setting
 		{
-			DISPSTAT |= 4;
+			DISPSTAT |= 0x4;
 			/*if(DISPSTAT & 0x20) {
 			  IF |= 4;
 			  UPDATE_REG(0x202, IF);
 			}*/
-		  } else {
-			DISPSTAT &= 0xFFFB;
 		}
 		UPDATE_REG(0x04, DISPSTAT);
 		//iprintf("Vcountreal: %08x\n",temp);

@@ -1224,7 +1224,44 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
   case 0x04:
     DISPSTAT = (value & 0xFF38) | (DISPSTAT & 7);
     UPDATE_REG(0x04, DISPSTAT);
-	*(u16 *)(0x4000004) = (value & 0xFF38);
+
+#ifdef usebuffedVcout
+	{
+	u16 tempDISPSTAT = (u16)((DISPSTAT&0xFF) | ((VCountgbatods[DISPSTAT>>8]) << 8));
+#else
+	//8-15  V-Count Setting (LYC)      (0..227)
+
+	{
+		tempDISPSTAT = DISPSTAT >> 8;
+		//float help = tempDISPSTAT;
+		if(tempDISPSTAT < 160)
+		{
+			tempDISPSTAT = (tempDISPSTAT * 306);//tempDISPSTAT = (help * 1.2);
+			tempDISPSTAT = tempDISPSTAT | (DISPSTAT & 0xFF); //1.15350877; //already seeked
+			//help3 = (help + 1) * (1./1.2); //1.15350877;  // ichfly todo it is to slow
+		}
+		else
+		{
+			if(tempDISPSTAT < 220)
+			{
+				tempDISPSTAT = ((tempDISPSTAT - 160) * 266);//tempDISPSTAT = ((help - 160) * 1.04411764);//tempDISPSTAT = ((help - 160) * 1.04411764);
+				tempDISPSTAT = (tempDISPSTAT + 192 * 0x100) | (DISPSTAT & 0xFF); //1.15350877;
+			}
+			else if(tempDISPSTAT < 228)
+			{
+				tempDISPSTAT = (DISPSTAT & 0x3F) | 0xFF00;
+			}
+			else tempDISPSTAT = (DISPSTAT & 0x1F);		
+		}
+#endif
+#ifdef forceHBlankirqs
+	*(u16 *)(0x4000004) = tempDISPSTAT | BIT(4);
+#else
+	*(u16 *)(0x4000004) = tempDISPSTAT;
+#endif
+	}
+
+
     break;
   case 0x06:
     // not writable in NDS mode bzw not possible todo
@@ -1952,8 +1989,11 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     UPDATE_REG(0x200, IE);
     /*if ((IME & 1) && (IF & IE) && armIrqEnable)
       cpuNextEvent = cpuTotalTicks;*/
-	  
+#ifdef forceHBlankirqs
+	REG_IE = IE | (REG_IE & 0xFFFF0000) | IRQ_HBLANK;
+#else
 	REG_IE = IE | (REG_IE & 0xFFFF0000);
+#endif
 	
 	anytimejmpfilter = IE;
 	

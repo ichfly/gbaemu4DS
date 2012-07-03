@@ -80,7 +80,7 @@ VoidFn setPowerButtonCB(VoidFn CB) {
 #endif
 
 //---------------------------------------------------------------------------------
-static void __irqSet(u32 mask, IntFn handler, struct IntTable irqTable[] ) {
+void __irqSet(u32 mask, IntFn handler, struct IntTable irqTable[] ) {
 //---------------------------------------------------------------------------------
 	if (!mask) return;
 

@@ -21,6 +21,7 @@
 #define VBA_GBA_H
 
 #include "System.h"
+#include "ichflysettings.h"
 
 #define SAVE_GAME_VERSION_1 1
 #define SAVE_GAME_VERSION_2 2
@@ -95,8 +96,14 @@ extern int  oldreg[17];
 extern char oldbuffer[10];
 //#endif
 
+//ichfly
 extern "C" void ichfly_readfrom(FILE* fd, int pos,char *ptr, size_t len);
 
+#ifdef usebuffedVcout
+extern u8 VCountgbatods[0x100]; //(LY)      (0..227) + check overflow
+extern u8 VCountdstogba[263]; //(LY)      (0..262)
+extern u8 VCountdoit[263]; //jump in or out
+#endif
 
 extern bool CPUReadGSASnapshot(const char *);
 extern bool CPUWriteGSASnapshot(const char *, const char *, const char *, const char *);

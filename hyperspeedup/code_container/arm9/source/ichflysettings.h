@@ -9,7 +9,7 @@
 #define ownfilebuffer
 
 //extra settings for ownfilebuffer
-#define chucksizeinsec 1 //sollte nich mehr als 8 sein //should not be more than 8 
+#define chucksizeinsec 1 //1,2,4,8
 #define buffslots 255
 
 #define chucksize 0x200*chucksizeinsec
@@ -23,17 +23,23 @@
 
 //#define powerpatches //do some hacky things that give the emulator more Vb in some cases.
 
-#define unsave //save only work without directcpu
 
 //#define emulate_cpu_speed // pu current is 0x020E6000 try to reach 0x020E6000
 
 #define gba_handel_IRQ_correct
 
 
+#define HBlankdma //only if hblanc irq is on
 
+#define forceHBlankirqs
+
+#define advanced_irq_check
 
 
 //debug
+
+#define usebuffedVcout
+
 
 //#define printsaveread
 
@@ -68,7 +74,7 @@
 
 
 
-
+#define unsave //save only work without directcpu
 
 #define patch_VERSION //is set even if this is not defined
 
