@@ -94,7 +94,7 @@ int bg = 0;
 
 
 
-
+extern "C" void resettostartup();
 
 extern "C" void IntrMain();
 
@@ -103,6 +103,10 @@ extern "C" void testasm(u32* feld);
 extern "C" void cpu_SetCP15Cnt(u32 v);
 extern "C" u32 cpu_GetCP15Cnt();
 extern "C" u32 pu_Enable();
+
+
+int main( int argc, char **argv);
+
 
 int ignorenextY = 0;
 
@@ -554,7 +558,7 @@ void frameasyncsync(void) {
 
 
 
-char* seloptions [3] = {"save save","show mem","Continue"};
+char* seloptions [4] = {"save save","show mem","Continue","load GBA"};
 
 void pausemenue()
 {
@@ -573,7 +577,7 @@ void pausemenue()
 		iprintf("\x1b[2J");
 		iprintf("Pause\n");
 		iprintf ("--------------------------------");
-		for(int i = 0; i < 3; i++)
+		for(int i = 0; i < 4; i++)
 		{
 			if(i == ausgewauhlt) iprintf("->");
 			else iprintf("  ");
@@ -610,9 +614,12 @@ void pausemenue()
 					REG_IE = IE | IRQ_FIFO_NOT_EMPTY; //irq on
 					while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))u32 src = REG_IPC_FIFO_RX; //get sync irqs back
 					return; //and return
+				case 3:
+					resettostartup();
+					//main(0,0);
 				}
 		}
-		if (pressed&KEY_DOWN && ausgewauhlt != 2){ ausgewauhlt++;}
+		if (pressed&KEY_DOWN && ausgewauhlt != 3){ ausgewauhlt++;}
 		if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
 
 	}

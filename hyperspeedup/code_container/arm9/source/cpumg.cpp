@@ -326,17 +326,42 @@ void gbaInit()
 	Region 7 - IO 0x04000000 PU_PAGE_16M
 	*/
 
+	bool slow;
+	while(1) 
+	{
+		iprintf("\x1b[2J");
+		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+		iprintf("press B for slow emuation A for normal\n");
+		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+		scanKeys();
+		int isdaas = keysDownRepeat();
+		if (isdaas&KEY_A)
+		{
+			slow = false;
+			break;
+		}
+		if(isdaas&KEY_B)
+		{
+			slow = true;
+			break;
+		}
+	}
+
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu while configurating pu
 
-#ifdef emulate_cpu_speed
-	pu_SetDataCachability(   0b01111100);
-	pu_SetCodeCachability(   0b01111100);
-	pu_GetWriteBufferability(0b01111100);
-#else
-	pu_SetDataCachability(   0b00111100);
-	pu_SetCodeCachability(   0b00111100);
-	pu_GetWriteBufferability(0b00111100);
-#endif	
+	if(slow)
+	{
+		pu_SetDataCachability(   0b01111100);
+		pu_SetCodeCachability(   0b01111100);
+		pu_GetWriteBufferability(0b01111100);
+	}
+	else
+	{
+		pu_SetDataCachability(   0b00111100);
+		pu_SetCodeCachability(   0b00111100);
+		pu_GetWriteBufferability(0b00111100);
+	}	
 
 
 #ifdef releas
@@ -350,25 +375,30 @@ void gbaInit()
 
 	WRAM_CR = 0; //swap wram in
 
-#ifdef emulate_cpu_speed
-	pu_SetRegion(0, 0x00000000 | PU_PAGE_128M | 1);
-	pu_SetRegion(1, 0x0b000000 | PU_PAGE_16K | 1);
-	pu_SetRegion(2, 0x02040000 | PU_PAGE_256K | 1);
-	pu_SetRegion(3, 0x02080000 | PU_PAGE_256K | 1);
-	pu_SetRegion(4, 0x020C0000 | PU_PAGE_128K | 1);
-	pu_SetRegion(5, 0x020E0000 | PU_PAGE_16K | 1);
-	pu_SetRegion(6, 0x00000000 | PU_PAGE_16M | 1);
-	pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
-#else
-	pu_SetRegion(0, 0x00000000 | PU_PAGE_128M | 1);
-	pu_SetRegion(1, 0x0b000000 | PU_PAGE_16K | 1);
-	pu_SetRegion(2, 0x02040000 | PU_PAGE_256K | 1);
-	pu_SetRegion(3, 0x02080000 | PU_PAGE_512K | 1);
-	pu_SetRegion(4, 0x02100000 | PU_PAGE_1M | 1);
-	pu_SetRegion(5, 0x02200000 | PU_PAGE_2M | 1);
-	pu_SetRegion(6, 0x00000000 | PU_PAGE_16M | 1);
-	pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
-#endif
+	if(slow)
+	{
+		pu_SetRegion(0, 0x00000000 | PU_PAGE_128M | 1);
+		//pu_SetRegion(1, 0x0b000000 | PU_PAGE_16K | 1);
+		pu_SetRegion(1, 0);
+		pu_SetRegion(2, 0x02040000 | PU_PAGE_256K | 1);
+		pu_SetRegion(3, 0x02080000 | PU_PAGE_256K | 1);
+		pu_SetRegion(4, 0x020C0000 | PU_PAGE_128K | 1);
+		pu_SetRegion(5, 0x020E0000 | PU_PAGE_16K | 1);
+		pu_SetRegion(6, 0x00000000 | PU_PAGE_16M | 1);
+		pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
+	}
+	else
+	{
+		pu_SetRegion(0, 0x00000000 | PU_PAGE_128M | 1);
+		//pu_SetRegion(1, 0x0b000000 | PU_PAGE_16K | 1);
+		pu_SetRegion(1, 0);
+		pu_SetRegion(2, 0x02040000 | PU_PAGE_256K | 1);
+		pu_SetRegion(3, 0x02080000 | PU_PAGE_512K | 1);
+		pu_SetRegion(4, 0x02100000 | PU_PAGE_1M | 1);
+		pu_SetRegion(5, 0x02200000 | PU_PAGE_2M | 1);
+		pu_SetRegion(6, 0x00000000 | PU_PAGE_16M | 1);
+		pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
+	}
 
 	pu_Enable(); //PU go
 
@@ -599,8 +629,8 @@ inline void puNds()
 {
 	
 	
-	pu_SetDataPermissions(0x36333333);
-	pu_SetCodePermissions(0x36333333);
+	pu_SetDataPermissions(0x33333333);
+	pu_SetCodePermissions(0x33333333);
 	
 
 }

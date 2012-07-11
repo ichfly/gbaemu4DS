@@ -31,10 +31,10 @@ GAME_SUBTITLE1	:=	by ichfly/ichichfly
 GAME_SUBTITLE2	:=	ichfly.github.com/gbaemu4DS/
 
 #---------------------------------------------------------------------------------
-# options for code generation
+# options for code generation  # -save-temps
 #---------------------------------------------------------------------------------
 ARCH	:= -mthumb-interwork -march=armv5te -mtune=arm946e-s -mthumb
-CFLAGS	:= 	-g -Wall -Ofast\
+CFLAGS	:= -g -Wall -Ofast\
  		-fomit-frame-pointer\
 		-ffast-math \
 		$(ARCH)

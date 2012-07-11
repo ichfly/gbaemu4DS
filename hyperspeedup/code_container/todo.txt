@@ -7,7 +7,5 @@ hwreg 0x301 in CPUWriteByte
 fix cpu pc rel reads/writes
 usermode reads firq and mode sw
 need extern volatile u16 DISPCNT;
-fix read/write from 0x0b000000
 not alined ichfly_readdma_rom
 fix reads from unreadable mem (homebrews use this for sets)
-limit H-Blanks irqs

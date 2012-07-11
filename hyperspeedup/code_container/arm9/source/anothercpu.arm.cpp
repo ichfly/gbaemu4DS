@@ -7,42 +7,17 @@
 
 
 
-#include "main.h"
-#include "ichflysettings.h"
 #include "GBAinlineforpu.h"
+
 
 
 extern "C" void swiHalt(void);
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <nds/memory.h>//#include <memory.h> ichfly
-#include <nds/ndstypes.h>
-#include <nds/memory.h>
-#include <nds/bios.h>
-#include <nds/system.h>
-#include <nds/arm9/math.h>
-#include <nds/arm9/video.h>
-#include <nds/arm9/videoGL.h>
-#include <nds/arm9/trig_lut.h>
-#include <nds/arm9/sassert.h>
-#include <stdarg.h>
-#include <string.h>
 
-#include "GBA.h"
-#include "GBAinline.h"
-#include "Globals.h"
-#include "EEprom.h"
-#include "Flash.h"
-#include "Sound.h"
-#include "Sram.h"
-#include "bios.h"
-#include "Cheats.h"
-#include "NLS.h"
-#include "elf.h"
-#include "Util.h"
-#include "Port.h"
-#include "agbprint.h"
+
+
 
 #include "armdis.h"
 

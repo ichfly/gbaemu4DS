@@ -295,16 +295,16 @@ static inline void updateVC()
 	  while(1);
 #endif
 
-    if(cpuDmaHack) {
+    //if(cpuDmaHack) { //only this is possible here
       value = cpuDmaLast;
-    } else {
+    /*} else {
       if(armState) {
         value = CPUReadMemoryQuick(reg[15].I);
       } else {
         value = CPUReadHalfWordQuick(reg[15].I) |
           CPUReadHalfWordQuick(reg[15].I) << 16;
       }
-    }
+    }*/
   }
 
   if(address & 3) {
@@ -502,15 +502,15 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 	  while(1);
 #endif
 
-    if(cpuDmaHack) {
+    //if(cpuDmaHack) { //only this is possible here
       value = cpuDmaLast & 0xFFFF;
-    } else {
+    /*} else {
       if(armState) {
         value = CPUReadHalfWordQuick(reg[15].I + (address & 2));
       } else {
         value = CPUReadHalfWordQuick(reg[15].I);
       }
-    }
+    }*/
     break;
   }
 
@@ -669,15 +669,15 @@ iprintf("r8 %02x\n",address);
 	  while(1);
 #endif
 
-    if(cpuDmaHack) {
+    //if(cpuDmaHack) { //only this is possible here
       return cpuDmaLast & 0xFF;
-    } else {
+    /*} else {
       if(armState) {
         return CPUReadByteQuick(reg[15].I+(address & 3));
       } else {
         return CPUReadByteQuick(reg[15].I+(address & 1));
       }
-    }
+    }*/
     break;
   }
 }

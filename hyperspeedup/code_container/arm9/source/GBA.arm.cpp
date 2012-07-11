@@ -27,10 +27,7 @@
 
 
 
-#include <nds.h>
-#include <stdio.h>
 
-#include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
 #include "Util.h"
@@ -1269,26 +1266,26 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
   case 0x08:
     BG0CNT = (value & 0xDFCF);
     UPDATE_REG(0x08, BG0CNT);
-	*(u16 *)(0x4000008) = value;
+	*(u16 *)(0x4000008) = BG0CNT;
     break;
   case 0x0A:
     BG1CNT = (value & 0xDFCF);
     UPDATE_REG(0x0A, BG1CNT);
-    *(u16 *)(0x400000A) = value;
+    *(u16 *)(0x400000A) = BG1CNT;
 	break;
   case 0x0C:
     BG2CNT = (value & 0xFFCF);
     UPDATE_REG(0x0C, BG2CNT);
-	if((DISPCNT & 7) < 3)*(u16 *)(0x400000C) = value;
+	if((DISPCNT & 7) < 3)*(u16 *)(0x400000C) = BG2CNT;
 	else //ichfly some extra handling 
 	{
-		REG_BG3CNT = REG_BG3CNT | (value & 0x43);
+		REG_BG3CNT = REG_BG3CNT | (BG2CNT & 0x43);
 	}
     break;
   case 0x0E:
     BG3CNT = (value & 0xFFCF);
     UPDATE_REG(0x0E, BG3CNT);
-	if((DISPCNT & 7) < 3)*(u16 *)(0x400000E) = value;
+	if((DISPCNT & 7) < 3)*(u16 *)(0x400000E) = BG3CNT;
     break;
   case 0x10:
     BG0HOFS = value & 511;

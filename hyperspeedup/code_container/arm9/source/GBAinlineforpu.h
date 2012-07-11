@@ -515,6 +515,40 @@ inline void CPUWriteMemorypu(u32 address, u32 value) //ichfly not inline is fast
 #endif
   
   switch(address >> 24) {
+
+
+#ifdef fullsync
+  case 0x06:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unreadable;
+#endif
+    address = (address & 0x1fffc);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+        return;
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+
+#ifdef BKPT_SUPPORT
+    if(*((u32 *)&freezeVRAM[address]))
+      cheatsWriteMemory(address + 0x06000000, value);
+    else
+#endif
+    
+    WRITE32LE(((u32 *)&vram[address]), value);
+    break;
+  case 0x07:
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unreadable;
+#endif
+#ifdef BKPT_SUPPORT
+    if(*((u32 *)&freezeOAM[address & 0x3fc]))
+      cheatsWriteMemory(address & 0x70003FC,
+                        value);
+    else
+#endif
+    WRITE32LE(((u32 *)&emultoroam[address & 0x3fc]), value);
+#endif
+
   case 0x04:
     if(address < 0x4000400) {
 
@@ -579,6 +613,44 @@ iprintf("w16 %04x to %08x\r\n",value,address);
 #endif
   
   switch(address >> 24) {  
+
+
+#ifdef fullsync
+  case 5:
+#ifdef BKPT_SUPPORT
+    if(*((u16 *)&freezePRAM[address & 0x03fe]))
+      cheatsWriteHalfWord(address & 0x70003fe,
+                          value);
+    else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unwritable;
+#endif
+    WRITE16LE(((u16 *)&paletteRAM[address & 0x3fe]), value);
+    break;
+  case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unwritable;
+#endif
+    address = (address & 0x1fffe);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+        return;
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+#ifdef BKPT_SUPPORT
+    if(*((u16 *)&freezeVRAM[address]))
+      cheatsWriteHalfWord(address + 0x06000000,
+                          value);
+    else
+#endif
+    WRITE16LE(((u16 *)&vram[address]), value); 
+    break;
+#endif
+
+
+
+
+
   case 4:
     if(address < 0x4000400)
       CPUUpdateRegister(address & 0x3fe, value);
@@ -628,6 +700,41 @@ inline void CPUWriteBytepu(u32 address, u8 b)
 	iprintf("w8 %02x to %08x\r\n",b,address);
 #endif
   switch(address >> 24) {
+
+
+#ifdef fullsync
+  case 5:
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unwritable;
+#endif
+    // no need to switch
+    *((u16 *)&paletteRAM[address & 0x3FE]) = (b << 8) | b;
+    break;
+  case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unwritable;
+#endif
+    address = (address & 0x1fffe);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+        return;
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+
+    // no need to switch 
+    // byte writes to OBJ VRAM are ignored
+    if ((address) < objTilesAddress[((DISPCNT&7)+1)>>2])
+    {
+#ifdef BKPT_SUPPORT
+      if(freezeVRAM[address])
+        cheatsWriteByte(address + 0x06000000, b);
+      else
+#endif  
+            *((u16 *)&vram[address]) = (b << 8) | b;
+    }
+    break;
+#endif
+
+
   case 4:
     if(address < 0x4000400) {
       switch(address & 0x3FF) {

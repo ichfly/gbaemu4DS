@@ -7,6 +7,8 @@
 	.arm
 	
 
+__sp_undef	=	__dtcm_top - 0x100;	@ichfly @ 1.792 Byte
+
 
 	.global readbankedsp
    .type   readbankedsp STT_FUNC
@@ -330,3 +332,14 @@ ichflyswiHalt:
 	mcr p15,0,r12,c7,c0,4
 	pop {r12}
 	bx	lr
+	
+	
+	
+@---------------------------------------------------------------------------------
+	.global resettostartup
+	.type   resettostartup STT_FUNC
+
+@---------------------------------------------------------------------------------
+resettostartup:
+@---------------------------------------------------------------------------------
+	B main

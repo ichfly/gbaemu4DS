@@ -327,6 +327,14 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	int myflashsize = 0x10000;
 	u32 pressed = 0;
 
+		do 
+		{
+			if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+			while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+			scanKeys();
+			pressed = keysDownRepeat();
+		} while (pressed);
+
 
 		while(1)
 		{
@@ -416,6 +424,8 @@ initspeedupfelder();
 		if (isdaas&KEY_A) break;
 		if (isdaas&KEY_UP) syncline++;
 		if (isdaas&KEY_DOWN && syncline != 0) syncline--;
+		if (isdaas&KEY_LEFT) syncline+=10;
+		if (isdaas&KEY_RIGHT && syncline != 0) syncline-=10;
 	}
 
 

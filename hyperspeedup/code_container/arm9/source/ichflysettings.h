@@ -8,6 +8,9 @@
 
 #define ownfilebuffer
 
+//#define fullsync
+
+
 //extra settings for ownfilebuffer
 #define chucksizeinsec 1 //1,2,4,8
 #define buffslots 255
