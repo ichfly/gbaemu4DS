@@ -23,7 +23,6 @@
 #define gzFile void* //ichfly
 
 struct CheatsData {
-  int code;
   int size;
   int status;
   bool enabled;
@@ -31,8 +30,6 @@ struct CheatsData {
   u32 address;
   u32 value;
   u32 oldValue;
-  char codestring[20];
-  char desc[32];
 };
 
 extern void cheatsAdd(const char *,const char *,u32, u32,u32,int,int);
@@ -51,7 +48,8 @@ extern bool cheatsLoadCheatList(const char *file);
 extern void cheatsWriteMemory(u32, u32);
 extern void cheatsWriteHalfWord(u32, u16);
 extern void cheatsWriteByte(u32, u8);
-extern int cheatsCheckKeys(u32,u32);
+//extern int cheatsCheckKeys(u32,u32);
+int cheatsCheckKeys();
 extern int cheatsNumber;
 extern CheatsData cheatsList[100];
 #endif // GBA_CHEATS_H

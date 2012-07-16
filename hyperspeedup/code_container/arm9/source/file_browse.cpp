@@ -48,6 +48,8 @@ extern	char savePath[MAXPATHLEN * 2];
 
 extern	char biosPath[MAXPATHLEN * 2];
 
+extern  char patchPath[MAXPATHLEN * 2];
+
 extern	char szFile[MAXPATHLEN * 2];
 
 char temppath[MAXPATHLEN * 2];
@@ -73,7 +75,7 @@ char showbuff[0x10];
 
 gbaHeader_t gbaheader;
 
-char* filetypsforemu [3] = {"gbafile (start emu)","savefile","bios"};
+char* filetypsforemu [4] = {"gbafile (start emu)","savefile","bios","patch"};
 
 
 struct DirEntry {
@@ -241,7 +243,8 @@ void browseForFile (const string& extension) {
 
 	showDirectoryContents (dirContents, screenOffset);
 	
-	while (true) {
+	while (true) 
+	{
 		// Clear old cursors
 		for (int i = ENTRIES_START_ROW; i < ENTRIES_PER_SCREEN + ENTRIES_START_ROW; i++) {
 			iprintf ("\x1b[%d;0H ", i);
@@ -286,7 +289,9 @@ void browseForFile (const string& extension) {
 				screenOffset = 0;
 				fileOffset = 0;
 				showDirectoryContents (dirContents, screenOffset);
-			} else {
+			}
+			else 
+			{
 				// Clear the screen
 				iprintf ("\x1b[2J");
 
@@ -295,87 +300,87 @@ void browseForFile (const string& extension) {
 
 				int ausgewauhlt = 0;
 				int pressed;
-	bool nichtausgewauhlt = true;
+				bool nichtausgewauhlt = true;
 
-	int pathLen = 0;
+				int pathLen = 0;
 
-		getcwd (temppath, MAXPATHLEN);
-		pathLen = strlen (temppath);
-		strcpy (temppath + pathLen, entry->name.c_str());
-		if(utilIsGBAImage(temppath)) ausgewauhlt = 0;
-		if(utilIsSAV(temppath))ausgewauhlt = 1;
+				getcwd (temppath, MAXPATHLEN);
+				pathLen = strlen (temppath);
+				strcpy (temppath + pathLen, entry->name.c_str());
+				if(utilIsGBAImage(temppath)) ausgewauhlt = 0;
+				if(utilIsSAV(temppath))ausgewauhlt = 1;
 
-	while(nichtausgewauhlt)
-	{
-		iprintf("\x1b[2J");
-
-		printgbainfo(temppath);
-		
-		iprintf("Use as\n");
-		
-
-		for(int i = 0; i < 3; i++)
-		{
-			if(i == ausgewauhlt) iprintf("->");
-			else iprintf("  ");
-			iprintf(filetypsforemu[i]);
-			iprintf("\n");
-		}
-		while(nichtausgewauhlt)
-		{
-			// Power saving loop. Only poll the keys once per frame and sleep the CPU if there is nothing else to do
-			do {
-			//swiWaitForVBlank();
-			if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-			while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-			scanKeys();
-			pressed = keysDownRepeat();
-			} while (!pressed);
-
-			if (pressed&KEY_A) //es gibt einen grund warum hier kein case benutzt wird !!!
-			{
-				if(ausgewauhlt == 0)
+				while(nichtausgewauhlt)
 				{
-						getcwd (szFile, MAXPATHLEN);
-						pathLen = strlen (szFile);
-						strcpy (szFile + pathLen, entry->name.c_str());
-						return;
-				}
-				else
-				{
-					if(ausgewauhlt == 1)
-					{
-						getcwd (savePath, MAXPATHLEN);
-						pathLen = strlen (savePath);
-						strcpy (savePath + pathLen, entry->name.c_str());
-						nichtausgewauhlt = false;
-						break;
-					}
-					else
-					{
-						if(ausgewauhlt == 2)
-						{
-							getcwd (biosPath, MAXPATHLEN);
-							pathLen = strlen (biosPath);
-							strcpy (biosPath + pathLen, entry->name.c_str());
-							nichtausgewauhlt = false;
-							break;
-						}
-					}
-				}
-				nichtausgewauhlt = false;
-				break;
-			}
-			if (pressed&KEY_DOWN && ausgewauhlt != 2){ ausgewauhlt++; break;}
-			if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--; break;}
-		}
-	}
-	showDirectoryContents (dirContents, screenOffset);
+					iprintf("\x1b[2J");
 
-
-				
+					printgbainfo(temppath);
 					
-				//ichfly some sort wtf end
+					iprintf("Use as\n");
+					
+
+					for(int i = 0; i < 4; i++)
+					{
+						if(i == ausgewauhlt) iprintf("->");
+						else iprintf("  ");
+						iprintf(filetypsforemu[i]);
+						iprintf("\n");
+					}
+					while(nichtausgewauhlt)
+					{
+						// Power saving loop. Only poll the keys once per frame and sleep the CPU if there is nothing else to do
+						do {
+						//swiWaitForVBlank();
+						if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+						while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+						scanKeys();
+						pressed = keysDownRepeat();
+						} while (!pressed);
+
+						if (pressed&KEY_A)
+						{
+							switch(ausgewauhlt)
+							{
+								case 0:
+							{
+								getcwd (szFile, MAXPATHLEN);
+								pathLen = strlen (szFile);
+								strcpy (szFile + pathLen, entry->name.c_str());
+								return;
+							}
+
+								case 1:
+							{
+								getcwd (savePath, MAXPATHLEN);
+								pathLen = strlen (savePath);
+								strcpy (savePath + pathLen, entry->name.c_str());
+								nichtausgewauhlt = false;
+								break;
+							}
+								case 2:
+							{
+								getcwd (biosPath, MAXPATHLEN);
+								pathLen = strlen (biosPath);
+								strcpy (biosPath + pathLen, entry->name.c_str());
+								nichtausgewauhlt = false;
+								break;
+							}
+								case 3:
+							{
+								getcwd (patchPath, MAXPATHLEN);
+								pathLen = strlen (patchPath);
+								strcpy (patchPath + pathLen, entry->name.c_str());
+								nichtausgewauhlt = false;
+								break;
+							}
+							}
+						}
+						if (pressed&KEY_DOWN && ausgewauhlt != 3){ ausgewauhlt++; break;}
+						if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--; break;}
+					}
+				}
+				showDirectoryContents (dirContents, screenOffset);
+							//ichfly some sort wtf end
 			}
 		}
 		

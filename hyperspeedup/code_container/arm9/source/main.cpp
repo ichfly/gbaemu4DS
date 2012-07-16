@@ -39,6 +39,8 @@
 
 char biosPath[MAXPATHLEN * 2];
 
+char patchPath[MAXPATHLEN * 2];
+
 char savePath[MAXPATHLEN * 2];
 
 char szFile[MAXPATHLEN * 2];
@@ -165,7 +167,7 @@ int main( int argc, char **argv) {
 
   biosPath[0] = 0;
   savePath[0] = 0;
-
+  patchPath[0] = 0;
 
 
 
@@ -552,9 +554,8 @@ REG_IPC_FIFO_TX = 0x4444444;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
 	iprintf("gbaMode2\n");
-	
+	REG_IME = IME_ENABLE;
 	gbaMode2();
-
 	iprintf("jump to (%08X)\n\r",rom);
 
 	//iprintf("\x1b[2J"); //reset (not working huh)

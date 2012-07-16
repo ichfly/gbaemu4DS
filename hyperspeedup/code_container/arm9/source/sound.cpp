@@ -3,9 +3,13 @@
 #include "ichflysettings.h"
 #include "main.h"
 
+#include "Cheats.h"
+
 #ifdef arm9advsound
 extern "C" int SPtoload;
 extern "C" int SPtemp;
+
+int cheatsCheckKeys();
 
  __attribute__((section(".itcm")))void arm7dmareq()
 {
@@ -45,6 +49,18 @@ void arm7dmareq()
 	{
 		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
 		//iprintf("in");
+		VblankHandler();
+		u32 src = REG_IPC_FIFO_RX; //send ack
+		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))src = REG_IPC_FIFO_RX;
+	}
+}
+void arm7dmareqandcheat()
+{
+	if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //nothing here move along
+	{
+		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
+		//iprintf("in");
+		cheatsCheckKeys();
 		VblankHandler();
 		u32 src = REG_IPC_FIFO_RX; //send ack
 		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))src = REG_IPC_FIFO_RX;

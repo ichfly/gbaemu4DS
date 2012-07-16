@@ -113,7 +113,6 @@ extern int emulating;
 int SWITicks = 0;
 int IRQTicks = 0;
 
-u32 mastercode = 0;
 int layerEnableDelay = 0;
 bool busPrefetch = false;
 bool busPrefetchEnable = false;

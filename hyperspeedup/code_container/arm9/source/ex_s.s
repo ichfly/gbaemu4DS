@@ -145,6 +145,7 @@ irqexitdirect:
 
 #else
 inter_irq:
+
 	str sp,[pc, #-0xC] @ichfly sizechange
 	ldr sp,=SPtoload
 	ldr sp,[sp]

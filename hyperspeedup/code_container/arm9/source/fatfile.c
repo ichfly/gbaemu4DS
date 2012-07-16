@@ -1280,3 +1280,26 @@ void generatefilemap(int size)
 	}
 
 }
+void getandpatchmap(offsetgba,offsetthisfile)
+{
+	FILE_STRUCT* file = (FILE_STRUCT*)(lastopen);
+	PARTITION* partition;
+	uint32_t cluster;
+	int clusCount;
+	partition = file->partition;
+
+	clusCount = offsetthisfile/partition->bytesPerCluster;
+	cluster = file->startCluster;
+
+	int offset1 = (offsetthisfile/chucksize) % partition->bytesPerCluster;
+
+	int mappoffset = offsetthisfile/chucksize;
+	while (clusCount > 0) {
+		clusCount--;
+		cluster = _FAT_fat_nextCluster (partition, cluster);
+	}
+	sectortabel[mappoffset*2] = _FAT_fat_clusterToSector(partition, cluster) + offset1;
+
+
+
+}

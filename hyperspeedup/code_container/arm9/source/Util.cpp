@@ -21,7 +21,65 @@
 #include <string.h>
 //#include <zlib.h> //todo ichfly
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <nds/memory.h>//#include <memory.h> ichfly
+#include <nds/ndstypes.h>
+#include <nds/memory.h>
+#include <nds/bios.h>
+#include <nds/system.h>
+#include <nds/arm9/math.h>
+#include <nds/arm9/video.h>
+#include <nds/arm9/videoGL.h>
+#include <nds/arm9/trig_lut.h>
+#include <nds/arm9/sassert.h>
+#include <stdarg.h>
+#include <string.h>
+
+#include <nds.h>
+#include <stdio.h>
+
+extern "C" void getandpatchmap(int offsetgba,int offsetthisfile);
+void arm7dmareqandcheat();
+
+#include <filesystem.h>
+#include "GBA.h"
+#include "Sound.h"
+#include "Util.h"
+#include "getopt.h"
+#include "System.h"
+#include <fat.h>
+#include <dirent.h>
+
+#include "cpumg.h"
+#include "GBAinline.h"
+#include "bios.h"
+
+#include "mydebuger.h"
+
+#include "file_browse.h"
+
+#define MAXPATHLEN 256 
+
+#include <nds.h>
+
+#include "arm7sound.h"
+
+#include "main.h"
+
+
 #include <unistd.h>    // for sbrk()
+
+
+#define INT_TABLE_SECTION __attribute__((section(".dtcm")))
+
+
+extern struct IntTable irqTable[MAX_INTERRUPTS] INT_TABLE_SECTION;
+
+extern "C" void __irqSet(u32 mask, IntFn handler, struct IntTable irqTable[] );
+
+
+extern  char patchPath[MAXPATHLEN * 2];
 
 #include <fat.h>
 
@@ -551,6 +609,54 @@ static u8 *utilLoadRarFile(const char *file,
 }
 #endif
 
+void patchit(int romSize2)
+{
+	FILE *patchf = fopen(patchPath, "rb");
+	u8 header[0x50];
+	fread(header,1,0x50,patchf);
+	if(memcmp(header,"flygbapatch",0xC))
+	{
+		systemMessage(MSG_ERROR_OPENING_IMAGE, N_("Error in patchfile"));
+		while(1);
+	}
+	int patchnum = *(u32*)&header[0x10];
+	for(int i = 0;i < patchnum;i++)
+	{
+		int type;
+		fread((void*)&type,1,0x4,patchf);
+		switch (type)
+		{
+		case 0:
+			int offsetgba;
+			int offsetthisfile;
+			fread((void*)&offsetgba,1,0x4,patchf);
+			fread((void*)&offsetthisfile,1,0x4,patchf);
+			if(offsetgba + chucksize < romSize2)
+			{
+				int coo = ftell(patchf);
+				fseek(patchf,offsetthisfile,SEEK_SET);
+				fread(rom + offsetgba,1,chucksize,patchf);
+				fseek(patchf,coo,SEEK_SET);
+			}
+			else
+			{
+				getandpatchmap(offsetgba,offsetthisfile);
+			}
+			break;
+		case 1:
+			fread((void*)&cheatsNumber,1,0x4,patchf);
+			int offset;
+			fread((void*)&offset,1,0x4,patchf);
+			int coo = ftell(patchf);
+			fseek(patchf,offset,SEEK_SET);
+			fread((void*)cheatsList,1,cheatsNumber*28,patchf);
+			fseek(patchf,coo,SEEK_SET);
+			__irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareqandcheat,irqTable);
+			break;
+		}
+	}
+}
+
 u8 *utilLoad(const char *file, //ichfly todo
              u8 *data,
              int &size,bool extram)
@@ -615,5 +721,8 @@ u8 *utilLoad(const char *file, //ichfly todo
 #endif
   //size = fileSize;
   
+  if(patchPath[0] != 0)patchit(romSize);
+
+
   return image;
 }

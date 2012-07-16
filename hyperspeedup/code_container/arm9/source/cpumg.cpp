@@ -326,12 +326,19 @@ void gbaInit()
 	Region 7 - IO 0x04000000 PU_PAGE_16M
 	*/
 
+
+	exInitswisystem(gbaswieulatedbios); //define handler
+	exInitundifinedsystem(undifinedresolver); //define handler
+
+
+	REG_IME = IME_DISABLE;
 	bool slow;
+	iprintf("\x1b[2J");
+	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+	iprintf("press B for slow emuation A for normal\n");
 	while(1) 
 	{
-		iprintf("\x1b[2J");
-		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-		iprintf("press B for slow emuation A for normal\n");
+
 		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
 		scanKeys();
@@ -368,9 +375,6 @@ void gbaInit()
 	exInit(gbaExceptionHdl); //define handler
 #endif
 
-	exInitswisystem(gbaswieulatedbios); //define handler
-	exInitundifinedsystem(undifinedresolver); //define handler
-
 
 
 	WRAM_CR = 0; //swap wram in
@@ -401,7 +405,6 @@ void gbaInit()
 	}
 
 	pu_Enable(); //PU go
-
 
 	DC_FlushAll(); //try it
 	

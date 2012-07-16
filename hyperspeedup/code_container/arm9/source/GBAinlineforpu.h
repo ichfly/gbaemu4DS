@@ -114,6 +114,8 @@ void updateVCsub()
 
 inline u32 CPUReadMemoryrealpu(u32 address)
 {
+
+	//iprintf("%08X",REG_IME);
 #ifdef DEV_VERSION
   if(address & 3) {  
     if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
@@ -496,6 +498,7 @@ iprintf("r8 %02x\n",address);
   }
 }
 
+#ifndef asmspeedup
 inline void CPUWriteMemorypu(u32 address, u32 value) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
@@ -595,6 +598,9 @@ inline void CPUWriteMemorypu(u32 address, u32 value) //ichfly not inline is fast
     break;
   }
 }
+#else
+extern "C" void CPUWriteMemorypu(u32 address, u32 value);
+#endif
 inline void CPUWriteHalfWordpu(u32 address, u16 value)
 {
 #ifdef printreads

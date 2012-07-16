@@ -9,3 +9,15 @@ usermode reads firq and mode sw
 need extern volatile u16 DISPCNT;
 not alined ichfly_readdma_rom
 fix reads from unreadable mem (homebrews use this for sets)
+
+
+CHEAT_PATCH_ROM_16BIT
+CHEAT_PATCH_ROM_32BIT
+GSA_SLOWDOWN
+int cheatsCheckKeys(u32 extended) extended
+
+
+patcher:
+str oldValue
+0x1DC0DE
+decrypter
