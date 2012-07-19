@@ -51,8 +51,8 @@ PrintConsole defaultConsole =
 	},
 	0, //font background map
 	0, //font background gfx
-	22, //map base
-	3, //char base
+	0, //map base
+	1, //char base
 	0, //bg layer in use
 	-1, //bg id
 	0,0, //cursorX cursorY
@@ -538,8 +538,8 @@ void consoleDebugInit(DebugDevice device){
 // font and map..this is provided for rapid prototyping and nothing more
 PrintConsole* consoleDemoInit(void) {
 //---------------------------------------------------------------------------------
-	videoSetModeSub(MODE_0_2D);
-	vramSetBankC(VRAM_C_SUB_BG);
+	//videoSetModeSub(MODE_0_2D);
+	//vramSetBankC(VRAM_C_SUB_BG);
 
 	return consoleInit(NULL, defaultConsole.bgLayer, BgType_Text4bpp, BgSize_T_256x256, defaultConsole.mapBase, defaultConsole.gfxBase, false, true);
 }

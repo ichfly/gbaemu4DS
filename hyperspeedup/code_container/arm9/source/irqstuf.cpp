@@ -251,6 +251,9 @@ u8 VCountdoit[263]; //jump in or out
 extern "C" int SPtoload;
 extern "C" int SPtemp;
 
+#ifdef skipper
+u8 skipval = 0;
+#endif 
 #ifdef usebuffedVcout
 
 void initspeedupfelder()
@@ -408,6 +411,54 @@ void VblankHandler(void) {
 	
 #ifdef advanced_irq_check
 	REG_IF = IRQ_FIFO_NOT_EMPTY;
+#endif
+
+#ifdef capture_and_pars
+#ifndef antyflicker
+	if(currentVRAMcapblock == 0)
+	{
+#ifdef skipper
+	if(skipval == skipperval)
+	{
+		skipval = 0;
+#endif
+		DISPCAPCNT = 0x8030000F | (2 << 16);
+		vramSetBankC(VRAM_C_LCD);
+		currentVRAMcapblock = 1;
+#ifdef skipper
+	}
+	else
+	{
+		skipval++;
+	}
+#endif
+	}
+	else 
+	{
+		vramSetBankC(VRAM_C_SUB_BG_0x06200000);
+		currentVRAMcapblock = 0;
+	}
+#else
+#ifdef skipper
+	if(skipval == skipperval)
+	{
+		skipval = 0;
+#endif
+		DISPCAPCNT = 0x8030000F | (1 << 16);
+		u8 *pointertobild = (u8 *)(0x6820000);
+		for(int iy = 0; iy <160; iy++){
+			dmaCopy( (void*)pointertobild, (void*)0x6200000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
+			pointertobild+=512;
+		}
+#ifdef skipper
+	}
+	else
+	{
+		skipval++;
+	}
+#endif
+#endif
+	//printf("%08X%08X",*(u32*)0x06800000,*(u32*)0x06820000);
 #endif
 
 #ifdef lastdebug

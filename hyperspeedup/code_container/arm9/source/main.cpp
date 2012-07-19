@@ -175,15 +175,20 @@ int main( int argc, char **argv) {
 //---------------------------------------------------------------------------------
 	//set the mode for 2 text layers and two extended background layers
 	//videoSetMode(MODE_5_2D); 
+  videoSetModeSub(MODE_5_2D);
+
 
 	//defaultExceptionHandler();	//for debug befor gbainit
 
 	//set the first two banks as background memory and the third as sub background memory
 	//D is not used..if you need a bigger background then you will need to map
 	//more vram banks consecutivly (VRAM A-D are all 0x20000 bytes in size)
-	vramSetPrimaryBanks(	VRAM_A_MAIN_BG_0x06000000/*for gba*/, VRAM_B_MAIN_SPRITE/*for gba sprite*/, 
-		VRAM_C_SUB_BG /*for prints to lowern screan*/ , /*VRAM_D_LCD*/ VRAM_D_MAIN_BG_0x06020000 /*for BG emulation*/); //needed for main emulator
+	vramSetPrimaryBanks(	VRAM_A_MAIN_BG_0x06000000/*for gba*/, VRAM_B_LCD, 
+		VRAM_C_SUB_BG_0x06200000 , /*VRAM_D_LCD*/ VRAM_D_MAIN_BG_0x06020000 /*for BG emulation*/); //needed for main emulator
 
+	vramSetBanks_EFG(VRAM_E_MAIN_SPRITE/*for gba sprite*/,VRAM_F_LCD/*cant use*/,VRAM_G_LCD/*cant use*/);
+	vramSetBankH(VRAM_H_SUB_BG); //only sub /*for prints to lowern screan*/ 
+	vramSetBankI(VRAM_I_SUB_BG_0x06208000); //only sub
 
 
 #ifdef advanced_irq_check
@@ -195,8 +200,7 @@ int main( int argc, char **argv) {
 	__irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareq,irqTable); //todo async
 	irqEnable(IRQ_FIFO_NOT_EMPTY);
 
-	
-//the other start at 0x06880000 - 0x068A3FFF
+
 
 	//bg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
 	consoleDemoInit();
@@ -277,7 +281,6 @@ while(true)
 malloc(0x4000);
 iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 	while(1);*/ //test getHeapEnd() is the needed thing
-
 
 	iprintf("Init Fat...");
     
@@ -535,6 +538,19 @@ REG_IPC_FIFO_TX = 0x2222222;
 				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
     iprintf("gbaInit\n");
 
+
+#ifdef capture_and_pars
+	videoBgDisableSub(0);
+	vramSetBankH(VRAM_H_LCD); //only sub
+	vramSetBankI(VRAM_I_LCD); //only sub
+	 int iback = bgInitSub(3, BgType_ExRotation, BgSize_B16_256x256, 0,0);
+
+	//bgSetScale(3,0x111,0x133);
+	//bgSetRotateScale(iback,0,0x111,0x133);
+	bgSetRotateScale(iback,0,0x0F0,0x0D5);
+	bgUpdate();
+#endif
+
 	gbaInit();
 
 
@@ -553,10 +569,14 @@ REG_IPC_FIFO_TX = 0x3333333;
 REG_IPC_FIFO_TX = 0x4444444;
 				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
+#ifndef capture_and_pars
 	iprintf("gbaMode2\n");
+#endif
 	REG_IME = IME_ENABLE;
 	gbaMode2();
+#ifndef capture_and_pars
 	iprintf("jump to (%08X)\n\r",rom);
+#endif
 
 	//iprintf("\x1b[2J"); //reset (not working huh)
 

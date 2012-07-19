@@ -85,6 +85,10 @@ extern u8 *rom;
 #define emultoroam ((u8*)0x07000000)
 extern u8 ioMem[0x400];
 
+#define DISPCAPCNT (*(vu32*)0x4000064)
+
+extern u8 currentVRAMcapblock;
+
 extern volatile u16 DISPCNT;
 extern u16 DISPSTAT;
 extern u16 VCOUNT;

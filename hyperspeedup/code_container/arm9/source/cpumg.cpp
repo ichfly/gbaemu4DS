@@ -333,9 +333,11 @@ void gbaInit()
 
 	REG_IME = IME_DISABLE;
 	bool slow;
+#ifndef capture_and_pars
 	iprintf("\x1b[2J");
 	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
 	iprintf("press B for slow emuation A for normal\n");
+#endif
 	while(1) 
 	{
 
