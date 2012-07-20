@@ -11,9 +11,9 @@
 
 #define antyflicker //only work with capture_and_pars
 
-#define skipper //only work with capture_and_pars
+//#define skipper //only work with capture_and_pars
 
-#define skipperval 5 //only work with capture_and_pars and skipper
+//#define skipperval 5 //only work with capture_and_pars and skipper
 
 #define ownfilebuffer
 

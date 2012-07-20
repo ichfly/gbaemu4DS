@@ -231,7 +231,15 @@ if (0 != argc )
 			temptest = false;
 		}
 	}
+	if(argc > 2)
+	{
+		if(argv[2][0] == '1')
+		{
+			lcdSwap();
+		}
+	}
 }
+
 if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0x4E) && temptest)
 {
 		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
@@ -429,8 +437,8 @@ initspeedupfelder();
 		if (isdaas&KEY_A) break;
 		if (isdaas&KEY_UP) syncline++;
 		if (isdaas&KEY_DOWN && syncline != 0) syncline--;
-		if (isdaas&KEY_LEFT) syncline+=10;
-		if (isdaas&KEY_RIGHT && syncline != 0) syncline-=10;
+		if (isdaas&KEY_RIGHT) syncline+=10;
+		if (isdaas&KEY_LEFT && syncline != 0) syncline-=10;
 	}
 
 
@@ -547,7 +555,8 @@ REG_IPC_FIFO_TX = 0x2222222;
 
 	//bgSetScale(3,0x111,0x133);
 	//bgSetRotateScale(iback,0,0x111,0x133);
-	bgSetRotateScale(iback,0,0x0F0,0x0D5);
+	//bgSetRotateScale(iback,0,0x0F0,0x0D5);
+	bgSetRotateScale(iback,0,0x0F0,0x0D6);
 	bgUpdate();
 #endif
 

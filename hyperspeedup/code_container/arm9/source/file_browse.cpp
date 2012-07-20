@@ -346,6 +346,20 @@ void browseForFile (const string& extension) {
 								getcwd (szFile, MAXPATHLEN);
 								pathLen = strlen (szFile);
 								strcpy (szFile + pathLen, entry->name.c_str());
+								if(savePath[0] == 0)
+								{
+										sprintf(savePath,"%s.sav",szFile);
+									    FILE *pFile = fopen(savePath, "r");
+										if(pFile==NULL)savePath[0] = 0;
+										fclose(pFile);
+								}
+								if(patchPath[0] == 0)
+								{
+										sprintf(patchPath,"%s.pat",szFile);
+									    FILE *pFile = fopen(patchPath, "r");
+										if(pFile==NULL)patchPath[0] = 0;
+										fclose(pFile);
+								}
 								return;
 							}
 
