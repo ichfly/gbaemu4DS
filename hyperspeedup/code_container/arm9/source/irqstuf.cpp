@@ -408,11 +408,6 @@ void HblankHandler(void) {
 //---------------------------------------------------------------------------------
 void VblankHandler(void) {
 //---------------------------------------------------------------------------------
-	
-#ifdef advanced_irq_check
-	REG_IF = IRQ_FIFO_NOT_EMPTY;
-#endif
-
 #ifdef capture_and_pars
 #ifndef antyflicker
 	if(currentVRAMcapblock == 0)

@@ -797,7 +797,7 @@ inline void CPUWriteBytepu(u32 address, u8 b)
 #endif
 	  #ifdef arm9advsound
 		  REG_IPC_FIFO_TX = (address | 0x40000000);
-		  REG_IPC_FIFO_TX = (b | 0x80000000); //faster in case we send a 0
+		  REG_IPC_FIFO_TX = b; //faster in case we send a 0
 		#endif
 	break;
       default:

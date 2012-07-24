@@ -7,9 +7,9 @@
 //#define asmspeedup
 
 
-#define capture_and_pars
+//#define capture_and_pars
 
-#define antyflicker //only work with capture_and_pars
+//#define antyflicker //only work with capture_and_pars
 
 //#define skipper //only work with capture_and_pars
 
@@ -40,9 +40,9 @@
 
 #define gba_handel_IRQ_correct
 
-#define HBlankdma //only if hblanc irq is on
+//#define HBlankdma //only if hblanc irq is on
 
-#define forceHBlankirqs
+//#define forceHBlankirqs
 
 #define advanced_irq_check
 
@@ -74,9 +74,13 @@
 
 //#define printsoundwrites
 
-//#define arm9advsound
+//#define dmawriteprint
 
+//#define soundwriteprint
 
+#define arm9advsound
+
+//#define printsoundtimer
 
 
 
