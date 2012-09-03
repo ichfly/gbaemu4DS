@@ -223,6 +223,7 @@ int main( int argc, char **argv) {
  //fatInitDefault();
  //nitroFSInit();
 bool temptest = true;
+#ifdef standalone
 if (0 != argc )
 {
 	if(argc > 1)
@@ -240,7 +241,12 @@ if (0 != argc )
 		}
 	}
 }
-
+#else
+		if(argv[5][0] == '1')
+		{
+			lcdSwap();
+		}
+#endif
 if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0x4E) && temptest)
 {
 		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
@@ -330,12 +336,11 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 //while(1)iprintf("o");
 
 
-#ifndef loaddirect
-
+#ifdef standalone
 	browseForFile("");
-#endif
-	
-	int ausgewauhlt = 0;
+
+
+		int ausgewauhlt = 0;
 
 
 	int myflashsize = 0x10000;
@@ -385,7 +390,91 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 			if (pressed&KEY_DOWN && ausgewauhlt != 6){ ausgewauhlt++;}
 			if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
 		}
+			while(1) 
+	{
+		iprintf("\x1b[2J");
+		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+		iprintf("fps 60/%i\n",frameskip + 1);
+		//swiWaitForVBlank();
+		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+		scanKeys();
+		int isdaas = keysDownRepeat();
+		if (isdaas&KEY_A) break;
+		if (isdaas&KEY_UP) frameskip++;
+		if (isdaas&KEY_DOWN && frameskip != 0) frameskip--;
+	}
+	int syncline =159;
+	while(1) 
+	{
+		iprintf("\x1b[2J");
+		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+		iprintf("Videosyncline %i\n",syncline);
+		//swiWaitForVBlank();
+		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+		scanKeys();
+		int isdaas = keysDownRepeat();
+		if (isdaas&KEY_A) break;
+		if (isdaas&KEY_UP) syncline++;
+		if (isdaas&KEY_DOWN && syncline != 0) syncline--;
+		if (isdaas&KEY_RIGHT) syncline+=10;
+		if (isdaas&KEY_LEFT && syncline != 0) syncline-=10;
+	}
+		bool slow;
+	iprintf("\x1b[2J");
+	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+	iprintf("press B for slow emuation A for normal\n");
+	while(1) 
+	{
 
+		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+		scanKeys();
+		int isdaas = keysDownRepeat();
+		if (isdaas&KEY_A)
+		{
+			slow = false;
+			break;
+		}
+		if(isdaas&KEY_B)
+		{
+			slow = true;
+			break;
+		}
+	}
+
+
+#else
+strcpy(szFile,argv[1]);
+strcpy(savePath,argv[2]);
+strcpy(biosPath,argv[3]);
+strcpy(patchPath,argv[4]);
+if(argv[11][0] == '1')cpuIsMultiBoot = true;
+else cpuIsMultiBoot = false;
+int myflashsize = 0x10000;
+u32 ausgewauhlt = (u32)strtol(argv[6],NULL,16);
+if(ausgewauhlt == 6)
+{
+	myflashsize = 0x20000;
+	cpuSaveType = 3;
+}
+else
+{
+	cpuSaveType = ausgewauhlt;
+}
+frameskip = (u32)strtol(argv[7],NULL,16);
+int syncline =(u32)strtol(argv[9],NULL,16);
+bool slow;
+if(argv[10][0] == '1')slow = true;
+else slow = false;
+if(argv[8][0] == '1')
+{
+	REG_IPC_FIFO_TX = 0x1FFFFFFFC; //send cmd
+	REG_IPC_FIFO_TX = 0;
+}
+#endif
+	
 
 
 
@@ -408,39 +497,9 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 
 initspeedupfelder();
 
-	while(1) 
-	{
-		iprintf("\x1b[2J");
-		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-		iprintf("fps 60/%i\n",frameskip + 1);
-		//swiWaitForVBlank();
-		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A) break;
-		if (isdaas&KEY_UP) frameskip++;
-		if (isdaas&KEY_DOWN && frameskip != 0) frameskip--;
-	}
 	//iprintf("\x1b[2J");
 
-	int syncline =159;
-	while(1) 
-	{
-		iprintf("\x1b[2J");
-		iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-		iprintf("Videosyncline %i\n",syncline);
-		//swiWaitForVBlank();
-		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A) break;
-		if (isdaas&KEY_UP) syncline++;
-		if (isdaas&KEY_DOWN && syncline != 0) syncline--;
-		if (isdaas&KEY_RIGHT) syncline+=10;
-		if (isdaas&KEY_LEFT && syncline != 0) syncline-=10;
-	}
+
 
 
 
@@ -561,7 +620,7 @@ REG_IPC_FIFO_TX = 0x2222222;
 	bgUpdate();
 #endif
 
-	gbaInit();
+	gbaInit(slow);
 
 
 	//iprintf("\n\r%08X",CPUReadMemoryreal(0x08400000));

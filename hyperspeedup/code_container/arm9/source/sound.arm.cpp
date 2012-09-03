@@ -3,9 +3,102 @@
 #include "ichflysettings.h"
 #include "main.h"
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#include <nds.h>
+#include <stdio.h>
+
+
+#include <filesystem.h>
+#include "GBA.h"
+#include "Sound.h"
+#include "Util.h"
+#include "getopt.h"
+#include "System.h"
+#include <fat.h>
+#include <dirent.h>
+
+#include "cpumg.h"
+#include "GBAinline.h"
+#include "bios.h"
+
+#include "mydebuger.h"
+
+#include "ichflysettings.h"
+
+#include <nds.h>
+
+#include "arm7sound.h"
+
+#include "main.h"
+
+#define UPDATE_REG(address, value)\
+  {\
+    WRITE16LE(((u16 *)&ioMem[address]),value);\
+  }\
+
+extern char savePath[MAXPATHLEN * 2];
+
+extern char szFile[MAXPATHLEN * 2];
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <nds/memory.h>//#include <memory.h> ichfly
+#include <nds/ndstypes.h>
+#include <nds/memory.h>
+#include <nds/bios.h>
+#include <nds/system.h>
+#include <nds/arm9/math.h>
+#include <nds/arm9/video.h>
+#include <nds/arm9/videoGL.h>
+#include <nds/arm9/trig_lut.h>
+#include <nds/arm9/sassert.h>
+#include <stdarg.h>
+#include <string.h>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include "Cheats.h"
 
-#ifdef arm9advsound
 extern "C" int SPtoload;
 extern "C" int SPtemp;
 
@@ -33,6 +126,7 @@ void arm7dmareq()
 			//iprintf("%08X\r\n",REG_IPC_FIFO_RX);
 			//iprintf("%08X %08X\n\r",src,REG_IPC_FIFO_CR);
 			if(counttrans < (u32)src)counttrans = (u32)src;
+			REG_IPC_FIFO_TX = 0x1;
 			while(i < 4)
 			{
 				REG_IPC_FIFO_TX = *src;
@@ -59,6 +153,16 @@ void arm7dmareq()
 			{
 				while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 				iprintf("arm7 %08X\r\n",REG_IPC_FIFO_RX);
+			}
+			if(src == (u32*)0x4100BEEF)
+			{
+				frameasyncsync();
+			}
+			if(src == (u32*)0x4200BEEF)
+			{
+				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
+				CPUWriteBatteryFile(savePath);
+				REG_IPC_FIFO_TX = 0;
 			}
 		}
 		//iprintf("e %08X\r\n",REG_IPC_FIFO_CR);
@@ -94,39 +198,18 @@ void arm7dmareqandcheat()
 				cheatsCheckKeys();
 				VblankHandler();
 			}
+			if(src == (u32*)0x4100BEEF)
+			{
+				frameasyncsync();
+			}
+			if(src == (u32*)0x4200BEEF)
+			{
+				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
+				CPUWriteBatteryFile(savePath);
+				REG_IPC_FIFO_TX = 0;
+			}
 		}
 		//if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))arm7dmareqandcheat();
 	}
 
  }
-#else
-void arm7dmareq()
-{
-	#ifdef advanced_irq_check
-	REG_IF = IRQ_FIFO_NOT_EMPTY;
-#endif
-	if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //nothing here move along
-	{
-		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
-		//iprintf("in");
-		VblankHandler();
-		u32 src = REG_IPC_FIFO_RX; //send ack
-		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))src = REG_IPC_FIFO_RX;
-	}
-}
-void arm7dmareqandcheat()
-{
-	#ifdef advanced_irq_check
-	REG_IF = IRQ_FIFO_NOT_EMPTY;
-#endif
-	if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //nothing here move along
-	{
-		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
-		//iprintf("in");
-		cheatsCheckKeys();
-		VblankHandler();
-		u32 src = REG_IPC_FIFO_RX; //send ack
-		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))src = REG_IPC_FIFO_RX;
-	}
-}
-#endif 

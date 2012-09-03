@@ -15,7 +15,7 @@ void gbaswieulatedbios();
 
 void gbaMode2();
 
-void gbaInit();
+void gbaInit(bool slow);
 void switch_to_unprivileged_mode();
 void gbaMode();
 void ndsMode();

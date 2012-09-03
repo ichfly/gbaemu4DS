@@ -46,6 +46,7 @@ local.properties
 [Rr]elease/
 *.elf
 *.nds
+*.loader
 *_i.c
 *_p.c
 *.ilk

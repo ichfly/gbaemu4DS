@@ -311,7 +311,7 @@ void undifinedresolver()
 }
 int durchgang = 0;
 
-void gbaInit()
+void gbaInit(bool slow)
 {
 
 
@@ -332,30 +332,6 @@ void gbaInit()
 
 
 	REG_IME = IME_DISABLE;
-	bool slow;
-#ifndef capture_and_pars
-	iprintf("\x1b[2J");
-	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press B for slow emuation A for normal\n");
-#endif
-	while(1) 
-	{
-
-		if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-		while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A)
-		{
-			slow = false;
-			break;
-		}
-		if(isdaas&KEY_B)
-		{
-			slow = true;
-			break;
-		}
-	}
 
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu while configurating pu
 
@@ -495,7 +471,10 @@ void BIOScall(int op,  s32 *R)
 		if((REG_DISPSTAT & DISP_IN_VBLANK) || (REG_VCOUNT < 60))frameasyncsync(); //hope it don't need more than 100 Lines this give the emulator more power
 #endif
 		//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-		
+		//send cmd
+		REG_IPC_FIFO_TX = 0x1FFFFFFFB; //load buffer
+		REG_IPC_FIFO_TX = 0;
+
 		ichflyswiWaitForVBlank();
 
 		break;

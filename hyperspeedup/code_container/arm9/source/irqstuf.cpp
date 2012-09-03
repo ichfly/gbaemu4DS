@@ -526,7 +526,7 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
   if((P1 & 0xC0) == 0)
     P1 |= 0x80;
 #endif
-	if(!(P1 & KEY_A) && !(P1 & KEY_B) && !(P1 & KEY_R) && !(P1 & KEY_L))
+	if(!(P1 & KEY_A) && !(P1 & KEY_B) && !(P1 & KEY_UP))
 	{
 		if(ignorenextY == 0)
 		{

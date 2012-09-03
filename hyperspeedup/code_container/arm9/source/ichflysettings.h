@@ -1,5 +1,8 @@
 //functions
 
+#define arm9advsound
+
+
 #define uppern_read_emulation
 
 //#define noichflydebugger
@@ -77,8 +80,6 @@
 //#define dmawriteprint
 
 //#define soundwriteprint
-
-#define arm9advsound
 
 //#define printsoundtimer
 

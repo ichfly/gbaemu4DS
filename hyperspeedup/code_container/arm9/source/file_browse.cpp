@@ -19,6 +19,8 @@
 
 ------------------------------------------------------------------*/
 
+#include "ichflysettings.h"
+#ifdef standalone
 #include "Util.h"
 #include "file_browse.h"
 #include <vector>
@@ -408,3 +410,5 @@ void browseForFile (const string& extension) {
 		}
 	}
 }
+
+#endif
