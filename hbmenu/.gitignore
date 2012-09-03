@@ -1,0 +1,10 @@
+*.DAT
+*.NDS
+*.nds
+*.elf
+*.bin
+bootloader/build
+BootStrap/arm7/build
+BootStrap/arm9/build
+data
+build
