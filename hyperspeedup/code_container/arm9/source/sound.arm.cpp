@@ -121,7 +121,11 @@ void arm7dmareq()
 		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
 		int i = 0;
 		u32* src = (u32*)REG_IPC_FIFO_RX;
-		if(src < (u32*)0x10000000)
+#ifdef unsecamr7com
+		if(src < (u32*)0x10000000)		
+#else
+		if(src < (u32*)0x8000000 && src > (u32*)0x2000000)
+#endif
 		{
 			//iprintf("%08X\r\n",REG_IPC_FIFO_RX);
 			//iprintf("%08X %08X\n\r",src,REG_IPC_FIFO_CR);
@@ -148,22 +152,27 @@ void arm7dmareq()
 					counttrans = 0;
 				}
 				//counttrans = 0;
+				continue;
 			}
 			if(src == (u32*)0x4000BEEF)
 			{
 				while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 				iprintf("arm7 %08X\r\n",REG_IPC_FIFO_RX);
+				continue;
 			}
 			if(src == (u32*)0x4100BEEF)
 			{
 				frameasyncsync();
+				continue;
 			}
 			if(src == (u32*)0x4200BEEF)
 			{
 				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
 				CPUWriteBatteryFile(savePath);
 				REG_IPC_FIFO_TX = 0;
+				continue;
 			}
+			iprintf("error rec %08X %08X\r\n",src,REG_IPC_FIFO_CR);
 		}
 		//iprintf("e %08X\r\n",REG_IPC_FIFO_CR);
 	}

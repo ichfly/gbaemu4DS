@@ -1035,7 +1035,7 @@ static inline void CPUWriteByte(u32 address, u8 b)
 		  iprintf("b %02x to %08x\r\n",b,address);
 #endif
 	  #ifdef arm9advsound
-		  REG_IPC_FIFO_TX = (address | 0x40000000);
+		  REG_IPC_FIFO_TX = ((address & 0x3FF) | 0x40000000);
 		  REG_IPC_FIFO_TX = b; //faster in case we send a 0
 		#endif
 	break;

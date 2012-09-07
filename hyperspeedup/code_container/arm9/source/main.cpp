@@ -278,7 +278,7 @@ else
 }
 //data protbuff
 #ifdef arm9advsound
-REG_IPC_FIFO_TX = 0x4; //load buffer
+REG_IPC_FIFO_TX = 0x1FFFFFFA; //load buffer
 REG_IPC_FIFO_TX = arm7amr9buffer = (u32)malloc(0x100); //buffer for arm7
 #endif
 //test
@@ -576,6 +576,7 @@ REG_IPC_FIFO_TX = 0x7654321;
 	iprintf("arm7init\n");
 
 
+	VblankHandler();
 	REG_IPC_FIFO_TX = 0x1FFFFFFF; //cmd
 	REG_IPC_FIFO_TX = syncline;
 	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))u32 src = REG_IPC_FIFO_RX;

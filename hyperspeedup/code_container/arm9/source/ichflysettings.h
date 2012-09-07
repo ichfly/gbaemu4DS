@@ -2,6 +2,7 @@
 
 #define arm9advsound
 
+#define sounddebugeraddv
 
 #define uppern_read_emulation
 

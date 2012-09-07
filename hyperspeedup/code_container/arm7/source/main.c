@@ -3,6 +3,8 @@
 
 u16 callline = 0xFFFF;
 
+//#define checkforerror
+
 
 	u8* soundbuffA = 0;
 	u8* soundbuffB = 0;
@@ -58,10 +60,10 @@ void dmaAtimerinter()
 	debugsrc1+=16;
 	while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 	int temp1 = REG_IPC_FIFO_RX;
-	while(temp1 != 0x1)
+	while(temp1 != 0x1) //can't happen else
 	{
 		while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
-		newvalwrite(temp1,REG_IPC_FIFO_RX);
+		newvalwrite(temp1 & ~0xC0000000,REG_IPC_FIFO_RX);
 		while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 		temp1 = REG_IPC_FIFO_RX;
 	}
@@ -83,10 +85,10 @@ void dmaBtimerinter()
 	debugsrc2+=0x10;
 	while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 	int temp1 = REG_IPC_FIFO_RX;
-	while(temp1 != 0x1)
+	while(temp1 != 0x1)  //my the irq is not tiggerd yet
 	{
 		while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
-		newvalwrite(temp1,REG_IPC_FIFO_RX);
+		newvalwrite(temp1& ~0xC0000000,REG_IPC_FIFO_RX);
 		while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 		temp1 = REG_IPC_FIFO_RX;
 	}
@@ -110,16 +112,6 @@ void newvalwrite(u32 addr,u32 val)
 			int oldIME = enterCriticalSection();
 			switch(addr)
 			{
-			  case 0:
-				    REG_IPC_FIFO_TX = 0xFFFFFFFF;
-					REG_IPC_FIFO_TX = val;
-				  break;
-			  case 0x4:
-				  dmabuffer = val;
-				  soundbuffA = (u32*)(dmabuffer);
-					SCHANNEL_SOURCE(4) = soundbuffA;
-				  soundbuffB = (u32*)(dmabuffer + 0x50);
-					SCHANNEL_SOURCE(5) = soundbuffB;
 			  case 0xBC:
 				DMA1SAD_L = val;
 				break;
@@ -219,13 +211,22 @@ void newvalwrite(u32 addr,u32 val)
 					  //it is better on the DS any way
 				  REG_SOUNDBIAS = val;
 				  break;
-			case 0x1FFFFFFFB: //wait
+
+
+			  case 0x1FFFFFFA:
+				  dmabuffer = val;
+				  soundbuffA = (u32*)(dmabuffer);
+					SCHANNEL_SOURCE(4) = soundbuffA;
+				  soundbuffB = (u32*)(dmabuffer + 0x50);
+					SCHANNEL_SOURCE(5) = soundbuffB;
+					break;
+			case 0x1FFFFFFB: //wait
 				if(autodetectdetect/* && (REG_VCOUNT > 160 || REG_VCOUNT < callline)*/)
 				{
 					REG_IPC_FIFO_TX = 0x4100BEEF; //send cmd 0x4100BEEF
 				}
 				break;
-			case 0x1FFFFFFFC: //setauto
+			case 0x1FFFFFFC: //setauto
 				autodetectdetect = true;
 				break;
 			case 0x1FFFFFFFD: //getkeys
@@ -243,11 +244,31 @@ void newvalwrite(u32 addr,u32 val)
 					REG_IPC_FIFO_TX = tempPos.px;
 					REG_IPC_FIFO_TX = tempPos.py;
 				}
-
+				break;
 			case 0x1FFFFFFF: //set callline
-			callline = val;
+				callline = val;
+				break;
 			default:
-				break; //nothing
+				//senddebug32(0x7FFFFFFF); //error
+				/*if(addr > 0x400)  //arm9 -> arm7 con crushed try to get at last some infos
+				{
+					swiWaitForVBlank();
+					swiWaitForVBlank();
+					senddebug32(addr);
+					senddebug32(addr);
+					senddebug32(addr);
+					senddebug32(addr);
+					senddebug32(addr);
+					senddebug32(addr);
+					senddebug32(addr);
+					senddebug32(addr);
+					senddebug32(addr);
+					while(1);
+				}*/
+				senddebug32(addr);
+				//senddebug32(val);
+				//senddebug32(REG_IPC_FIFO_CR);
+				break;
 			}
 			leaveCriticalSection(oldIME);
 }
@@ -285,7 +306,7 @@ int main() {
 		//4-5 FIFO
 		//ledBlink(1);
 		//swiWaitForVBlank();
-		if((REG_VCOUNT == callline) && (REG_IPC_FIFO_CR & IPC_FIFO_SEND_EMPTY) && (REG_KEYXY & 0x1)) //X not pressed
+		if((REG_VCOUNT == callline) /*&& (REG_IPC_FIFO_CR & IPC_FIFO_SEND_EMPTY)*/ && (REG_KEYXY & 0x1)) //X not pressed
 		{
 			REG_IPC_FIFO_TX = 0x3F00BEEF; //send cmd 0x3F00BEEF
 			while(REG_VCOUNT == callline); //don't send 2 or more
@@ -305,12 +326,33 @@ int main() {
 			ykeypp = false;
 		}
 
-		if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))
+		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))
 		{
+#ifdef checkforerror
+			if(REG_IPC_FIFO_CR & IPC_FIFO_ERROR)
+			{
+				senddebug32(0x7FFFFFF0);
+				//REG_IPC_FIFO_CR |= IPC_FIFO_ERROR;
+			}
+#endif
 			int addr = (REG_IPC_FIFO_RX & ~0xC0000000/*todo*/); //addr + flags //flags 2 most upperen Bits dma = 0 u8 = 1 u16 = 2 u32 = 3
 			while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 			int val = REG_IPC_FIFO_RX; //Value skip add for speedup
+#ifdef checkforerror
+			if(REG_IPC_FIFO_CR & IPC_FIFO_ERROR)
+			{
+				senddebug32(0x7FFFFFF1);
+				//REG_IPC_FIFO_CR |= IPC_FIFO_ERROR;
+			}
+#endif
 			newvalwrite(addr,val);
+#ifdef checkforerror
+			if(REG_IPC_FIFO_CR & IPC_FIFO_ERROR)
+			{
+				senddebug32(0x7FFFFFF2);
+				//REG_IPC_FIFO_CR |= IPC_FIFO_ERROR;
+			}
+#endif
 		}
 	}
 	return 0;

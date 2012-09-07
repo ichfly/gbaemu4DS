@@ -1,5 +1,5 @@
 #include <nds.h>
-#include <stdio.h>
+#include <stdio.h> 
 
 #include <filesystem.h>
 #include "getopt.h"
@@ -471,10 +471,11 @@ void BIOScall(int op,  s32 *R)
 		if((REG_DISPSTAT & DISP_IN_VBLANK) || (REG_VCOUNT < 60))frameasyncsync(); //hope it don't need more than 100 Lines this give the emulator more power
 #endif
 		//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+#ifndef sounddebugeraddv
 		//send cmd
-		REG_IPC_FIFO_TX = 0x1FFFFFFFB; //load buffer
+		REG_IPC_FIFO_TX = 0x1FFFFFFB; //load buffer
 		REG_IPC_FIFO_TX = 0;
-
+#endif
 		ichflyswiWaitForVBlank();
 
 		break;
