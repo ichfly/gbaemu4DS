@@ -470,7 +470,7 @@ if(argv[10][0] == '1')slow = true;
 else slow = false;
 if(argv[8][0] == '1')
 {
-	REG_IPC_FIFO_TX = 0x1FFFFFFFC; //send cmd
+	REG_IPC_FIFO_TX = 0x1FFFFFFC; //send cmd
 	REG_IPC_FIFO_TX = 0;
 }
 #endif

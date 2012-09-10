@@ -473,7 +473,7 @@ void BIOScall(int op,  s32 *R)
 		//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
 #ifndef sounddebugeraddv
 		//send cmd
-		REG_IPC_FIFO_TX = 0x1FFFFFFB; //load buffer
+		REG_IPC_FIFO_TX = 0x1FFFFFFB; //tell the arm7
 		REG_IPC_FIFO_TX = 0;
 #endif
 		ichflyswiWaitForVBlank();

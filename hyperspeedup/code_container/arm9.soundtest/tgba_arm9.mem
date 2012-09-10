@@ -1,0 +1,9 @@
+MEMORY {
+
+       rom     : ORIGIN = 0x08000000, LENGTH = 32M
+       gbarom   : ORIGIN = 0x02200000, LENGTH = 2M
+       ewram   : ORIGIN = 0x02000000, LENGTH = 2M
+       dtcm    : ORIGIN = 0x0b000000, LENGTH = 16K
+       vectors : ORIGIN = 0x01000000, LENGTH = 1K
+       itcm    : ORIGIN = 0x01000400, LENGTH = 32K - 1K
+}
