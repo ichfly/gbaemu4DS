@@ -5,6 +5,9 @@ u16 callline = 0xFFFF;
 
 //#define checkforerror
 
+//timerStart timeval sucks need a new idear to handel that
+//also we are 3 sampels + some overlayer back in the file fix that
+
 
 	u8* soundbuffA = 0;
 	u8* soundbuffB = 0;
@@ -430,6 +433,8 @@ void updatevol()
 	if(SOUNDCNT_L & BIT(11) && SOUNDCNT_L & BIT(15)) SCHANNEL_CR(3) = (SCHANNEL_CR(3) & ~0xFF0000) | tempmixedvol1_4;
 
 }
+
+
 void updatetakt()
 {
 	//FIFO A
@@ -452,7 +457,7 @@ void updatetakt()
 				break;
 		}
 		//SCHANNEL_TIMER(4) = debugfr1 = (((-TM0CNT_L) << seek) & 0xFFFF) << 1;
-		SCHANNEL_TIMER(4) = debugfr1 = TM0CNT_L << 1;
+		SCHANNEL_TIMER(4) = debugfr1 = TM0CNT_L;
 	}
 	else
 	{
@@ -473,7 +478,7 @@ void updatetakt()
 				break;
 		}
 		//SCHANNEL_TIMER(4) = debugfr1 = (((-TM1CNT_L) & 0xFFFF) << seek) << 1;
-		SCHANNEL_TIMER(4) = debugfr1 = TM1CNT_L << 1;
+		SCHANNEL_TIMER(4) = debugfr1 = TM1CNT_L;
 	}
 	//FIFO B
 	if(tacktgeber_sound_FIFO_DMA_B == 0)
@@ -495,7 +500,7 @@ void updatetakt()
 				break;
 		}
 		//SCHANNEL_TIMER(5) = debugfr2 = (((-TM0CNT_L) << seek) & 0xFFFF) << 1;
-		SCHANNEL_TIMER(5) = debugfr2 = TM0CNT_L << 1;
+		SCHANNEL_TIMER(5) = debugfr2 = TM0CNT_L;
 	}
 	else
 	{
@@ -516,9 +521,141 @@ void updatetakt()
 				break;
 		}
 		//SCHANNEL_TIMER(5) = debugfr2 = (((-TM1CNT_L) << seek) & 0xFFFF) << 1; //everything is 2 times faster than on ther gba here
-		SCHANNEL_TIMER(5) = debugfr2 = TM1CNT_L << 1; //everything is 2 times faster than on ther gba here
+		SCHANNEL_TIMER(5) = debugfr2 = TM1CNT_L; //everything is 2 times faster than on ther gba here
 	}
 }
+
+void checkstart()
+{
+	//DMA 1
+	if(DMA1DAD_L == 0x00A0 && DMA1DAD_H == 0x0400 && (DMA1CNT_H & 0x8000))
+	{
+		//FIFO A
+		if(tacktgeber_sound_FIFO_DMA_A == 0)
+		{
+			if(TM0CNT_H & 0x80) //started timer
+			{
+				//SCHANNEL_LENGTH(4) = 0xFFFFFFFF;
+				debugsrc1 = DMA1SAD_L | (DMA1SAD_H << 16);
+				//senddebug32(debugsrc1);
+				if(!(SCHANNEL_CR(4) & 0x80000000))SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now if not already started
+				if(!(TIMER0_CR & TIMER_ENABLE))timerStart(0, ClockDivider_1,debugfr1 << 5, dmaAtimerinter);
+				////senddebug32(debugfr1 << 5);
+			}
+		}
+		else
+		{
+			if(TM1CNT_H & 0x80)
+			{
+				//SCHANNEL_LENGTH(4) = 0xFFFFFFFF;
+				debugsrc1 = DMA1SAD_L | (DMA1SAD_H << 16);
+				//senddebug32(debugsrc1);
+				if(!(SCHANNEL_CR(4) & 0x80000000))SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
+				if(!(TIMER0_CR & TIMER_ENABLE))timerStart(0, ClockDivider_1,debugfr1 << 5, dmaAtimerinter);
+				//senddebug32(debugfr1 << 5);
+			}
+		}
+	}
+	else
+	{
+		if(DMA1DAD_L == 0x00A4 && DMA1DAD_H == 0x0400 && (DMA1CNT_H & 0x8000))
+		{
+			//FIFO B
+			if(tacktgeber_sound_FIFO_DMA_B == 0)
+			{
+				if(TM0CNT_H & 0x80) //started timer
+				{
+					//SCHANNEL_LENGTH(5) = 0xFFFFFFFF;
+					debugsrc2 = DMA1SAD_L | (DMA1SAD_H << 16);
+					//senddebug32(debugsrc2);
+					if(!(SCHANNEL_CR(5) & 0x80000000))SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
+					if(!(TIMER1_CR & TIMER_ENABLE))timerStart(1, ClockDivider_1,debugfr2 << 5, dmaBtimerinter);
+				//senddebug32(debugfr2 << 5);
+				}
+			}
+			else
+			{
+				if(TM1CNT_H & 0x80)
+				{
+					//SCHANNEL_LENGTH(5) = 0xFFFFFFFF;
+					debugsrc2 = DMA1SAD_L | (DMA1SAD_H << 16);
+					//senddebug32(debugsrc2);
+					if(!(SCHANNEL_CR(5) & 0x80000000))SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
+					if(!(TIMER1_CR & TIMER_ENABLE))timerStart(1, ClockDivider_1,debugfr2 << 5, dmaBtimerinter);
+				//senddebug32(debugfr2 << 5);
+				}
+			}
+		}
+
+	}
+
+
+	//DMA 2
+	if(DMA2DAD_L == 0x00A0 && DMA2DAD_H == 0x0400 && (DMA2CNT_H & 0x8000))
+	{
+		//FIFO A
+		if(tacktgeber_sound_FIFO_DMA_A == 0)
+		{
+			if(TM0CNT_H & 0x80) //started timer
+			{
+				//SCHANNEL_LENGTH(4) = 0xFFFFFFFF;
+				debugsrc1 = DMA2SAD_L | (DMA2SAD_H << 16);
+				//senddebug32(debugsrc1);
+				if(!(SCHANNEL_CR(4) & 0x80000000))SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
+				if(!(TIMER0_CR & TIMER_ENABLE))timerStart(0, ClockDivider_1,debugfr1 << 5, dmaAtimerinter);
+				//senddebug32(debugfr1 << 5);
+			}
+		}
+		else
+		{
+			if(TM1CNT_H & 0x80)
+			{
+				//SCHANNEL_LENGTH(4) = 0xFFFFFFFF;
+				debugsrc1 = DMA2SAD_L | (DMA2SAD_H << 16);
+				//senddebug32(debugsrc1);
+				if(!(SCHANNEL_CR(4) & 0x80000000))SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
+				if(!(TIMER0_CR & TIMER_ENABLE))timerStart(0, ClockDivider_1,debugfr1 << 5, dmaAtimerinter);
+				//senddebug32(debugfr1 << 5);
+			}
+		}
+	}
+	else
+	{
+		if(DMA2DAD_L == 0x00A4 && DMA2DAD_H == 0x0400 && (DMA2CNT_H & 0x8000))
+		{
+			//FIFO B
+			if(tacktgeber_sound_FIFO_DMA_B == 0)
+			{
+				if(TM0CNT_H & 0x80) //started timer
+				{
+					//SCHANNEL_LENGTH(5) = 0xFFFFFFFF;
+					debugsrc2 = DMA2SAD_L | (DMA2SAD_H << 16);
+					//senddebug32(debugsrc2);
+					if(!(SCHANNEL_CR(5) & 0x80000000))SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
+					if(!(TIMER1_CR & TIMER_ENABLE))timerStart(1, ClockDivider_1,debugfr2 << 5, dmaBtimerinter);
+				//senddebug32(debugfr2 << 5);
+				}
+			}
+			else
+			{
+				if(TM1CNT_H & 0x80)
+				{
+					//SCHANNEL_LENGTH(5) = 0xFFFFFFFF;
+					debugsrc2 = DMA2SAD_L | (DMA2SAD_H << 16);
+					//senddebug32(debugsrc2);
+					if(!(SCHANNEL_CR(5) & 0x80000000))SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
+					if(!(TIMER1_CR & TIMER_ENABLE))timerStart(1, ClockDivider_1,debugfr2 << 5, dmaBtimerinter);
+				}
+			}
+		}
+
+	}
+
+
+
+}
+
+
 #ifdef nichtdef
 void checkstart()
 {
@@ -535,9 +672,9 @@ void checkstart()
 				//senddebug32(debugsrc1);
 				dmaAtimerinter();
 				dmaAtimerinter();
-				SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
-				timerStart(0, ClockDivider_1,debugfr1 << 4, dmaAtimerinter);
-				////senddebug32(debugfr1 << 4);
+				if(!(SCHANNEL_CR(4) & 0x80000000))SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
+				if(!(TIMER0_CR & TIMER_ENABLE))timerStart(0, ClockDivider_1,debugfr1 << 5, dmaAtimerinter);
+				////senddebug32(debugfr1 << 5);
 			}
 			else
 			{
@@ -557,9 +694,9 @@ void checkstart()
 				//senddebug32(debugsrc1);
 				dmaAtimerinter();
 				dmaAtimerinter();
-				SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
-				timerStart(0, ClockDivider_1,debugfr1 << 4, dmaAtimerinter);
-				//senddebug32(debugfr1 << 4);
+				if(!(SCHANNEL_CR(4) & 0x80000000))SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
+				if(!(TIMER0_CR & TIMER_ENABLE))timerStart(0, ClockDivider_1,debugfr1 << 5, dmaAtimerinter);
+				//senddebug32(debugfr1 << 5);
 			}
 			else
 			{
@@ -586,9 +723,9 @@ void checkstart()
 					//senddebug32(debugsrc2);
 					dmaBtimerinter();
 					dmaBtimerinter();
-					SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
-					timerStart(1, ClockDivider_1,debugfr2 << 4, dmaBtimerinter);
-				//senddebug32(debugfr2 << 4);
+					if(!(SCHANNEL_CR(5) & 0x80000000))SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
+					if(!(TIMER1_CR & TIMER_ENABLE))timerStart(1, ClockDivider_1,debugfr2 << 5, dmaBtimerinter);
+				//senddebug32(debugfr2 << 5);
 				}
 				else
 				{
@@ -609,9 +746,9 @@ void checkstart()
 					//senddebug32(debugsrc2);
 					dmaBtimerinter();
 					dmaBtimerinter();
-					SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
-					timerStart(1, ClockDivider_1,debugfr2 << 4, dmaBtimerinter);
-				//senddebug32(debugfr2 << 4);
+					if(!(SCHANNEL_CR(5) & 0x80000000))SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
+					if(!(TIMER1_CR & TIMER_ENABLE))timerStart(1, ClockDivider_1,debugfr2 << 5, dmaBtimerinter);
+				//senddebug32(debugfr2 << 5);
 				}
 				else
 				{
@@ -641,9 +778,9 @@ void checkstart()
 				//senddebug32(debugsrc1);
 				dmaAtimerinter();
 				dmaAtimerinter();
-				SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
-				timerStart(0, ClockDivider_1,debugfr1 << 4, dmaAtimerinter);
-				//senddebug32(debugfr1 << 4);
+				if(!(SCHANNEL_CR(4) & 0x80000000))SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
+				if(!(TIMER0_CR & TIMER_ENABLE))timerStart(0, ClockDivider_1,debugfr1 << 5, dmaAtimerinter);
+				//senddebug32(debugfr1 << 5);
 			}
 			else
 			{
@@ -664,9 +801,9 @@ void checkstart()
 				//senddebug32(debugsrc1);
 				dmaAtimerinter();
 				dmaAtimerinter();
-				SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
-				timerStart(0, ClockDivider_1,debugfr1 << 4, dmaAtimerinter);
-				//senddebug32(debugfr1 << 4);
+				if(!(SCHANNEL_CR(4) & 0x80000000))SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
+				if(!(TIMER0_CR & TIMER_ENABLE))timerStart(0, ClockDivider_1,debugfr1 << 5, dmaAtimerinter);
+				//senddebug32(debugfr1 << 5);
 			}
 			else
 			{
@@ -693,9 +830,9 @@ void checkstart()
 					//senddebug32(debugsrc2);
 					dmaBtimerinter();
 					dmaBtimerinter();
-					SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
-					timerStart(1, ClockDivider_1,debugfr2 << 4, dmaBtimerinter);
-				//senddebug32(debugfr2 << 4);
+					if(!(SCHANNEL_CR(5) & 0x80000000))SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
+					if(!(TIMER1_CR & TIMER_ENABLE))timerStart(1, ClockDivider_1,debugfr2 << 5, dmaBtimerinter);
+				//senddebug32(debugfr2 << 5);
 				}
 				else
 				{
@@ -716,9 +853,9 @@ void checkstart()
 					//senddebug32(debugsrc2);
 					dmaBtimerinter();
 					dmaBtimerinter();
-					SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
-					timerStart(1, ClockDivider_1,debugfr2 << 4, dmaBtimerinter);
-				//senddebug32(debugfr2 << 4);
+					if(!(SCHANNEL_CR(5) & 0x80000000))SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
+					if(!(TIMER1_CR & TIMER_ENABLE))timerStart(1, ClockDivider_1,debugfr2 << 5, dmaBtimerinter);
+				//senddebug32(debugfr2 << 5);
 				}
 				else
 				{
@@ -738,133 +875,3 @@ void checkstart()
 
 }
 #endif
-
-void checkstart()
-{
-	//DMA 1
-	if(DMA1DAD_L == 0x00A0 && DMA1DAD_H == 0x0400 && (DMA1CNT_H & 0x8000))
-	{
-		//FIFO A
-		if(tacktgeber_sound_FIFO_DMA_A == 0)
-		{
-			if(TM0CNT_H & 0x80) //started timer
-			{
-				//SCHANNEL_LENGTH(4) = 0xFFFFFFFF;
-				debugsrc1 = DMA1SAD_L | (DMA1SAD_H << 16);
-				//senddebug32(debugsrc1);
-				SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
-				timerStart(0, ClockDivider_1,debugfr1 << 4, dmaAtimerinter);
-				////senddebug32(debugfr1 << 4);
-			}
-		}
-		else
-		{
-			if(TM1CNT_H & 0x80)
-			{
-				//SCHANNEL_LENGTH(4) = 0xFFFFFFFF;
-				debugsrc1 = DMA1SAD_L | (DMA1SAD_H << 16);
-				//senddebug32(debugsrc1);
-				SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
-				timerStart(0, ClockDivider_1,debugfr1 << 4, dmaAtimerinter);
-				//senddebug32(debugfr1 << 4);
-			}
-		}
-	}
-	else
-	{
-		if(DMA1DAD_L == 0x00A4 && DMA1DAD_H == 0x0400 && (DMA1CNT_H & 0x8000))
-		{
-			//FIFO B
-			if(tacktgeber_sound_FIFO_DMA_B == 0)
-			{
-				if(TM0CNT_H & 0x80) //started timer
-				{
-					//SCHANNEL_LENGTH(5) = 0xFFFFFFFF;
-					debugsrc2 = DMA1SAD_L | (DMA1SAD_H << 16);
-					//senddebug32(debugsrc2);
-					SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
-					timerStart(1, ClockDivider_1,debugfr2 << 4, dmaBtimerinter);
-				//senddebug32(debugfr2 << 4);
-				}
-			}
-			else
-			{
-				if(TM1CNT_H & 0x80)
-				{
-					//SCHANNEL_LENGTH(5) = 0xFFFFFFFF;
-					debugsrc2 = DMA1SAD_L | (DMA1SAD_H << 16);
-					//senddebug32(debugsrc2);
-					SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
-					timerStart(1, ClockDivider_1,debugfr2 << 4, dmaBtimerinter);
-				//senddebug32(debugfr2 << 4);
-				}
-			}
-		}
-
-	}
-
-
-	//DMA 2
-	if(DMA2DAD_L == 0x00A0 && DMA2DAD_H == 0x0400 && (DMA2CNT_H & 0x8000))
-	{
-		//FIFO A
-		if(tacktgeber_sound_FIFO_DMA_A == 0)
-		{
-			if(TM0CNT_H & 0x80) //started timer
-			{
-				//SCHANNEL_LENGTH(4) = 0xFFFFFFFF;
-				debugsrc1 = DMA2SAD_L | (DMA2SAD_H << 16);
-				//senddebug32(debugsrc1);
-				SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
-				timerStart(0, ClockDivider_1,debugfr1 << 4, dmaAtimerinter);
-				//senddebug32(debugfr1 << 4);
-			}
-		}
-		else
-		{
-			if(TM1CNT_H & 0x80)
-			{
-				//SCHANNEL_LENGTH(4) = 0xFFFFFFFF;
-				debugsrc1 = DMA2SAD_L | (DMA2SAD_H << 16);
-				//senddebug32(debugsrc1);
-				SCHANNEL_CR(4) |= 0x80000000 |SOUND_REPEAT; //start now
-				timerStart(0, ClockDivider_1,debugfr1 << 4, dmaAtimerinter);
-				//senddebug32(debugfr1 << 4);
-			}
-		}
-	}
-	else
-	{
-		if(DMA2DAD_L == 0x00A4 && DMA2DAD_H == 0x0400 && (DMA2CNT_H & 0x8000))
-		{
-			//FIFO B
-			if(tacktgeber_sound_FIFO_DMA_B == 0)
-			{
-				if(TM0CNT_H & 0x80) //started timer
-				{
-					//SCHANNEL_LENGTH(5) = 0xFFFFFFFF;
-					debugsrc2 = DMA2SAD_L | (DMA2SAD_H << 16);
-					//senddebug32(debugsrc2);
-					SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
-					timerStart(1, ClockDivider_1,debugfr2 << 4, dmaBtimerinter);
-				//senddebug32(debugfr2 << 4);
-				}
-			}
-			else
-			{
-				if(TM1CNT_H & 0x80)
-				{
-					//SCHANNEL_LENGTH(5) = 0xFFFFFFFF;
-					debugsrc2 = DMA2SAD_L | (DMA2SAD_H << 16);
-					//senddebug32(debugsrc2);
-					SCHANNEL_CR(5) |= 0x80000000 |SOUND_REPEAT; //start now
-					timerStart(1, ClockDivider_1,debugfr2 << 4, dmaBtimerinter);
-				}
-			}
-		}
-
-	}
-
-
-
-}

@@ -1,5 +1,7 @@
 //functions
 
+//#define standalone
+
 #define arm9advsound
 
 #define sounddebugeraddv
