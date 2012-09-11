@@ -37,7 +37,7 @@
 
 
 
-#define ichflytestkeypossibillity
+//#define ichflytestkeypossibillity
 
 //#define powerpatches //do some hacky things that give the emulator more Vb in some cases.
 

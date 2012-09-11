@@ -56,17 +56,19 @@ void senddebug32(u32 val)
 	REG_IPC_FIFO_TX = val;
 }
 
+#ifdef notdef
 void dmaAtimerinter()
 {
-	int oldIME = enterCriticalSection();
+/*	int oldIME = enterCriticalSection();
 	REG_IPC_FIFO_TX = debugsrc1;
 	debugsrc1+=16;
 	while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
-	int temp1 = REG_IPC_FIFO_RX;
+	u32 temp1 = REG_IPC_FIFO_RX;
 	while(temp1 != 0x1) //can't happen else
 	{
 		while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
-		newvalwrite(temp1 & ~0xC0000000,REG_IPC_FIFO_RX);
+		u32 temp2 = REG_IPC_FIFO_RX;
+		newvalwrite(temp1 & ~0xC0000000,temp2);
 		while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 		temp1 = REG_IPC_FIFO_RX;
 	}
@@ -79,19 +81,20 @@ void dmaAtimerinter()
 	}
 	if(dmaApart == 0) dmaApart = 1;
 	else dmaApart = 0;
-	leaveCriticalSection(oldIME);
+	leaveCriticalSection(oldIME);*/
 }
 void dmaBtimerinter()
 {
-	int oldIME = enterCriticalSection();
+	/*int oldIME = enterCriticalSection();
 	REG_IPC_FIFO_TX = debugsrc2;
 	debugsrc2+=0x10;
 	while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
-	int temp1 = REG_IPC_FIFO_RX;
+	u32 temp1 = REG_IPC_FIFO_RX;
 	while(temp1 != 0x1)  //my the irq is not tiggerd yet
 	{
 		while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
-		newvalwrite(temp1& ~0xC0000000,REG_IPC_FIFO_RX);
+		u32 temp2 = REG_IPC_FIFO_RX;
+		newvalwrite(temp1 & ~0xC0000000,temp2);
 		while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 		temp1 = REG_IPC_FIFO_RX;
 	}
@@ -104,15 +107,32 @@ void dmaBtimerinter()
 	}
 	if(dmaBpart == 0) dmaBpart = 1;
 	else dmaBpart = 0;
-	leaveCriticalSection(oldIME);
+	leaveCriticalSection(oldIME);*/
 }
-
+#endif
+void dmaAtimerinter()
+{
+	REG_IPC_FIFO_TX = debugsrc1 + 0x400000;
+	if(dmaApart)REG_IPC_FIFO_TX = (u32)(soundbuffA + 0x10); // time criticall todo lockup
+	else REG_IPC_FIFO_TX = (u32)soundbuffA;
+	debugsrc1+=0x10;
+	if(dmaApart == 0) dmaApart = 1;
+	else dmaApart = 0;
+}
+void dmaBtimerinter()
+{
+	REG_IPC_FIFO_TX = debugsrc2 + 0x400000;
+	if(dmaBpart)REG_IPC_FIFO_TX = (u32)(soundbuffB + 0x10); //time criticall todo lockup
+	else REG_IPC_FIFO_TX = (u32)soundbuffB;
+	debugsrc2+=0x10;
+	if(dmaBpart == 0) dmaBpart = 1;
+	else dmaBpart = 0;
+}
 bool autodetectdetect = false;
 
 
 void newvalwrite(u32 addr,u32 val)
 {
-			int oldIME = enterCriticalSection();
 			switch(addr)
 			{
 			  case 0xBC:
@@ -273,7 +293,6 @@ void newvalwrite(u32 addr,u32 val)
 				//senddebug32(REG_IPC_FIFO_CR);
 				break;
 			}
-			leaveCriticalSection(oldIME);
 }
 
 //---------------------------------------------------------------------------------
@@ -309,7 +328,7 @@ int main() {
 		//4-5 FIFO
 		//ledBlink(1);
 		//swiWaitForVBlank();
-		if((REG_VCOUNT == callline) /*&& (REG_IPC_FIFO_CR & IPC_FIFO_SEND_EMPTY)*/ && (REG_KEYXY & 0x1)) //X not pressed
+		if((REG_VCOUNT == callline) && (REG_KEYXY & 0x1)) //X not pressed && (REG_IPC_FIFO_CR & IPC_FIFO_SEND_EMPTY)
 		{
 			REG_IPC_FIFO_TX = 0x3F00BEEF; //send cmd 0x3F00BEEF
 			while(REG_VCOUNT == callline); //don't send 2 or more
@@ -319,8 +338,8 @@ int main() {
 			if(!ykeypp)
 			{
 				REG_IPC_FIFO_TX = 0x4200BEEF;
-				while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
-				int val2 = REG_IPC_FIFO_RX; //Value skip
+				//while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
+				//int val2 = REG_IPC_FIFO_RX; //Value skip
 				ykeypp = true;
 			}
 		}
@@ -331,6 +350,7 @@ int main() {
 
 		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))
 		{
+			int oldIME = enterCriticalSection();
 #ifdef checkforerror
 			if(REG_IPC_FIFO_CR & IPC_FIFO_ERROR)
 			{
@@ -338,9 +358,9 @@ int main() {
 				//REG_IPC_FIFO_CR |= IPC_FIFO_ERROR;
 			}
 #endif
-			int addr = (REG_IPC_FIFO_RX & ~0xC0000000/*todo*/); //addr + flags //flags 2 most upperen Bits dma = 0 u8 = 1 u16 = 2 u32 = 3
+			u32 addr = (REG_IPC_FIFO_RX & ~0xC0000000/*todo*/); //addr + flags //flags 2 most upperen Bits dma = 0 u8 = 1 u16 = 2 u32 = 3
 			while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
-			int val = REG_IPC_FIFO_RX; //Value skip add for speedup
+			u32 val = REG_IPC_FIFO_RX; //Value skip add for speedup
 #ifdef checkforerror
 			if(REG_IPC_FIFO_CR & IPC_FIFO_ERROR)
 			{
@@ -356,6 +376,7 @@ int main() {
 				//REG_IPC_FIFO_CR |= IPC_FIFO_ERROR;
 			}
 #endif
+			leaveCriticalSection(oldIME);
 		}
 	}
 	return 0;

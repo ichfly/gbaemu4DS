@@ -30,14 +30,14 @@ void arm7dmareq()
 	{
 		//counttrans++;
 		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
-		int i = 0;
-		u32* src = (u32*)REG_IPC_FIFO_RX;
-		src = srctest+=4;
 		//if(teil) src = (u32*)test2;
 		//teil = teil ? 0:1;
 		//sprintf(temp,"%08X",src);
+			int i = 0;
+			u32* src = (u32*)REG_IPC_FIFO_RX;
 		if(src < (u32*)0x10000000)		
 		{
+			src = srctest+=4;
 			//iprintf("%08X\r\n",REG_IPC_FIFO_RX);
 			//iprintf("%08X %08X\n\r",src,REG_IPC_FIFO_CR);
 			REG_IPC_FIFO_TX = 0x1;
@@ -136,7 +136,10 @@ int main( int argc, char **argv)
 	irqEnable(IRQ_FIFO_NOT_EMPTY);
 	iprintf("test4");
 	REG_IPC_FIFO_TX = 0x1FFFFFFF; //Vsync
-	REG_IPC_FIFO_TX = 0x159;
+	REG_IPC_FIFO_TX = 170;
+
+	swiWaitForVBlank();
+
 
 	REG_IPC_FIFO_TX = 0x82; //vol
 	REG_IPC_FIFO_TX = 0x0304;
@@ -146,7 +149,7 @@ int main( int argc, char **argv)
 	REG_IPC_FIFO_TX = 0xBE;
 	REG_IPC_FIFO_TX = 0x0001;
 
-	swiWaitForVBlank();
+	while(1)swiWaitForVBlank();
 
 
 	REG_IPC_FIFO_TX = 0xC0; //dest

@@ -110,6 +110,8 @@ int dasistnurzumtesten = 0;
 
 extern u32 arm7amr9buffer;
 
+
+#ifdef very_old_sound
 void arm7dmareq()
 {
 #ifdef advanced_irq_check
@@ -169,7 +171,7 @@ void arm7dmareq()
 			{
 				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
 				CPUWriteBatteryFile(savePath);
-				REG_IPC_FIFO_TX = 0;
+				//REG_IPC_FIFO_TX = 0;
 				continue;
 			}
 			iprintf("error rec %08X %08X\r\n",src,REG_IPC_FIFO_CR);
@@ -199,6 +201,102 @@ void arm7dmareqandcheat()
 				src++;
 				i++;
 			}
+		}
+		else
+		{
+			if(src == (u32*)0x3F00BEEF)
+			{
+				cheatsCheckKeys();
+				VblankHandler();
+			}
+			if(src == (u32*)0x4100BEEF)
+			{
+				frameasyncsync();
+			}
+			if(src == (u32*)0x4200BEEF)
+			{
+				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
+				CPUWriteBatteryFile(savePath);
+				REG_IPC_FIFO_TX = 0;
+			}
+		}
+		//if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))arm7dmareqandcheat();
+	}
+
+ }
+#endif
+void arm7dmareq()
+{
+#ifdef advanced_irq_check
+	REG_IF = IRQ_FIFO_NOT_EMPTY;
+#endif
+	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //handel all cmds
+	{
+		//counttrans++;
+		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
+		int i = 0;
+		u32* src = (u32*)REG_IPC_FIFO_RX;
+#ifdef unsecamr7com
+		if(src < (u32*)0x10000000)		
+#else
+		if(src < (u32*)0x8000000 && src > (u32*)0x2000000)
+#endif
+		{
+			while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
+			void * destination = (void*)REG_IPC_FIFO_RX;
+			memcpy(destination,src,0x10);
+		}
+		else
+		{
+			if(src == (u32*)0x3F00BEEF)
+			{
+				VblankHandler();
+				continue;
+			}
+			if(src == (u32*)0x4000BEEF)
+			{
+				while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
+				iprintf("arm7 %08X\r\n",REG_IPC_FIFO_RX);
+				continue;
+			}
+			if(src == (u32*)0x4100BEEF)
+			{
+				frameasyncsync();
+				continue;
+			}
+			if(src == (u32*)0x4200BEEF)
+			{
+				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
+				CPUWriteBatteryFile(savePath);
+				//REG_IPC_FIFO_TX = 0;
+				continue;
+			}
+			iprintf("error rec %08X %08X\r\n",src,REG_IPC_FIFO_CR);
+		}
+		//iprintf("e %08X\r\n",REG_IPC_FIFO_CR);
+	}
+
+ }
+void arm7dmareqandcheat()
+{
+#ifdef advanced_irq_check
+	REG_IF = IRQ_FIFO_NOT_EMPTY;
+#endif
+	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //handel all cmds
+	{
+		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
+		int i = 0;
+		u32* src = (u32*)REG_IPC_FIFO_RX;
+		//iprintf("i %08X\r\n",src);
+#ifdef unsecamr7com
+		if(src < (u32*)0x10000000)		
+#else
+		if(src < (u32*)0x8000000 && src > (u32*)0x2000000)
+#endif
+		{
+			while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
+			void * destination = (void*)REG_IPC_FIFO_RX;
+			memcpy(destination,src,0x10);
 		}
 		else
 		{
