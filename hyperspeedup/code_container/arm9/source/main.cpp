@@ -6,6 +6,7 @@
 #include <nds.h>
 #include <stdio.h>
 
+#include "../../gloabal/cpuglobal.h"
 
 #include <filesystem.h>
 #include "GBA.h"
@@ -78,6 +79,7 @@ typedef struct
 #include <stdarg.h>
 #include <string.h>
 
+u8 arm7exchangefild[0x100];
 
 #define INT_TABLE_SECTION __attribute__((section(".dtcm")))
 
@@ -279,7 +281,7 @@ else
 //data protbuff
 #ifdef arm9advsound
 REG_IPC_FIFO_TX = 0x1FFFFFFA; //load buffer
-REG_IPC_FIFO_TX = arm7amr9buffer = (u32)malloc(0x100); //buffer for arm7
+REG_IPC_FIFO_TX = arm7amr9buffer = (u32)arm7exchangefild; //buffer for arm7
 #endif
 //test
 

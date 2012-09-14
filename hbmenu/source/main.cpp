@@ -101,7 +101,7 @@ char* readabelnameversionsschar[18] =
 char* pathversionschar[18] =
 	{"fat:/ichflyr4igoldgbaemu/oldirq.loader","fat:/ichflyr4igoldgbaemu/newirq.loader","fat:/ichflyr4igoldgbaemu/advirq.loader","fat:/ichflyr4igoldgbaemu/HblancDMA.loader","fat:/ichflyr4igoldgbaemu/forceHblanc.loader",
 	"fat:/ichflyr4igoldgbaemu/newirqsound.loader","fat:/ichflyr4igoldgbaemu/advirqsound.loader","fat:/ichflyr4igoldgbaemu/HblancDMAsound.loader","fat:/ichflyr4igoldgbaemu/forceHblancsound.loader",
-	"fat:/ichflyr4igoldgbaemu/newirqsoundsc.loader","fat:/ichflyr4igoldgbaemu/advirqsoundsc.loader","fat:/ichflyr4igoldgbaemu/HblancDMAsoundsc.loader","forceHblancsoundsc.loader",
+	"fat:/ichflyr4igoldgbaemu/newirqsoundsc.loader","fat:/ichflyr4igoldgbaemu/advirqsoundsc.loader","fat:/ichflyr4igoldgbaemu/HblancDMAsoundsc.loader","fat:/ichflyr4igoldgbaemu/forceHblancsoundsc.loader",
 	"fat:/ichflyr4igoldgbaemu/oldirqsc.loader","fat:/ichflyr4igoldgbaemu/newirqsc.loader","fat:/ichflyr4igoldgbaemu/advirqsc.loader","fat:/ichflyr4igoldgbaemu/HblancDMAsc.loader","fat:/ichflyr4igoldgbaemu/forceHblancsc.loader"};
 
 #define nummerVersions 18
@@ -436,7 +436,7 @@ int main(int argc, char **argv) {
 			u32 matching = 0;
 			for(int i2 = 0;i2 < patchheader.listentr;i2++)
 			{
-				if((u32)gbaheaderf.gamecode == entries[i2].gamecode)
+				if(*(u32*)gbaheaderf.gamecode == entries[i2].gamecode)
 				{
 					if(!entries[i2].homebrew)
 					{
@@ -457,7 +457,7 @@ int main(int argc, char **argv) {
 			//setsettings
 			if(patchPath[0] == 0)
 			{
-					sprintf(patchPath,"%s",entries[0].patchPath);
+					sprintf(patchPath,"%s",entries[matching].patchPath);
 			} 
 			
 			
@@ -468,28 +468,28 @@ int main(int argc, char **argv) {
 			char temp2[MAXPATHLEN * 2];
 			char temp3[MAXPATHLEN * 2];
 			
-			if(entries[0].swaplcd)argarray.push_back("1");
+			if(entries[matching].swaplcd)argarray.push_back("1");
 			else argarray.push_back("0");
 			
-			sprintf(temp1,"%X",entries[0].savfetype);
+			sprintf(temp1,"%X",entries[matching].savfetype);
 			argarray.push_back(temp1);
 			
-			sprintf(temp2,"%X",entries[0].frameskip);
+			sprintf(temp2,"%X",entries[matching].frameskip);
 			argarray.push_back(temp2);
 			
-			if(entries[0].frameskipauto)argarray.push_back("1");
+			if(entries[matching].frameskipauto)argarray.push_back("1");
 			else argarray.push_back("0");
 			
-			sprintf(temp3,"%X",entries[0].frameline);
+			sprintf(temp3,"%X",entries[matching].frameline);
 			argarray.push_back(temp3);
 			
-			if(entries[0].fastpu)argarray.push_back("1");
+			if(entries[matching].fastpu)argarray.push_back("1");
 			else argarray.push_back("0");
 			
-			if(entries[0].mb)argarray.push_back("1");
+			if(entries[matching].mb)argarray.push_back("1");
 			else argarray.push_back("0");
 			
-			argarray.at(0) = pathversionschar[entries[0].loadertype];
+			argarray.at(0) = pathversionschar[entries[matching].loadertype];
 			
 		}
 			//argarray.at(0) = filePath;

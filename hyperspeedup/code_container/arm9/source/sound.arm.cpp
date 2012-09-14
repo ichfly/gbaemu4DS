@@ -2,11 +2,7 @@
 #include <stdio.h>
 #include "ichflysettings.h"
 #include "main.h"
-
-
-
-
-
+#include "../../gloabal/cpuglobal.h"
 
 
 
@@ -235,36 +231,44 @@ void arm7dmareq()
 		//counttrans++;
 		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
 		int i = 0;
-		u32* src = (u32*)REG_IPC_FIFO_RX;
+		u32 src = REG_IPC_FIFO_RX;
 #ifdef unsecamr7com
 		if(src < (u32*)0x10000000)		
 #else
-		if(src < (u32*)0x8000000 && src > (u32*)0x2000000)
+		if(src < 0x8000000 && src > 0x2000000)
 #endif
 		{
+#ifdef neu_sound_16fifo
+			register u32 temp_dat = 0;
+			     if((src & 0x3) == 1)temp_dat = 0x10;
+			else if((src & 0x3) == 2)temp_dat = 0x50;
+			else if((src & 0x3) == 3)temp_dat = 0x60;
+			memcpy((void*)(arm7amr9buffer + temp_dat),(void*)(src & ~0x3),0x10);
+#else
 			while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 			void * destination = (void*)REG_IPC_FIFO_RX;
-			memcpy(destination,src,0x10);
+			memcpy(destination,(u32*)src,0x10);
+#endif
 		}
 		else
 		{
-			if(src == (u32*)0x3F00BEEF)
+			if(src == 0x3F00BEEF)
 			{
 				VblankHandler();
 				continue;
 			}
-			if(src == (u32*)0x4000BEEF)
+			if(src == 0x4000BEEF)
 			{
 				while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 				iprintf("arm7 %08X\r\n",REG_IPC_FIFO_RX);
 				continue;
 			}
-			if(src == (u32*)0x4100BEEF)
+			if(src == 0x4100BEEF)
 			{
 				frameasyncsync();
 				continue;
 			}
-			if(src == (u32*)0x4200BEEF)
+			if(src == 0x4200BEEF)
 			{
 				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
 				CPUWriteBatteryFile(savePath);
@@ -272,6 +276,7 @@ void arm7dmareq()
 				continue;
 			}
 			iprintf("error rec %08X %08X\r\n",src,REG_IPC_FIFO_CR);
+			while(1); //stop to prevent dammage
 		}
 		//iprintf("e %08X\r\n",REG_IPC_FIFO_CR);
 	}
@@ -286,30 +291,38 @@ void arm7dmareqandcheat()
 	{
 		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
 		int i = 0;
-		u32* src = (u32*)REG_IPC_FIFO_RX;
+		u32 src = REG_IPC_FIFO_RX;
 		//iprintf("i %08X\r\n",src);
 #ifdef unsecamr7com
-		if(src < (u32*)0x10000000)		
+		if(src < 0x10000000)		
 #else
-		if(src < (u32*)0x8000000 && src > (u32*)0x2000000)
+		if(src < 0x8000000 && src > 0x2000000)
 #endif
 		{
+#ifdef neu_sound_16fifo
+			register u32 temp_dat = 0;
+			     if((src & 0x3) == 1)temp_dat = 0x10;
+			else if((src & 0x3) == 2)temp_dat = 0x50;
+			else if((src & 0x3) == 3)temp_dat = 0x60;
+			memcpy((void*)(arm7amr9buffer + temp_dat),(void*)(src & ~0x3),0x10);
+#else
 			while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 			void * destination = (void*)REG_IPC_FIFO_RX;
-			memcpy(destination,src,0x10);
+			memcpy(destination,(u32*)src,0x10);
+#endif
 		}
 		else
 		{
-			if(src == (u32*)0x3F00BEEF)
+			if(src == 0x3F00BEEF)
 			{
 				cheatsCheckKeys();
 				VblankHandler();
 			}
-			if(src == (u32*)0x4100BEEF)
+			if(src == 0x4100BEEF)
 			{
 				frameasyncsync();
 			}
-			if(src == (u32*)0x4200BEEF)
+			if(src == 0x4200BEEF)
 			{
 				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
 				CPUWriteBatteryFile(savePath);

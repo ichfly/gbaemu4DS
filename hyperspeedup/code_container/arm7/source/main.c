@@ -1,6 +1,8 @@
 #include <nds.h>
 #include <nds/arm7/audio.h>
 
+#include "../../gloabal/cpuglobal.h"
+
 u16 callline = 0xFFFF;
 
 //#define checkforerror
@@ -112,18 +114,28 @@ void dmaBtimerinter()
 #endif
 void dmaAtimerinter()
 {
+#ifdef neu_sound_16fifo
+	if(dmaApart)REG_IPC_FIFO_TX = debugsrc1 + 0x400001;
+	else REG_IPC_FIFO_TX = debugsrc1 + 0x400000;
+#else
 	REG_IPC_FIFO_TX = debugsrc1 + 0x400000;
 	if(dmaApart)REG_IPC_FIFO_TX = (u32)(soundbuffA + 0x10); // time criticall todo lockup
 	else REG_IPC_FIFO_TX = (u32)soundbuffA;
+#endif
 	debugsrc1+=0x10;
 	if(dmaApart == 0) dmaApart = 1;
 	else dmaApart = 0;
 }
 void dmaBtimerinter()
 {
+#ifdef neu_sound_16fifo
+	if(dmaApart)REG_IPC_FIFO_TX = debugsrc1 + 0x400002;
+	else REG_IPC_FIFO_TX = debugsrc1 + 0x400003;
+#else
 	REG_IPC_FIFO_TX = debugsrc2 + 0x400000;
 	if(dmaBpart)REG_IPC_FIFO_TX = (u32)(soundbuffB + 0x10); //time criticall todo lockup
 	else REG_IPC_FIFO_TX = (u32)soundbuffB;
+#endif
 	debugsrc2+=0x10;
 	if(dmaBpart == 0) dmaBpart = 1;
 	else dmaBpart = 0;
@@ -244,7 +256,7 @@ void newvalwrite(u32 addr,u32 val)
 					SCHANNEL_SOURCE(5) = soundbuffB;
 					break;
 			case 0x1FFFFFFB: //wait
-				if(autodetectdetect /* && (REG_VCOUNT > 160 || REG_VCOUNT < callline)*/ )
+				if(autodetectdetect  && (REG_KEYXY & 0x1) /* && (REG_VCOUNT > 160 || REG_VCOUNT < callline)*/ )
 				{
 					REG_IPC_FIFO_TX = 0x4100BEEF; //send cmd 0x4100BEEF
 				}
@@ -295,6 +307,8 @@ void newvalwrite(u32 addr,u32 val)
 			}
 }
 
+
+#define noenterCriticalSection
 //---------------------------------------------------------------------------------
 int main() {
 //---------------------------------------------------------------------------------
@@ -322,6 +336,7 @@ int main() {
 	SCHANNEL_LENGTH(5) = 8;
 
 	bool ykeypp = false;
+	bool isincallline = false;
 	while (true) {
 		//sound alloc
 		//0-3 matching gba
@@ -330,8 +345,13 @@ int main() {
 		//swiWaitForVBlank();
 		if((REG_VCOUNT == callline) && (REG_KEYXY & 0x1)) //X not pressed && (REG_IPC_FIFO_CR & IPC_FIFO_SEND_EMPTY)
 		{
-			REG_IPC_FIFO_TX = 0x3F00BEEF; //send cmd 0x3F00BEEF
-			while(REG_VCOUNT == callline); //don't send 2 or more
+			if(!isincallline)REG_IPC_FIFO_TX = 0x3F00BEEF; //send cmd 0x3F00BEEF
+			isincallline = true;
+			//while(REG_VCOUNT == callline); //don't send 2 or more
+		}
+		else
+		{
+			isincallline = false;
 		}
 		if(!(REG_KEYXY & 0x2))
 		{
@@ -350,7 +370,9 @@ int main() {
 
 		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))
 		{
+#ifndef noenterCriticalSection
 			int oldIME = enterCriticalSection();
+#endif
 #ifdef checkforerror
 			if(REG_IPC_FIFO_CR & IPC_FIFO_ERROR)
 			{
@@ -376,7 +398,9 @@ int main() {
 				//REG_IPC_FIFO_CR |= IPC_FIFO_ERROR;
 			}
 #endif
+#ifndef noenterCriticalSection
 			leaveCriticalSection(oldIME);
+#endif
 		}
 	}
 	return 0;
@@ -461,7 +485,7 @@ void updatetakt()
 	//FIFO A
 	if(tacktgeber_sound_FIFO_DMA_A == 0)
 	{
-		int seek;
+		/*int seek;
 		switch(TM0CNT_H & 0x3)
 		{
 			case 0:
@@ -476,13 +500,13 @@ void updatetakt()
 			case 3:
 				seek = 10;
 				break;
-		}
+		}*/
 		//SCHANNEL_TIMER(4) = debugfr1 = (((-TM0CNT_L) << seek) & 0xFFFF) << 1;
 		SCHANNEL_TIMER(4) = debugfr1 = TM0CNT_L;
 	}
 	else
 	{
-		int seek;
+		/*int seek;
 		switch(TM1CNT_H & 0x3)
 		{
 			case 0:
@@ -497,14 +521,14 @@ void updatetakt()
 			case 3:
 				seek = 10;
 				break;
-		}
+		}*/
 		//SCHANNEL_TIMER(4) = debugfr1 = (((-TM1CNT_L) & 0xFFFF) << seek) << 1;
 		SCHANNEL_TIMER(4) = debugfr1 = TM1CNT_L;
 	}
 	//FIFO B
 	if(tacktgeber_sound_FIFO_DMA_B == 0)
 	{
-		int seek;
+		/*int seek;
 		switch(TM0CNT_H & 0x3)
 		{
 			case 0:
@@ -519,13 +543,13 @@ void updatetakt()
 			case 3:
 				seek = 10;
 				break;
-		}
+		}*/
 		//SCHANNEL_TIMER(5) = debugfr2 = (((-TM0CNT_L) << seek) & 0xFFFF) << 1;
 		SCHANNEL_TIMER(5) = debugfr2 = TM0CNT_L;
 	}
 	else
 	{
-		int seek;
+		/*int seek;
 		switch(TM1CNT_H & 0x3)
 		{
 			case 0:
@@ -540,7 +564,7 @@ void updatetakt()
 			case 3:
 				seek = 10;
 				break;
-		}
+		}*/
 		//SCHANNEL_TIMER(5) = debugfr2 = (((-TM1CNT_L) << seek) & 0xFFFF) << 1; //everything is 2 times faster than on ther gba here
 		SCHANNEL_TIMER(5) = debugfr2 = TM1CNT_L; //everything is 2 times faster than on ther gba here
 	}
