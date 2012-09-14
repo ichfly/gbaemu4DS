@@ -396,12 +396,12 @@ int main(int argc, char **argv) {
 			strcpy(filePath,argv[1]);
 
 
-			sprintf(savePath,"%s.sav",szFile);
+			sprintf(savePath,"%s.sav",argv[1]);
 			FILE *pFile2 = fopen(savePath, "r");
 			if(pFile2==NULL)savePath[0] = 0;
 			fclose(pFile2);
 			
-			sprintf(patchPath,"%s.pat",szFile);
+			sprintf(patchPath,"%s.pat",argv[1]);
 			FILE *pFile3 = fopen(patchPath, "r");
 			if(pFile3==NULL)patchPath[0] = 0;
 			fclose(pFile3);
