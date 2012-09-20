@@ -145,11 +145,6 @@ int main(int argc, char **argv) {
 	videoSetMode(MODE_5_2D);
 	vramSetBankA(VRAM_A_MAIN_BG);
 
-	// set up our bitmap background
-	bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
-	
-	decompress(hbmenu_bannerBitmap, BG_GFX,  LZ77Vram);
-
 	// Subscreen as a console
 	videoSetModeSub(MODE_0_2D);
 	vramSetBankH(VRAM_H_SUB_BG);
@@ -175,6 +170,11 @@ int main(int argc, char **argv) {
 		vector<char*> argarray;
 		if(argc != 2)
 		{
+			// set up our bitmap background
+			bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
+			
+			decompress(hbmenu_bannerBitmap, BG_GFX,  LZ77Vram);
+
 			//filename = browseForFile(extensionList);
 			browseForFile(extensionList);
 			argarray.push_back("a");
@@ -371,7 +371,7 @@ int main(int argc, char **argv) {
 					argarray.at(0) = pathversionschar[ausgewauhlt];
 					break;
 				}
-				if (pressed&KEY_DOWN && ausgewauhlt != nummerVersions){ ausgewauhlt++;}
+				if (pressed&KEY_DOWN && ausgewauhlt < nummerVersions){ ausgewauhlt++;}
 				if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
 			}
 			

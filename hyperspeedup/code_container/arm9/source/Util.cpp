@@ -653,6 +653,49 @@ void patchit(int romSize2)
 			fseek(patchf,coo,SEEK_SET);
 			__irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareqandcheat,irqTable);
 			break;
+		case 2:
+			u32 gbaoffset;
+			fread((void*)&gbaoffset,1,0x4,patchf);
+			u32 payloadsize;
+			fread((void*)&payloadsize,1,0x4,patchf);
+			int offset;
+			fread((void*)&offset,1,0x4,patchf);
+			int coo = ftell(patchf);
+			fseek(patchf,offset,SEEK_SET);
+			fread((void*)gbaoffset,1,payloadsize);
+			fseek(patchf,coo,SEEK_SET);
+			break;
+		case 3:
+			u8 type;
+			fread((void*)&type,1,0x1,patchf);
+			u32 offset;
+			fread((void*)&offset,1,0x4,patchf);
+			int address;
+			fread((void*)&address,1,0x4,patchf);
+			u32 Condition;
+			fread((void*)&Condition,1,0x4,patchf);
+			if(offset & BIT(31))offset = (offset & ~BIT(31)) + rom;
+			u32 topatchoffset = address - offset;
+			switch (type)
+			{
+				case 0:
+					topatchoffset =- 4;
+					*(u16*)address = (u16)0xF000 | (u16)((topatchoffset >> 12) & 0x7FF);
+					*(u16*)(address + 2) = (u16)0xF800 | (u16)((topatchoffset >> 1) & 0x7FF);
+					break;
+				case 1:
+					topatchoffset =- 4;
+					*(u16*)address = (u16)0xF000 + (u16)((topatchoffset >> 12) & 0x7FF);
+					*(u16*)(address + 2) = (u16)0xE800 + (u16)((topatchoffset >> 1) & 0x7FF);
+					break;
+				case 2:
+					*(u32*)address = (Condition << 0x1B) | 0x0A000000 | ((topatchoffset >> 2) & ~0xFF000000);
+					break;
+				case 3:
+					*(u32*)address = (Condition << 0x1B) | 0x0B000000 | ((topatchoffset >> 2) & ~0xFF000000);
+					break;
+			}
+			break;
 		}
 	}
 }
