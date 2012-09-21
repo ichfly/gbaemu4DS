@@ -82,25 +82,7 @@ u32 CPUReadMemoryQuick(u32 addr);
   READ32LE(((u32*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
 
 
-static u32 CPUReadMemoryreal(u32 address);
 
-static inline u32 CPUReadMemory(u32 address)
- {
-	return CPUReadMemoryreal(address);
- }
-
-static u32 CPUReadHalfWordreal(u32 address);
-
-static inline u32 CPUReadHalfWord(u32 address)
- {
-	return CPUReadHalfWordreal(address);
- }
-static u8 CPUReadBytereal(u32 address);
-
-static inline u8 CPUReadByte(u32 address)
- {
-	return CPUReadBytereal(address);
- }
 
 
 static inline void updateVC()
@@ -144,7 +126,7 @@ static inline void updateVC()
 }
 
 
- static inline u32 CPUReadMemoryreal(u32 address) //ichfly not inline is faster because it is smaler
+static inline u32 CPUReadMemoryreal(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef DEV_VERSION
   if(address & 3) {  
@@ -523,7 +505,7 @@ static inline u32 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster
 
 static inline u16 CPUReadHalfWordSigned(u32 address)
 {
-  u16 value = CPUReadHalfWord(address);
+  u16 value = CPUReadHalfWordreal(address);
   if((address & 1))
     value = (s8)value;
   return value;
@@ -1131,6 +1113,7 @@ static inline void CPUWriteByte(u32 address, u8 b)
     break;
   }
 }
-
-
+u32 CPUReadMemory(u32 address);
+u32 CPUReadHalfWord(u32 address);
+u8 CPUReadByte(u32 address);
 #endif //VBA_GBAinline_H

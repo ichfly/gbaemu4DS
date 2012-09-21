@@ -16,6 +16,7 @@
 // along with this program; if not, write to the Free Software Foundation,
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -110,6 +111,23 @@ extern int systemRedShift;
 extern int systemGreenShift;
 extern int systemBlueShift;
 
+extern u32 CPUReadMemorypu(u32 address);
+extern u32 CPUReadHalfWordpu(u32 address);
+extern u8 CPUReadBytepu(u32 address);
+extern void CPUWriteMemorypuextern(u32 address, u32 value);
+extern void CPUWriteHalfWordpuextern(u32 address, u16 value);
+extern void CPUWriteBytepuextern(u32 address, u8 b);
+
+extern u32 CPUReadMemory(u32 address);
+extern u32 CPUReadHalfWord(u32 address);
+extern u8 CPUReadByte(u32 address);
+extern void CPUWriteMemoryextern(u32 address, u32 value);
+extern void CPUWriteHalfWordextern(u32 address, u16 value);
+extern void CPUWriteByteextern(u32 address, u8 b);
+
+extern u32 ichfly_readu32extern(int pos);
+extern u16 ichfly_readu16extern(int pos);
+extern u8 ichfly_readu8extern(int pos);
 
 /*
 static int (ZEXPORT *utilGzWriteFunc)(gzFile, const voidp, unsigned int) = NULL;
@@ -627,6 +645,7 @@ void patchit(int romSize2)
 		switch (type)
 		{
 		case 0:
+			{
 			int offsetgba;
 			int offsetthisfile;
 			fread((void*)&offsetgba,1,0x4,patchf);
@@ -642,18 +661,22 @@ void patchit(int romSize2)
 			{
 				getandpatchmap(offsetgba,offsetthisfile);
 			}
+			}
 			break;
 		case 1:
+			{
 			fread((void*)&cheatsNumber,1,0x4,patchf);
 			int offset;
 			fread((void*)&offset,1,0x4,patchf);
-			int coo = ftell(patchf);
+			int coo5 = ftell(patchf);
 			fseek(patchf,offset,SEEK_SET);
 			fread((void*)cheatsList,1,cheatsNumber*28,patchf);
-			fseek(patchf,coo,SEEK_SET);
+			fseek(patchf,coo5,SEEK_SET);
 			__irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareqandcheat,irqTable);
+			}
 			break;
 		case 2:
+			{
 			u32 gbaoffset;
 			fread((void*)&gbaoffset,1,0x4,patchf);
 			u32 payloadsize;
@@ -662,10 +685,12 @@ void patchit(int romSize2)
 			fread((void*)&offset,1,0x4,patchf);
 			int coo = ftell(patchf);
 			fseek(patchf,offset,SEEK_SET);
-			fread((void*)gbaoffset,1,payloadsize);
+			fread((void*)gbaoffset,1,payloadsize,patchf);
 			fseek(patchf,coo,SEEK_SET);
 			break;
+			}
 		case 3:
+			{
 			u8 type;
 			fread((void*)&type,1,0x1,patchf);
 			u32 offset;
@@ -674,7 +699,97 @@ void patchit(int romSize2)
 			fread((void*)&address,1,0x4,patchf);
 			u32 Condition;
 			fread((void*)&Condition,1,0x4,patchf);
-			if(offset & BIT(31))offset = (offset & ~BIT(31)) + rom;
+			if(offset & BIT(31))offset = (offset & ~BIT(31)) + (u32)rom;
+			u32 topatchoffset = address - offset;
+			switch (type)
+			{
+				case 0:
+					topatchoffset =- 4;
+					*(u16*)offset = (u16)0xF000 | (u16)((topatchoffset >> 12) & 0x7FF);
+					*(u16*)(offset + 2) = (u16)0xF800 | (u16)((topatchoffset >> 1) & 0x7FF);
+					break;
+				case 1:
+					topatchoffset =- 4;
+					*(u16*)offset = (u16)0xF000 + (u16)((topatchoffset >> 12) & 0x7FF);
+					*(u16*)(offset + 2) = (u16)0xE800 + (u16)((topatchoffset >> 1) & 0x7FF);
+					break;
+				case 2:
+					*(u32*)offset = (Condition << 0x1B) | 0x0A000000 | ((topatchoffset >> 2) & ~0xFF000000);
+					break;
+				case 3:
+					*(u32*)offset = (Condition << 0x1B) | 0x0B000000 | ((topatchoffset >> 2) & ~0xFF000000);
+					break;
+			}
+			}
+			break;
+			case 4:
+			{
+			u8 type;
+			fread((void*)&type,1,0x1,patchf);
+			u32 offset;
+			fread((void*)&offset,1,0x4,patchf);
+			int function;
+			int address;
+			fread((void*)&function,1,0x4,patchf);
+			switch (function)
+			{
+				case 0:
+					address = (u32)CPUReadMemorypu;
+					break;
+				case 1:
+					address = (u32)CPUReadHalfWordpu;
+					break;
+				case 2:
+					address = (u32)CPUReadBytepu;
+					break;
+				case 3:
+					address = (u32)CPUWriteMemorypuextern;
+					break;
+				case 4:
+					address = (u32)CPUWriteHalfWordpuextern;
+					break;
+				case 5:
+					address = (u32)CPUWriteBytepuextern;
+					break;
+
+
+
+
+
+				case 6:
+					address = (u32)CPUReadMemory;
+					break;
+				case 7:
+					address = (u32)CPUReadHalfWord;
+					break;
+				case 8:
+					address = (u32)CPUReadByte;
+					break;
+				case 9:
+					address = (u32)CPUWriteMemoryextern;
+					break;
+				case 10:
+					address = (u32)CPUWriteHalfWordextern;
+					break;
+				case 11:
+					address = (u32)CPUWriteByteextern;
+					break;
+
+
+
+				case 100:
+					address = (u32)ichfly_readu32extern;
+					break;
+				case 101:
+					address = (u32)ichfly_readu16extern;
+					break;
+				case 102:
+					address = (u32)ichfly_readu8extern;
+					break;
+			}
+			u32 Condition;
+			fread((void*)&Condition,1,0x4,patchf);
+			if(offset & BIT(31))offset = (offset & ~BIT(31)) + (u32)rom;
 			u32 topatchoffset = address - offset;
 			switch (type)
 			{
@@ -694,6 +809,7 @@ void patchit(int romSize2)
 				case 3:
 					*(u32*)address = (Condition << 0x1B) | 0x0B000000 | ((topatchoffset >> 2) & ~0xFF000000);
 					break;
+			}
 			}
 			break;
 		}

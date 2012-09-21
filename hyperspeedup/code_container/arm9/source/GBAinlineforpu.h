@@ -28,7 +28,6 @@
 #include "GBA.h"
 
 #include "ichflysettings.h"
-#include "cpumg.h"
 #include "main.h"
 
 #include <nds/interrupts.h>
@@ -71,7 +70,8 @@ u32 CPUReadMemoryQuick(u32 addr);
 */
 
 
-void updateVCsub()
+
+static inline void updateVCsub()
 {
 		u32 temp = REG_VCOUNT;
 		u32 temp2 = REG_DISPSTAT;
@@ -112,7 +112,7 @@ void updateVCsub()
 }
 
 
-inline u32 CPUReadMemoryrealpu(u32 address)
+static inline u32 CPUReadMemoryrealpu(u32 address)
 {
 
 	//iprintf("%08X",REG_IME);
@@ -256,7 +256,7 @@ inline u32 CPUReadMemoryrealpu(u32 address)
 
 extern u32 myROM[];
 
-inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is faster because it is smaler
+static inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
 	iprintf("r16 %08x\n",address);
@@ -390,7 +390,7 @@ inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is faster beca
   return value;
 }
 
-inline u8 CPUReadByterealpu(u32 address) //ichfly not inline is faster because it is smaler
+static inline u8 CPUReadByterealpu(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
 iprintf("r8 %02x\n",address);
@@ -499,7 +499,7 @@ iprintf("r8 %02x\n",address);
 }
 
 #ifndef asmspeedup
-inline void CPUWriteMemorypu(u32 address, u32 value) //ichfly not inline is faster because it is smaler
+static inline void CPUWriteMemorypu(u32 address, u32 value) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
     iprintf("w32 %08x to %08x\n",value,address);
@@ -601,7 +601,7 @@ inline void CPUWriteMemorypu(u32 address, u32 value) //ichfly not inline is fast
 #else
 extern "C" void CPUWriteMemorypu(u32 address, u32 value);
 #endif
-inline void CPUWriteHalfWordpu(u32 address, u16 value)
+static inline void CPUWriteHalfWordpu(u32 address, u16 value)
 {
 #ifdef printreads
 iprintf("w16 %04x to %08x\r\n",value,address);
@@ -700,7 +700,7 @@ iprintf("w16 %04x to %08x\r\n",value,address);
   }
 }
 
-inline void CPUWriteBytepu(u32 address, u8 b)
+static inline void CPUWriteBytepu(u32 address, u8 b)
 {
 #ifdef printreads
 	iprintf("w8 %02x to %08x\r\n",b,address);
@@ -855,11 +855,16 @@ inline void CPUWriteBytepu(u32 address, u8 b)
 }
 
 
-inline u16 CPUReadHalfWordrealpuSigned(u32 address)
+static inline u16 CPUReadHalfWordrealpuSigned(u32 address)
 {
   u16 value = CPUReadHalfWordrealpu(address);
   if((address & 1))
     value = (s8)value;
   return value;
 }
+
+
+
+
+
 #endif //VBA_GBAinline_H

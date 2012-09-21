@@ -30,7 +30,7 @@ extern FN_MEDIUM_READSECTORS	readSectorslocked;
 extern u32 current_pointer;
 extern u32 allocedfild[buffslots];
 extern u8* greatownfilebuffer;
-inline u8 ichfly_readu8(int pos) //need lockup
+static inline u8 ichfly_readu8(int pos) //need lockup
 {
 
 	// Calculate the sector and byte of the current position,
@@ -54,7 +54,7 @@ inline u8 ichfly_readu8(int pos) //need lockup
 	
 	return asd[sectoroffset];
 }
-inline u16 ichfly_readu16(int pos) //need lockup
+static inline u16 ichfly_readu16(int pos) //need lockup
 {
 
 	// Calculate the sector and byte of the current position,
@@ -79,7 +79,7 @@ inline u16 ichfly_readu16(int pos) //need lockup
 	
 	return *(u16*)(&asd[sectoroffset]);
 }
-inline u32 ichfly_readu32(int pos) //need lockup
+static inline u32 ichfly_readu32(int pos) //need lockup
 {
 
 	// Calculate the sector and byte of the current position,
