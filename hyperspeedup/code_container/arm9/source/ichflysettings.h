@@ -13,9 +13,9 @@
 //#define asmspeedup
 
 
-#define capture_and_pars
+//#define capture_and_pars
 
-#define antyflicker //only work with capture_and_pars
+//#define antyflicker //only work with capture_and_pars
 
 //#define skipper //only work with capture_and_pars
 
@@ -57,6 +57,7 @@
 
 #define usebuffedVcout
 
+#define unsecamr7com
 
 //#define printsaveread
 

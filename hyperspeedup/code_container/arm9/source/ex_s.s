@@ -28,7 +28,7 @@
 @new stacks todo mix some stacks
 __sp_undef	=	__dtcm_top - 0x100;	@ichfly @ 1.792 Byte
 __sp_svc	=	__sp_undef - 0x700;	@ichfly @ 4.096 Byte
-__sp_irq	=	__sp_svc  - 0x1000; @ichfly @ 1.024 Byte each
+__sp_irq	=	__sp_svc  - 0x1000; @ichfly @ 1.024 Byte each @also in interruptDispatcher.s
 
 @========== Exception code ====================
 	

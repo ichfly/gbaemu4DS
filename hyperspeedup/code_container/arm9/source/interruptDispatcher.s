@@ -26,6 +26,11 @@
 #include "ichflysettings.h"
 
 
+@new stacks todo mix some stacks
+__sp_undef	=	__dtcm_top - 0x100;	@ichfly @ 1.792 Byte
+__sp_svc	=	__sp_undef - 0x700;	@ichfly @ 4.096 Byte
+__sp_irq	=	__sp_svc  - 0x1000; @ichfly @ 1.024 Byte each @also in interruptDispatcher.s
+
 	.section .itcm,"ax",%progbits
 
 	.extern	irqTable
@@ -97,8 +102,9 @@ got_handler:
 
 #ifdef gba_handel_IRQ_correct
 
-	ldr r0,=SPtoload
-	ldr r0,[r0]
+	@ldr r0,=SPtoload
+	@ldr r0,[r0]
+	ldr r0,=__sp_irq
 	
 	stmfd	r0!, {r12,SP,lr}	@ {spsr,SP, lr_irq}
 

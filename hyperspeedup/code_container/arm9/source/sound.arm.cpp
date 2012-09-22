@@ -233,7 +233,7 @@ void arm7dmareq()
 		int i = 0;
 		u32 src = REG_IPC_FIFO_RX;
 #ifdef unsecamr7com
-		if(src < (u32*)0x10000000)		
+		if(src < 0x10000000)		
 #else
 		if(src < 0x8000000 && src > 0x2000000)
 #endif
