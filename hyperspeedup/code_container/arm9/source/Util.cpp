@@ -700,16 +700,16 @@ void patchit(int romSize2)
 			u32 Condition;
 			fread((void*)&Condition,1,0x4,patchf);
 			if(offset & BIT(31))offset = (offset & ~BIT(31)) + (u32)rom;
-			u32 topatchoffset = address - offset;
+			u32 topatchoffset = address - offset - 8;
 			switch (type)
 			{
 				case 0:
-					topatchoffset =- 4;
+					topatchoffset =+ 4;
 					*(u16*)offset = (u16)0xF000 | (u16)((topatchoffset >> 12) & 0x7FF);
 					*(u16*)(offset + 2) = (u16)0xF800 | (u16)((topatchoffset >> 1) & 0x7FF);
 					break;
 				case 1:
-					topatchoffset =- 4;
+					topatchoffset =+ 4;
 					*(u16*)offset = (u16)0xF000 + (u16)((topatchoffset >> 12) & 0x7FF);
 					*(u16*)(offset + 2) = (u16)0xE800 + (u16)((topatchoffset >> 1) & 0x7FF);
 					break;
@@ -790,16 +790,16 @@ void patchit(int romSize2)
 			u32 Condition;
 			fread((void*)&Condition,1,0x4,patchf);
 			if(offset & BIT(31))offset = (offset & ~BIT(31)) + (u32)rom;
-			u32 topatchoffset = address - offset;
+			u32 topatchoffset = address - offset - 8;
 			switch (type)
 			{
 				case 0:
-					topatchoffset =- 4;
+					topatchoffset =+ 4;
 					*(u16*)address = (u16)0xF000 | (u16)((topatchoffset >> 12) & 0x7FF);
 					*(u16*)(address + 2) = (u16)0xF800 | (u16)((topatchoffset >> 1) & 0x7FF);
 					break;
 				case 1:
-					topatchoffset =- 4;
+					topatchoffset =+ 4;
 					*(u16*)address = (u16)0xF000 + (u16)((topatchoffset >> 12) & 0x7FF);
 					*(u16*)(address + 2) = (u16)0xE800 + (u16)((topatchoffset >> 1) & 0x7FF);
 					break;

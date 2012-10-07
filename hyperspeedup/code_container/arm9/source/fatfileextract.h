@@ -40,9 +40,9 @@ static inline u8 ichfly_readu8(int pos) //need lockup
 	
 	u8* asd = (u8*)(sectortabel[mappoffset*2 + 1]);
 	
-	if(asd != (u8*)0xFFFFFFFF)return asd[sectoroffset]; //found exit here
+	if(asd != (u8*)0x0)return asd[sectoroffset]; //found exit here
 
-	sectortabel[allocedfild[current_pointer]] = 0xFFFFFFFF; //reset
+	sectortabel[allocedfild[current_pointer]] = 0x0; //reset
 
 	allocedfild[current_pointer] = mappoffset*2 + 1; //set new slot
 	asd = greatownfilebuffer + current_pointer * chucksize;
@@ -64,9 +64,9 @@ static inline u16 ichfly_readu16(int pos) //need lockup
 	
 	u8* asd = (u8*)(sectortabel[mappoffset*2 + 1]);
 	
-	if(asd != (u8*)0xFFFFFFFF)return *(u16*)(&asd[sectoroffset]); //found exit here
+	if(asd != (u8*)0x0)return *(u16*)(&asd[sectoroffset]); //found exit here
 
-	sectortabel[allocedfild[current_pointer]] = 0xFFFFFFFF; //clear old slot
+	sectortabel[allocedfild[current_pointer]] = 0x0; //clear old slot
 
 	allocedfild[current_pointer] = mappoffset*2 + 1; //set new slot
 	asd = greatownfilebuffer + current_pointer * chucksize;
@@ -89,9 +89,9 @@ static inline u32 ichfly_readu32(int pos) //need lockup
 	
 	u8* asd = (u8*)(sectortabel[mappoffset*2 + 1]);
 	
-	if(asd != (u8*)0xFFFFFFFF)return *(u32*)(&asd[sectoroffset]); //found exit here
+	if(asd != (u8*)0x0)return *(u32*)(&asd[sectoroffset]); //found exit here
 
-	sectortabel[allocedfild[current_pointer]] = 0xFFFFFFFF;
+	sectortabel[allocedfild[current_pointer]] = 0x0;
 
 	allocedfild[current_pointer] = mappoffset*2 + 1; //set new slot
 	asd = greatownfilebuffer + current_pointer * chucksize;
@@ -126,7 +126,7 @@ inline void ichfly_readdma_rom(u32 pos,u8 *ptr,u32 c,int readal) //need lockup o
 
 			u32* asd = (u32*)(sectortabel[mappoffset*2 + 1]);
 			
-			if(asd != (u32*)0xFFFFFFFF)//found exit here
+			if(asd != (u32*)0x0)//found exit here
 			{
 				int i = 0; //copy
 				while(currsize > i)
@@ -140,7 +140,7 @@ inline void ichfly_readdma_rom(u32 pos,u8 *ptr,u32 c,int readal) //need lockup o
 				continue;
 			}
 
-			sectortabel[allocedfild[current_pointer]] = 0xFFFFFFFF;
+			sectortabel[allocedfild[current_pointer]] = 0x0;
 
 			allocedfild[current_pointer] = mappoffset*2 + 1; //set new slot
 			asd = (u32*)(greatownfilebuffer + current_pointer * chucksize);
@@ -173,7 +173,7 @@ inline void ichfly_readdma_rom(u32 pos,u8 *ptr,u32 c,int readal) //need lockup o
 
 			u16* asd = (u16*)(sectortabel[mappoffset*2 + 1]);
 			//iprintf("%X %X %X %X %X %X\n\r",sectoroffset,mappoffset,currsize,pos,c,chucksize);
-			if(asd != (u16*)0xFFFFFFFF)//found exit here
+			if(asd != (u16*)0x0)//found exit here
 			{
 				int i = 0; //copy
 				while(currsize > i)
@@ -187,7 +187,7 @@ inline void ichfly_readdma_rom(u32 pos,u8 *ptr,u32 c,int readal) //need lockup o
 				continue;
 			}
 
-			sectortabel[allocedfild[current_pointer]] = 0xFFFFFFFF;
+			sectortabel[allocedfild[current_pointer]] = 0x0;
 
 			allocedfild[current_pointer] = mappoffset*2 + 1; //set new slot
 			asd = (u16*)(greatownfilebuffer + current_pointer * chucksize);

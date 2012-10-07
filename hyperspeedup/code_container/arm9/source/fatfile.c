@@ -1247,7 +1247,7 @@ void generatefilemap(int size)
 	int i = 0;
 	while(i < (partition->bytesPerCluster/chucksize)*clusCount+1)
 	{
-		sectortabel[i*2 + 1] = 0xFFFFFFFF;
+		sectortabel[i*2 + 1] = 0x0;
 		i++;
 	}
 	i = 0;
