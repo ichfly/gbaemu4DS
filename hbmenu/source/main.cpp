@@ -13,7 +13,8 @@
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
 
- You should have received a copy of the GNU General Public License
+ You should have received a copy of the GNU Genera
+ ,l Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
@@ -103,6 +104,11 @@ char* pathversionschar[18] =
 	"fat:/ichflyr4igoldgbaemu/newirqsound.loader","fat:/ichflyr4igoldgbaemu/advirqsound.loader","fat:/ichflyr4igoldgbaemu/HblancDMAsound.loader","fat:/ichflyr4igoldgbaemu/forceHblancsound.loader",
 	"fat:/ichflyr4igoldgbaemu/newirqsoundsc.loader","fat:/ichflyr4igoldgbaemu/advirqsoundsc.loader","fat:/ichflyr4igoldgbaemu/HblancDMAsoundsc.loader","fat:/ichflyr4igoldgbaemu/forceHblancsoundsc.loader",
 	"fat:/ichflyr4igoldgbaemu/oldirqsc.loader","fat:/ichflyr4igoldgbaemu/newirqsc.loader","fat:/ichflyr4igoldgbaemu/advirqsc.loader","fat:/ichflyr4igoldgbaemu/HblancDMAsc.loader","fat:/ichflyr4igoldgbaemu/forceHblancsc.loader"};
+
+u8 inputtoVersion[18] = 
+	{
+		7,
+	}
 
 #define nummerVersions 18
 
