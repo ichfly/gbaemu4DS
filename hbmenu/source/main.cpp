@@ -417,7 +417,13 @@ int main(int argc, char **argv) {
 			fread((char*)&gbaheaderf, 1, sizeof(gbaHeader_tf),gbafile);
 			
 			FILE *listfiledata = fopen(listless, "r");
+			if(listfiledata==NULL)
+			{
+				iprintf("incorrect setup");
+				stop();
+			}
 			
+
 			fread((char*)&patchheader, 1, sizeof(patch_t),listfiledata);
 			
 			patch2_t* entries = (patch2_t*)malloc(sizeof(patch2_t)*patchheader.listentr);
