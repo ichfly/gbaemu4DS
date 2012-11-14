@@ -610,6 +610,12 @@ char* seloptions [4] = {"save save","show mem","Continue","load GBA"};
 
 void pausemenue()
 {
+#ifdef capture_and_pars
+	videoBgDisableSub(3);
+	videoBgEnableSub(0);
+	vramSetBankH(VRAM_H_SUB_BG); //only sub /*for prints to lowern screan*/ 
+	vramSetBankI(VRAM_I_SUB_BG_0x06208000); //only sub
+#endif
 	REG_IE = 0; //no irq
 	u16 tempvcount = REG_VCOUNT;
 	TIMER0_CR = TIMER0_CR & ~TIMER_ENABLE; //timer off
@@ -619,7 +625,7 @@ void pausemenue()
 	//irqDisable(IRQ_VBLANK);
 	//cpupausemode(); //don't need that
 	int pressed;
-	int ausgewauhlt = 0;
+	int ausgewauhlt = 2;
 	while(1)
 	{
 		iprintf("\x1b[2J");
@@ -654,6 +660,12 @@ void pausemenue()
 					break;
 				case 2:
 					iprintf("\x1b[2J");
+#ifdef capture_and_pars
+					videoBgDisableSub(0);
+					vramSetBankH(VRAM_H_LCD); //only sub
+					vramSetBankI(VRAM_I_LCD); //only sub
+					videoBgEnableSub(3);
+#endif
 					while(REG_VCOUNT != tempvcount); //wait for VCOUNT
 					TIMER0_CR = timer0Value; //timer on
 					TIMER1_CR = timer1Value;

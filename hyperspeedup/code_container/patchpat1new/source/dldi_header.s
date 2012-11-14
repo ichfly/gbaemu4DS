@@ -20,16 +20,17 @@ _start:
 	mov SP,r11													@1S
 	
 	ldr	r11,=0x36333333											@1S+1N+1I
-	mcr	p15, 0, r3, c5, c0, 2									@1N+bI+1C @b is unknown
+	mcr	p15, 0, r11, c5, c0, 2									@1N+bI+1C @b is unknown
 	
 	
 	.word	0xBF8DA5ED		@ Magic number to identify this region
+	.word	0x00000000
 	
 	
-	BIC SP,r11,#0x30000000 @ldr	r11, =0x06333333				@1S
-	mcr	p15, 0, r1, c5, c0, 2									@1N+bI+1C @b is unknown
+	BIC r11,r11,#0x30000000 @ldr	r11, =0x06333333				@1S
+	mcr	p15, 0, r11, c5, c0, 2									@1N+bI+1C @b is unknown
 	
-	ldmfd  SP!, {R0-R3,R12,LR}     @load registers				@7S+1N+1I
+	ldmfd  SP!, {R0-R3,R12,LR,SP}     @load registers				@7S+1N+1I
 	msr	cpsr, R10		@ restore cpsr							@1S
 	
 	ldmfd  SP!, {R10,r11} @load registers 2 used				@1S+2N (9I)

@@ -1152,7 +1152,9 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 				dsValue  = value & 0xFF87;
 				dsValue |= (value & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
 				dsValue |= (value & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
+#ifndef capture_and_pars
 				dsValue |= (value & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
+#endif
 				REG_DISPCNT = dsValue; 
 			}
 		}
@@ -1165,7 +1167,9 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 				dsValue  = value & 0xF087;
 				dsValue |= (value & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
 				dsValue |= (value & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
+#ifndef capture_and_pars
 				dsValue |= (value & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
+#endif
 				REG_DISPCNT = (dsValue | BIT(11)); //enable BG3
 				if((DISPCNT & 7) != (value & 7))
 				{

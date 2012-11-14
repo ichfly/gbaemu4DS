@@ -257,6 +257,7 @@ void arm7dmareq()
 				VblankHandler();
 				continue;
 			}
+
 			if(src == 0x4000BEEF)
 			{
 				while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
@@ -273,6 +274,11 @@ void arm7dmareq()
 				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
 				CPUWriteBatteryFile(savePath);
 				//REG_IPC_FIFO_TX = 0;
+				continue;
+			}
+			if(src == 0x4300BEEF)
+			{
+				pausemenue();
 				continue;
 			}
 			iprintf("error rec %08X %08X\r\n",src,REG_IPC_FIFO_CR);

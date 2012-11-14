@@ -125,6 +125,9 @@ extern void CPUWriteMemoryextern(u32 address, u32 value);
 extern void CPUWriteHalfWordextern(u32 address, u16 value);
 extern void CPUWriteByteextern(u32 address, u8 b);
 
+extern s16 CPUReadHalfWordSigned(u32 address);
+extern s8 CPUReadByteSigned(u32 address);
+
 extern u32 ichfly_readu32extern(int pos);
 extern u16 ichfly_readu16extern(int pos);
 extern u8 ichfly_readu8extern(int pos);
@@ -774,7 +777,12 @@ void patchit(int romSize2)
 				case 11:
 					address = (u32)CPUWriteByteextern;
 					break;
-
+				case 12:
+					address = (u32)CPUReadHalfWordSigned;
+					break;
+				case 13:
+					address = (u32)CPUReadByteSigned;
+					break;
 
 
 				case 100:

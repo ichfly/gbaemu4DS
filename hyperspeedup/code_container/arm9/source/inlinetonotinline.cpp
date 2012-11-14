@@ -10,7 +10,18 @@ u32 CPUReadMemory(u32 address)
 	return CPUReadMemoryreal(address);
  }
 
-u32 CPUReadHalfWordreal(u32 address);
+u16 CPUReadHalfWordrealpuSigned(u32 address);
+
+s16 CPUReadHalfWordSigned(u32 address)
+ {
+	return (s16)CPUReadHalfWordrealpuSigned(address);
+ }
+
+s8 CPUReadByteSigned(u32 address)
+{
+	return (s8)CPUReadBytereal(address);
+}
+
 
 u32 CPUReadHalfWord(u32 address)
  {
@@ -22,9 +33,6 @@ u8 CPUReadByte(u32 address)
 {
 	return CPUReadBytereal(address);
 }
-
-
-
 
 
 

@@ -247,7 +247,6 @@ void newvalwrite(u32 addr,u32 val)
 				  REG_SOUNDBIAS = val;
 				  break;
 
-
 			  case 0x1FFFFFFA:
 				  dmabuffer = val;
 				  soundbuffA = (u32*)(dmabuffer);
@@ -366,6 +365,30 @@ int main() {
 		else
 		{
 			ykeypp = false;
+		}
+		if(*(u16*)0x04000136 & 0x80) //close nds
+		{
+			u32 ie_save = REG_IE;
+			// Turn the speaker down.
+			if (REG_POWERCNT & 1) swiChangeSoundBias(0,0x400);
+			// Save current power state.
+			u32 power = readPowerManagement(PM_CONTROL_REG);
+			// Set sleep LED.
+			writePowerManagement(PM_CONTROL_REG, PM_LED_CONTROL(1));
+			// Register for the lid interrupt.
+			REG_IE = IRQ_LID;
+			// Power down till we get our interrupt.
+			swiSleep(); //waits for PM (lid open) interrupt
+			//100ms
+			swiDelay(838000);
+			// Restore the interrupt state.
+			REG_IE = ie_save;
+			// Restore power state.
+			writePowerManagement(PM_CONTROL_REG, power);
+			// Turn the speaker up.
+			if (REG_POWERCNT & 1) swiChangeSoundBias(1,0x400);
+			// update clock tracking
+			resyncClock(); 
 		}
 
 		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))

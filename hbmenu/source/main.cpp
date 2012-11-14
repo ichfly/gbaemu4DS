@@ -107,8 +107,8 @@ char* pathversionschar[18] =
 
 u8 inputtoVersion[18] = 
 	{
-		7,
-	}
+		6,2,10,14,0,1,3,4,5,7,8,9,11,12,13,15,16,17
+	};
 
 #define nummerVersions 18
 
@@ -362,7 +362,7 @@ int main(int argc, char **argv) {
 				{
 					if(i == ausgewauhlt) iprintf("->");
 					else iprintf("  ");
-					iprintf(readabelnameversionsschar[i]);
+					iprintf(readabelnameversionsschar[inputtoVersion[i]]);
 					iprintf("\n");
 				}
 				do 
@@ -374,7 +374,7 @@ int main(int argc, char **argv) {
 
 				if (pressed&KEY_A)
 				{
-					argarray.at(0) = pathversionschar[ausgewauhlt];
+					argarray.at(0) = pathversionschar[inputtoVersion[ausgewauhlt]];
 					break;
 				}
 				if (pressed&KEY_DOWN && ausgewauhlt < nummerVersions){ ausgewauhlt++;}
