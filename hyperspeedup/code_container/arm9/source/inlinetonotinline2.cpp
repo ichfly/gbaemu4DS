@@ -44,3 +44,15 @@ void CPUWriteBytepuextern(u32 address, u8 b)
 {
 	CPUWriteBytepu(address,b);
 }
+
+u16 CPUReadHalfWordrealpuSigned(u32 address);
+
+s16 CPUReadHalfWordrealpuSignedoutline(u32 address)
+ {
+	return (s16)CPUReadHalfWordrealpuSigned(address);
+ }
+
+s8 CPUReadByteSignedpu(u32 address)
+{
+	return (s8)CPUReadByterealpu(address);
+}
