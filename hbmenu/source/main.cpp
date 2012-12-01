@@ -110,7 +110,7 @@ u8 inputtoVersion[18] =
 		6,2,10,14,0,1,3,4,5,7,8,9,11,12,13,15,16,17
 	};
 
-#define nummerVersions 18
+#define nummerVersions 17
 
 
 char* savetypeschar[7] =
