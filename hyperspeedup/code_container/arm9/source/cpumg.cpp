@@ -131,10 +131,6 @@ extern "C" int SPtemp;
 
 
 
-
-
-
-
 #include "main.h"
 #include "cpumg.h"
 

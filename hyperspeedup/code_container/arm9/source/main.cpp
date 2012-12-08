@@ -651,6 +651,7 @@ REG_IPC_FIFO_TX = 0x4444444;
 #endif
 
 	//iprintf("\x1b[2J"); //reset (not working huh)
+	//show_mem();
 
 	cpu_ArmJumpforstackinit((u32)rom, 0);
 	

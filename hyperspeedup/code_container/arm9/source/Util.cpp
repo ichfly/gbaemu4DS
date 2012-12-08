@@ -102,6 +102,10 @@ extern "C" {
 #include "RTC.h"
 #include "Port.h"
 
+extern "C" void pu_Enable();
+extern "C" void cpu_SetCP15Cnt(u32 v);
+extern "C" u32 cpu_GetCP15Cnt();
+
 #ifndef _MSC_VER
 #define _stricmp strcasecmp
 #endif // ! _MSC_VER
@@ -632,7 +636,22 @@ static u8 *utilLoadRarFile(const char *file,
   return NULL;
 }
 #endif
-
+void entersu()
+{
+			DC_FlushAll(); //try it
+			IC_InvalidateAll();
+			cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu
+			DC_FlushAll(); //try it
+			IC_InvalidateAll();
+}
+void leavesu()
+{
+			DC_FlushAll(); //try it
+			IC_InvalidateAll();
+			pu_Enable(); //back to normal code
+			DC_FlushAll(); //try it
+			IC_InvalidateAll();
+}
 void patchit(int romSize2)
 {
 	FILE *patchf = fopen(patchPath, "rb");
@@ -667,6 +686,7 @@ void patchit(int romSize2)
 			{
 				getandpatchmap(offsetgba,offsetthisfile);
 			}
+			iprintf("patch gbaedit from %08X to %08X (%08X)\n\r",offsetthisfile,offsetgba,ftell(patchf));
 			}
 			break;
 		case 1:
@@ -679,6 +699,7 @@ void patchit(int romSize2)
 			fread((void*)cheatsList,1,cheatsNumber*28,patchf);
 			fseek(patchf,coo5,SEEK_SET);
 			__irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareqandcheat,irqTable);
+			iprintf("patch cheats %08X from %08X (%08X)\n\r",cheatsNumber,cheatsList,ftell(patchf));
 			}
 			break;
 		case 2:
@@ -691,8 +712,11 @@ void patchit(int romSize2)
 			fread((void*)&offset,1,0x4,patchf);
 			int coo = ftell(patchf);
 			fseek(patchf,offset,SEEK_SET);
+			entersu();
 			fread((void*)gbaoffset,1,payloadsize,patchf);
+			leavesu();
 			fseek(patchf,coo,SEEK_SET);
+			iprintf("patch direct write to %08X from %08X size %08X (%08X)\n\r",gbaoffset,offset,payloadsize,ftell(patchf));
 			break;
 			}
 		case 3:
@@ -707,6 +731,7 @@ void patchit(int romSize2)
 			fread((void*)&Condition,1,0x4,patchf);
 			if(offset & BIT(31))offset = (offset & ~BIT(31)) + (u32)rom;
 			u32 topatchoffset = address - offset - 8;
+			entersu();
 			switch (type)
 			{
 				case 0:
@@ -726,6 +751,8 @@ void patchit(int romSize2)
 					*(u32*)offset = (Condition << 0x1B) | 0x0B000000 | ((topatchoffset >> 2) & ~0xFF000000);
 					break;
 			}
+			leavesu();
+			iprintf("link to sa type %08X where %08X dest %08X Condition %08X (%08X)\n\r",type,offset,address,Condition,ftell(patchf));
 			}
 			break;
 			case 4:
@@ -809,29 +836,33 @@ void patchit(int romSize2)
 			fread((void*)&Condition,1,0x4,patchf);
 			if(offset & BIT(31))offset = (offset & ~BIT(31)) + (u32)rom;
 			u32 topatchoffset = address - offset - 8;
+			entersu();
 			switch (type)
 			{
 				case 0:
 					topatchoffset =+ 4;
-					*(u16*)address = (u16)0xF000 | (u16)((topatchoffset >> 12) & 0x7FF);
-					*(u16*)(address + 2) = (u16)0xF800 | (u16)((topatchoffset >> 1) & 0x7FF);
+					*(u16*)offset = (u16)0xF000 | (u16)((topatchoffset >> 12) & 0x7FF);
+					*(u16*)(offset + 2) = (u16)0xF800 | (u16)((topatchoffset >> 1) & 0x7FF);
 					break;
 				case 1:
 					topatchoffset =+ 4;
-					*(u16*)address = (u16)0xF000 + (u16)((topatchoffset >> 12) & 0x7FF);
-					*(u16*)(address + 2) = (u16)0xE800 + (u16)((topatchoffset >> 1) & 0x7FF);
+					*(u16*)offset = (u16)0xF000 + (u16)((topatchoffset >> 12) & 0x7FF);
+					*(u16*)(offset + 2) = (u16)0xE800 + (u16)((topatchoffset >> 1) & 0x7FF);
 					break;
 				case 2:
-					*(u32*)address = (Condition << 0x1B) | 0x0A000000 | ((topatchoffset >> 2) & ~0xFF000000);
+					*(u32*)offset = (Condition << 0x1C) | 0x0A000000 | ((topatchoffset >> 2) & ~0xFF000000);
 					break;
 				case 3:
-					*(u32*)address = (Condition << 0x1B) | 0x0B000000 | ((topatchoffset >> 2) & ~0xFF000000);
+					*(u32*)offset = (Condition << 0x1C) | 0x0B000000 | ((topatchoffset >> 2) & ~0xFF000000);
 					break;
 			}
+			leavesu();
+			iprintf("link to sf type %08X where %08X function %08X Condition %08X (%08X)\n\r",type,offset,function,Condition,ftell(patchf));
 			}
 			break;
 		}
 	}
+		iprintf("end (%X)",patchnum);
 }
 
 u8 *utilLoad(const char *file, //ichfly todo
