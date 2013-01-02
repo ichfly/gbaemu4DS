@@ -351,11 +351,9 @@ void initspeedupfelder()
 void HblankHandler(void) {
 //---------------------------------------------------------------------------------
 
-
-	u16 temp = REG_VCOUNT;
 #ifdef usebuffedVcout
 
-	if(VCountdoit[temp])
+	if(VCountdoit[REG_VCOUNT])
 	{
 #ifdef HBlankdma
 		CPUCheckDMA(2, 0x0f);
@@ -373,6 +371,7 @@ void HblankHandler(void) {
 #else
 	u16 res1;
 	u16 res2;
+	u16 temp = REG_VCOUNT;
 	if(temp < 192)
 	{
 		res1 = ((temp * 214) >> 8);//VCOUNT = help * (1./1.2); //1.15350877;
