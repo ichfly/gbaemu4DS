@@ -9,8 +9,8 @@ MEMORY {
        gbaew   : ORIGIN = 0x02000000, LENGTH = 256k
        ewram   : ORIGIN = 0x02040000, LENGTH = 1M - 256k + 512k
        dtcm    : ORIGIN = 0x027C0000, LENGTH = 16K
-       vectors : ORIGIN = 0x01000000, LENGTH = 1K - 256
-       itcm    : ORIGIN = 0x01000300, LENGTH = 32K - 1K + 256
+       vectors : ORIGIN = 0x01FF8000, LENGTH = 1K - 256
+       itcm    : ORIGIN = 0x01FF8300, LENGTH = 32K - 1K + 256
 }
 
 

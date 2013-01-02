@@ -46,6 +46,7 @@ char szFile[MAXPATHLEN * 2];
 
 bool cpuIsMultiBoot = false;
 
+char* arcvsave = (char*)0;
 
 typedef struct
 {
@@ -184,6 +185,7 @@ int main(int argc, char **argv) {
 			//filename = browseForFile(extensionList);
 			browseForFile(extensionList);
 			argarray.push_back("a");
+			if(arcvsave != (char*)0) goto dataluncher;
 			argarray.push_back(szFile);
 			argarray.push_back(savePath);
 			argarray.push_back(biosPath);
@@ -398,16 +400,18 @@ int main(int argc, char **argv) {
 		}
 		else
 		{
+			arcvsave = argv[1];
+dataluncher:
 			argarray.push_back("a");
-			strcpy(filePath,argv[1]);
+			strcpy(filePath,arcvsave);
 
 
-			sprintf(savePath,"%s.sav",argv[1]);
+			sprintf(savePath,"%s.sav",arcvsave);
 			FILE *pFile2 = fopen(savePath, "r");
 			if(pFile2==NULL)savePath[0] = 0;
 			fclose(pFile2);
 			
-			sprintf(patchPath,"%s.pat",argv[1]);
+			sprintf(patchPath,"%s.pat",arcvsave);
 			FILE *pFile3 = fopen(patchPath, "r");
 			if(pFile3==NULL)patchPath[0] = 0;
 			fclose(pFile3);
@@ -418,7 +422,7 @@ int main(int argc, char **argv) {
 			//argarray.push_back("fat:/ichflyr4igoldgbaemu/bios.bin");
 			argarray.push_back("\0");
 			
-			FILE *gbafile = fopen(argv[1], "r");
+			FILE *gbafile = fopen(arcvsave, "r");
 			
 			fread((char*)&gbaheaderf, 1, sizeof(gbaHeader_tf),gbafile);
 			

@@ -165,6 +165,17 @@ extern "C" int SPtemp;
 
 u32 arm7amr9buffer = 0;
 
+
+#ifdef anyarmcom
+u32 amr7sendcom = 0;
+u32 amr7senddma1 = 0;
+u32 amr7senddma2 = 0;
+u32 amr7recmuell = 0;
+u32 amr7directrec = 0;
+u32 amr7indirectrec = 0;
+u32 amr7fehlerfeld[10];
+#endif
+
 //---------------------------------------------------------------------------------
 int main( int argc, char **argv) {
 
@@ -281,6 +292,17 @@ else
 //data protbuff
 #ifdef arm9advsound
 REG_IPC_FIFO_TX = 0x1FFFFFFA; //load buffer
+
+#ifdef anyarmcom
+*(u32*)arm7exchangefild = (u32)&amr7sendcom;
+*(u32*)(arm7exchangefild + 4) = (u32)&amr7senddma1;
+*(u32*)(arm7exchangefild + 8) = (u32)&amr7senddma2;
+*(u32*)(arm7exchangefild + 12) = (u32)&amr7recmuell;
+*(u32*)(arm7exchangefild + 16) = (u32)&amr7directrec;
+*(u32*)(arm7exchangefild + 20) = (u32)&amr7indirectrec;
+*(u32*)(arm7exchangefild + 24) = (u32)&amr7fehlerfeld[0];
+#endif
+
 REG_IPC_FIFO_TX = arm7amr9buffer = (u32)arm7exchangefild; //buffer for arm7
 #endif
 //test

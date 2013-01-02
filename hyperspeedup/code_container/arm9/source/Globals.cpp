@@ -26,6 +26,10 @@ int ichflyfilestreamsize;
 #endif
 
 
+#ifdef countpagefalts
+u32 pagefehler = 0;
+#endif
+
 #ifdef BKPT_SUPPORT
 int  oldreg[17];
 char oldbuffer[10];

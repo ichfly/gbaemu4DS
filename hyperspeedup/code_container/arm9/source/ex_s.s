@@ -36,15 +36,15 @@ __sp_irq	=	__sp_svc  - 0x1000; @ichfly @ 1.024 Byte each @also in interruptDispa
 	
 		.global irqhandler2
 irqhandler2:
-b	inter_Reset + 0x1000000
-b	inter_undefined + 0x1000000
-b	inter_swi + 0x1000000
-b	inter_fetch + 0x1000000
-b	inter_data + 0x1000000
-b	inter_res + 0x1000000
-b	inter_irq + 0x1000000
-b	inter_fast + 0x1000000
-b	inter_res2 + 0x1000000
+b	inter_Reset + 0x1FF8000
+b	inter_undefined + 0x1FF8000
+b	inter_swi + 0x1FF8000
+b	inter_fetch + 0x1FF8000
+b	inter_data + 0x1FF8000
+b	inter_res + 0x1FF8000
+b	inter_irq + 0x1FF8000
+b	inter_fast + 0x1FF8000
+b	inter_res2 + 0x1FF8000
 
 somethingfailed:
 
@@ -87,10 +87,12 @@ inter_irq:
 	mrc	p15, 0, r2, c5, c0, 2      @set pu
 	ldr	r1,=0x36333333
 	mcr	p15, 0, r1, c5, c0, 2
-	ldr	r1, =_exMain_tmpPuplain
-	str	r2, [r1]
-	
 
+
+	@ldr	r1, =_exMain_tmpPuplain
+	@str	r2, [r1]
+thisi1:	
+	str r2, [pc,#(_exMain_tmpPuplain - thisi1 -8)]
 	
 	BL IntrMain
 	
@@ -102,6 +104,9 @@ inter_irq:
 	
 	ldr	r2, =anytimejmpfilter
 	ldr r2, [r2]
+@thisi2:	
+	@ldr r2, [pc,#(anytimejmpfilter - thisi2 -8)]
+	
 	ands r1,r1,r2 @ anytimejmpfilter und IF
 	BEQ	irqexitdirect
 	
@@ -124,24 +129,20 @@ gba_handler:
 	add    LR,PC,#0            @retadr for USER handler
 	ldr    PC,[R0, #-0x4]      @jump to [03FFFFFC] USER handler
 #endif
+
+irqexitdirect:
 	
-	ldr	r1, =_exMain_tmpPuplain @set pu back @ichfly einschub
-	ldr	r2, [r1] @ichfly
+	@ldr	r1, =_exMain_tmpPuplain @set pu back @ichfly einschub
+	@ldr	r2, [r1] @ichfly
+thisi3:	
+	ldr r2, [pc,#(_exMain_tmpPuplain - thisi3 -8)]
+	
 	mcr	p15, 0, r2, c5, c0, 2	
 
 	ldmfd  SP!, {R0-R3,R12,LR} @restore registers from SP_irq  
 	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
 	
 	
-
-irqexitdirect:
-	
-	ldr	r1, =_exMain_tmpPuplain  @set pu back
-	ldr	r2, [r1] @ichfly
-	mcr	p15, 0, r2, c5, c0, 2 
-	 
-	ldmfd  SP!, {R0-R3,R12,LR} @restore registers from SP_irq  
-	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
 
 #else
 inter_irq:
@@ -265,6 +266,7 @@ nop
 	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
 #endif
 
+
 .global SPtoloadswi
 SPtoloadswi:
 	.word __sp_svc
@@ -289,8 +291,6 @@ inter_swi:
 	ldr	sp, =SPtoloadswi	@ use the new stack
 	ldr sp, [sp]
 	
-	@mov lr,pc @ichfly change back if possible
-	@bx r1
 	blx	r1 @ichfly change back if possible
 	
 	
@@ -303,12 +303,7 @@ inter_swi:
 	
 	ldr	lr, [lr, #(15 * 4)] 
 	
-	@add lr,lr,#4
-	
-	@subs    pc, lr, #4
-	
 	subs    pc, lr, #0 @ichfly this is not working	
-	
 
 
 
@@ -318,6 +313,8 @@ inter_fetch: @ break function todo
 	subs    lr, lr, #0x8000000
 	ldr		sp,=rom
 	ldr		sp,[sp]
+	@thisi4:	
+	@ldr r2, [pc,#(rom - thisi4 -8)]
 	add		lr,lr,sp
 	subs    pc, lr, #4
 

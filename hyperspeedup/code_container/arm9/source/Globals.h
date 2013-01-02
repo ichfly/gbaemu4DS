@@ -46,6 +46,9 @@ extern int lastdebugsize;
 extern FILE* ichflyfilestream;
 extern int ichflyfilestreamsize;
 #endif
+#ifdef countpagefalts
+extern u32 pagefehler;
+#endif
 
 extern int romSize;
 

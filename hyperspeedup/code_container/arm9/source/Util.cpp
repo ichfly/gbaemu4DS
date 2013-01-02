@@ -135,9 +135,9 @@ extern s8 CPUReadByteSigned(u32 address);
 extern s16 CPUReadHalfWordrealpuSignedoutline(u32 address);
 extern s8 CPUReadByteSignedpu(u32 address);
 
-extern u32 ichfly_readu32extern(int pos);
-extern u16 ichfly_readu16extern(int pos);
-extern u8 ichfly_readu8extern(int pos);
+extern u32 ichfly_readu32extern(unsigned int pos);
+extern u16 ichfly_readu16extern(unsigned int pos);
+extern u8 ichfly_readu8extern(unsigned int pos);
 
 /*
 static int (ZEXPORT *utilGzWriteFunc)(gzFile, const voidp, unsigned int) = NULL;
@@ -686,7 +686,9 @@ void patchit(int romSize2)
 			{
 				getandpatchmap(offsetgba,offsetthisfile);
 			}
+#ifdef debugpatch
 			iprintf("patch gbaedit from %08X to %08X (%08X)\n\r",offsetthisfile,offsetgba,ftell(patchf));
+#endif
 			}
 			break;
 		case 1:
@@ -699,7 +701,9 @@ void patchit(int romSize2)
 			fread((void*)cheatsList,1,cheatsNumber*28,patchf);
 			fseek(patchf,coo5,SEEK_SET);
 			__irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareqandcheat,irqTable);
+#ifdef debugpatch
 			iprintf("patch cheats %08X from %08X (%08X)\n\r",cheatsNumber,cheatsList,ftell(patchf));
+#endif
 			}
 			break;
 		case 2:
@@ -716,7 +720,9 @@ void patchit(int romSize2)
 			fread((void*)gbaoffset,1,payloadsize,patchf);
 			leavesu();
 			fseek(patchf,coo,SEEK_SET);
+#ifdef debugpatch
 			iprintf("patch direct write to %08X from %08X size %08X (%08X)\n\r",gbaoffset,offset,payloadsize,ftell(patchf));
+#endif
 			break;
 			}
 		case 3:
@@ -752,7 +758,9 @@ void patchit(int romSize2)
 					break;
 			}
 			leavesu();
+#ifdef debugpatch
 			iprintf("link to sa type %08X where %08X dest %08X Condition %08X (%08X)\n\r",type,offset,address,Condition,ftell(patchf));
+#endif
 			}
 			break;
 			case 4:
@@ -857,12 +865,36 @@ void patchit(int romSize2)
 					break;
 			}
 			leavesu();
+#ifdef debugpatch
 			iprintf("link to sf type %08X where %08X function %08X Condition %08X (%08X)\n\r",type,offset,function,Condition,ftell(patchf));
+#endif
 			}
+			break;
+			case 5:
+				extern u8 VCountgbatods[0x100]; //(LY)      (0..227) + check overflow
+				extern u8 VCountdstogba[263]; //(LY)      (0..262)
+				extern u8 VCountdoit[263]; //jump in or out
+				u32 offsetthisfile;
+				fread((void*)&offsetthisfile,1,0x4,patchf);
+
+				int coo = ftell(patchf);
+				fseek(patchf,offsetthisfile,SEEK_SET);
+				fread(VCountgbatods,1,0x100,patchf);
+				fread(VCountdstogba,1,263,patchf);
+				fread(VCountdoit,1,263,patchf);
+				fseek(patchf,coo,SEEK_SET);
 			break;
 		}
 	}
+	char patchmsg[0x100];
+	if(fread(patchmsg,1,0x100,patchf) > 0)
+	{
+		iprintf(patchmsg);
+	}
+#ifdef debugpatch
 		iprintf("end (%X)",patchnum);
+#endif
+		fclose(patchf);
 }
 
 u8 *utilLoad(const char *file, //ichfly todo

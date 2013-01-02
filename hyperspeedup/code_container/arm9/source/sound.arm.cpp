@@ -89,7 +89,12 @@ extern char szFile[MAXPATHLEN * 2];
 
 
 
-
+#ifdef anyarmcom
+u32 recDMA1 = 0;
+u32 recDMA2 = 0;
+u32 recdir = 0;
+u32 recdel = 0;
+#endif
 
 
 
@@ -113,8 +118,14 @@ void arm7dmareq()
 #ifdef advanced_irq_check
 	REG_IF = IRQ_FIFO_NOT_EMPTY;
 #endif
+#ifdef anyarmcom
+recdir++;
+#endif
 	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //handel all cmds
 	{
+#ifdef anyarmcom
+recdel++;
+#endif
 		//counttrans++;
 		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
 		int i = 0;
@@ -226,8 +237,14 @@ void arm7dmareq()
 #ifdef advanced_irq_check
 	REG_IF = IRQ_FIFO_NOT_EMPTY;
 #endif
+#ifdef anyarmcom
+recdir++;
+#endif
 	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //handel all cmds
 	{
+#ifdef anyarmcom
+recdel++;
+#endif
 		//counttrans++;
 		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
 		int i = 0;
@@ -239,11 +256,32 @@ void arm7dmareq()
 #endif
 		{
 #ifdef neu_sound_16fifo
+#ifdef anyarmcom
+			register u32 temp_dat = 0;
+			     if((src & 0x3) == 1)
+				 {
+					 temp_dat = 0x10;
+					recDMA1++;
+				 }
+			else if((src & 0x3) == 2)
+			{
+				temp_dat = 0x50;
+				recDMA2++;
+			}
+			else if((src & 0x3) == 3)
+			{
+				temp_dat = 0x60;
+				recDMA2++;
+			}
+			else recDMA1++;
+			memcpy((void*)(arm7amr9buffer + temp_dat),(void*)(src & ~0x3),0x10);
+#else
 			register u32 temp_dat = 0;
 			     if((src & 0x3) == 1)temp_dat = 0x10;
 			else if((src & 0x3) == 2)temp_dat = 0x50;
 			else if((src & 0x3) == 3)temp_dat = 0x60;
 			memcpy((void*)(arm7amr9buffer + temp_dat),(void*)(src & ~0x3),0x10);
+#endif
 #else
 			while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 			void * destination = (void*)REG_IPC_FIFO_RX;

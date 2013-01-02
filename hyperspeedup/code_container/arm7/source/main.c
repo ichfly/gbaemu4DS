@@ -5,6 +5,18 @@
 
 u16 callline = 0xFFFF;
 
+#ifdef anyarmcom
+u32* amr7sendcom = 0;
+u32* amr7senddma1 = 0;
+u32* amr7senddma2 = 0;
+u32* amr7recmuell = 0;
+u32* amr7directrec = 0;
+u32* amr7indirectrec = 0;
+u32* amr7fehlerfeld;
+u32 currfehler = 0;
+#define maxfehler 8
+#endif
+
 //#define checkforerror
 
 //timerStart timeval sucks need a new idear to handel that
@@ -56,6 +68,9 @@ void senddebug32(u32 val)
 {
 	REG_IPC_FIFO_TX = 0x4000BEEF;
 	REG_IPC_FIFO_TX = val;
+#ifdef anyarmcom
+	*amr7sendcom = *amr7sendcom + 2;
+#endif
 }
 
 #ifdef notdef
@@ -125,6 +140,9 @@ void dmaAtimerinter()
 	debugsrc1+=0x10;
 	if(dmaApart == 0) dmaApart = 1;
 	else dmaApart = 0;
+#ifdef anyarmcom
+	*amr7senddma1 = *amr7senddma1 + 1;
+#endif
 }
 void dmaBtimerinter()
 {
@@ -139,9 +157,11 @@ void dmaBtimerinter()
 	debugsrc2+=0x10;
 	if(dmaBpart == 0) dmaBpart = 1;
 	else dmaBpart = 0;
+#ifdef anyarmcom
+	*amr7senddma2 = *amr7senddma2 + 1;
+#endif
 }
 bool autodetectdetect = false;
-
 
 void newvalwrite(u32 addr,u32 val)
 {
@@ -247,23 +267,36 @@ void newvalwrite(u32 addr,u32 val)
 				  REG_SOUNDBIAS = val;
 				  break;
 
-			  case 0x1FFFFFFA:
+			  case setdmasoundbuff:
+
 				  dmabuffer = val;
-				  soundbuffA = (u32*)(dmabuffer);
+#ifdef anyarmcom
+				amr7sendcom =  (u32*)(*(u32*)(dmabuffer));
+				amr7senddma1 = (u32*)(*(u32*)(dmabuffer + 4));
+				amr7senddma2 = (u32*)(*(u32*)(dmabuffer + 8));
+				amr7recmuell = (u32*)(*(u32*)(dmabuffer + 12));
+				amr7directrec = (u32*)(*(u32*)(dmabuffer + 16));
+				amr7indirectrec = (u32*)(*(u32*)(dmabuffer + 20));
+				amr7fehlerfeld = (u32*)(*(u32*)(dmabuffer + 24));
+#endif
+				soundbuffA = (u32*)(dmabuffer);
 					SCHANNEL_SOURCE(4) = soundbuffA;
 				  soundbuffB = (u32*)(dmabuffer + 0x50);
 					SCHANNEL_SOURCE(5) = soundbuffB;
 					break;
-			case 0x1FFFFFFB: //wait
+			case WaitforVblancarmcmd: //wait
 				if(autodetectdetect  && (REG_KEYXY & 0x1) /* && (REG_VCOUNT > 160 || REG_VCOUNT < callline)*/ )
 				{
 					REG_IPC_FIFO_TX = 0x4100BEEF; //send cmd 0x4100BEEF
+#ifdef anyarmcom
+	*amr7sendcom = *amr7sendcom + 1;
+#endif
 				}
 				break;
-			case 0x1FFFFFFC: //setauto
+			case enableWaitforVblancarmcmdirq: //setauto
 				autodetectdetect = true;
 				break;
-			case 0x1FFFFFFD: //getkeys
+			case getarm7keys: //getkeys
 				{
 					touchPosition tempPos = {0};
 					u16 keys= REG_KEYXY;
@@ -279,29 +312,17 @@ void newvalwrite(u32 addr,u32 val)
 					REG_IPC_FIFO_TX = tempPos.py;
 				}
 				break;
-			case 0x1FFFFFFF: //set callline
+			case set_callline: //set callline
 				callline = val;
 				break;
 			default:
-				//senddebug32(0x7FFFFFFF); //error
-				/*if(addr > 0x400)  //arm9 -> arm7 con crushed try to get at last some infos
-				{
-					swiWaitForVBlank();
-					swiWaitForVBlank();
-					senddebug32(addr);
-					senddebug32(addr);
-					senddebug32(addr);
-					senddebug32(addr);
-					senddebug32(addr);
-					senddebug32(addr);
-					senddebug32(addr);
-					senddebug32(addr);
-					senddebug32(addr);
-					while(1);
-				}*/
-				//senddebug32(addr);
-				//senddebug32(val);
-				//senddebug32(REG_IPC_FIFO_CR);
+#ifdef anyarmcom
+	*amr7recmuell = *amr7recmuell + 1;
+	amr7fehlerfeld[currfehler] = addr;
+	amr7fehlerfeld[currfehler + 1] = val;
+	currfehler+= 2;
+	if(currfehler == maxfehler)currfehler = 0;
+#endif
 				break;
 			}
 }
@@ -344,7 +365,13 @@ int main() {
 		//swiWaitForVBlank();
 		if((REG_VCOUNT == callline) && (REG_KEYXY & 0x1)) //X not pressed && (REG_IPC_FIFO_CR & IPC_FIFO_SEND_EMPTY)
 		{
-			if(!isincallline)REG_IPC_FIFO_TX = 0x3F00BEEF; //send cmd 0x3F00BEEF
+			if(!isincallline)
+			{
+				REG_IPC_FIFO_TX = 0x3F00BEEF; //send cmd 0x3F00BEEF
+#ifdef anyarmcom
+	*amr7sendcom = *amr7sendcom + 1;
+#endif
+			}
 			isincallline = true;
 			//while(REG_VCOUNT == callline); //don't send 2 or more
 		}
@@ -357,9 +384,12 @@ int main() {
 			if(!ykeypp)
 			{
 				REG_IPC_FIFO_TX = 0x4200BEEF;
-				//while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
+#ifdef anyarmcom
+	*amr7sendcom = *amr7sendcom + 1;
+#endif				//while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
 				//int val2 = REG_IPC_FIFO_RX; //Value skip
 				ykeypp = true;
+
 			}
 		}
 		else
@@ -413,7 +443,12 @@ int main() {
 				//REG_IPC_FIFO_CR |= IPC_FIFO_ERROR;
 			}
 #endif
+
 			newvalwrite(addr,val);
+#ifdef anyarmcom
+			*amr7directrec = *amr7directrec + 1;
+			if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))*amr7indirectrec = *amr7indirectrec + 1;
+#endif
 #ifdef checkforerror
 			if(REG_IPC_FIFO_CR & IPC_FIFO_ERROR)
 			{

@@ -87,7 +87,7 @@ jump_intr:
 	ldr	r1, [r2]		@ user IRQ handler address
 	cmp	r1, #0
 	bne	got_handler
-	mov	r1, r0
+	@mov	r1, r0
 	b	no_handler
 @---------------------------------------------------------------------------------
 got_handler:

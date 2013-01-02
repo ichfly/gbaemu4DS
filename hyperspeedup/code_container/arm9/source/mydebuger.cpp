@@ -1,3 +1,4 @@
+#include "../../gloabal/cpuglobal.h"
 
 
 #include <nds.h>
@@ -65,9 +66,20 @@ extern "C" void pu_Enable();
 extern "C" void cpu_SetCP15Cnt(u32 v);
 extern "C" u32 cpu_GetCP15Cnt();
 
-char* seloptionsshowmem [6] = {"dump ram","dump gba ram","show nds ram","show gba ram","cram dump","exit"};
+char* seloptionsshowmem [7] = {"dump ram","dump gba ram","show nds ram","show gba ram","cram dump","dispcomdebug","exit"};
 
 #define readanom 0x100
+
+static inline void wait_press_b()
+{
+    scanKeys();
+    u16 keys_up = 0;
+    while( 0 == (keys_up & KEY_B) )
+    {
+        scanKeys();
+        keys_up = keysUp();
+    }
+}
 
 u32 userinputval(u32 original_val,u32 bits)
 {
@@ -85,9 +97,9 @@ u32 userinputval(u32 original_val,u32 bits)
 		iprintf("val %08X multi: %08X\n",original_val,srctempmulti);
 
 		if (pressed&KEY_UP) original_val+= srctempmulti;
-		if (pressed&KEY_DOWN && original_val != 0) original_val-=srctempmulti;
-		if (pressed&KEY_RIGHT) srctempmulti *= 2;
-		if (pressed&KEY_LEFT && srctempmulti != 1) srctempmulti /= 2;
+		if (pressed&KEY_DOWN) original_val-=srctempmulti;
+		if (pressed&KEY_RIGHT) srctempmulti = 2 * srctempmulti;
+		if (pressed&KEY_LEFT && srctempmulti != 1) srctempmulti = srctempmulti/ 2;
 		if (pressed&KEY_SELECT) break;
 	}
 	return original_val;
@@ -341,7 +353,35 @@ void show_nds_mem() //change colour with \x1b[33[0m back with \x1b[39[0m
 	}
 	pu_Enable(); //back to normal code
 }
-
+#ifdef anyarmcom
+extern u32 amr7sendcom;
+extern u32 amr7senddma1;
+extern u32 amr7senddma2;
+extern u32 amr7recmuell;
+extern u32 amr7directrec;
+extern u32 amr7indirectrec;
+extern u32 recDMA1;
+extern u32 recDMA2;
+extern u32 recdir;
+extern u32 recdel;
+extern u32 amr7fehlerfeld[10];
+void showcomdebug()
+{
+	iprintf("%04X\n",CPUReadHalfWordreal(0x4000200));
+	iprintf("%08X %08X\n",amr7recmuell,amr7sendcom);
+	iprintf("%08X %08X\n",amr7directrec,amr7indirectrec);
+	iprintf("%08X %08X\n",amr7senddma1,amr7senddma2);
+	iprintf("%08X %08X\n",recDMA1,recDMA2);
+	iprintf("%08X %08X\n",recdir,recdel);
+	for (int i = 0;i < 8;i+=2)
+	{
+		iprintf("%08X %08X\n",amr7fehlerfeld[i],amr7fehlerfeld[i + 1]);
+	}
+#ifdef countpagefalts
+	iprintf("%08X",pagefehler);
+#endif
+}
+#endif
 void show_mem()
 {
 	int pressed;
@@ -351,7 +391,7 @@ void show_mem()
 		iprintf("\x1b[2J");
 		iprintf("show mem\n");
 		iprintf ("--------------------------------");
-		for(int i = 0; i < 6; i++)
+		for(int i = 0; i < 7; i++)
 		{
 			if(i == ausgewauhlt) iprintf("->");
 			else iprintf("  ");
@@ -444,10 +484,16 @@ void show_mem()
 					}
 					break;
 				case 5:
+#ifdef anyarmcom
+					showcomdebug();
+					wait_press_b();
+#endif
+					break;
+				case 6:
 					return; //and return
 				}
 		}
-		if (pressed&KEY_DOWN && ausgewauhlt != 5){ ausgewauhlt++;}
+		if (pressed&KEY_DOWN && ausgewauhlt != 6){ ausgewauhlt++;}
 		if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
 
 	}

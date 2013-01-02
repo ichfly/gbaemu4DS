@@ -42,6 +42,7 @@ extern "C" u32 fileRead (char* buffer, u32 cluster, u32 startOffset, u32 length)
 
 using namespace std;
 
+extern char* arcvsave;
 
 
 extern	char savePath[MAXPATHLEN * 2];
@@ -75,7 +76,7 @@ char showbuff[0x10];
 
 gbaHeader_t gbaheader;
 
-char* filetypsforemu [4] = {"gbafile (start emu)","savefile","bios","patch"};
+char* filetypsforemu [5] = {"gbafile (default)","gbafile (start emu)","savefile","bios","patch"};
 
 
 struct DirEntry {
@@ -371,7 +372,7 @@ void browseForFile (const vector<string> extensionList) {
 					iprintf("Use as\n");
 					
 
-					for(int i = 0; i < 4; i++)
+					for(int i = 0; i < 5; i++)
 					{
 						if(i == ausgewauhlt) iprintf("->");
 						else iprintf("  ");
@@ -393,7 +394,15 @@ void browseForFile (const vector<string> extensionList) {
 						{
 							switch(ausgewauhlt)
 							{
-								case 0:
+							case 0:
+							{
+								getcwd (szFile, MAXPATHLEN);
+								pathLen = strlen (szFile);
+								strcpy (szFile + pathLen, entry->name.c_str());
+								arcvsave = szFile;
+								return;
+							}
+								case 1:
 							{
 								getcwd (szFile, MAXPATHLEN);
 								pathLen = strlen (szFile);
@@ -415,7 +424,7 @@ void browseForFile (const vector<string> extensionList) {
 								return;
 							}
 
-								case 1:
+								case 2:
 							{
 								getcwd (savePath, MAXPATHLEN);
 								pathLen = strlen (savePath);
@@ -423,7 +432,7 @@ void browseForFile (const vector<string> extensionList) {
 								nichtausgewauhlt = false;
 								break;
 							}
-								case 2:
+								case 3:
 							{
 								getcwd (biosPath, MAXPATHLEN);
 								pathLen = strlen (biosPath);
@@ -431,7 +440,7 @@ void browseForFile (const vector<string> extensionList) {
 								nichtausgewauhlt = false;
 								break;
 							}
-								case 3:
+								case 4:
 							{
 								getcwd (patchPath, MAXPATHLEN);
 								pathLen = strlen (patchPath);

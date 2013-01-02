@@ -449,6 +449,7 @@ void BIOScall(int op,  s32 *R)
 			ichflyswiIntrWait(1,(IE & 0x6080));
 		  break;
 	  case 0x04:
+
 #ifdef DEV_VERSION
 		  Log("IntrWait: 0x%08x,0x%08x\n",
 			  R[0],
@@ -458,7 +459,14 @@ void BIOScall(int op,  s32 *R)
 		//CPUSoftwareInterrupt();
 		break;    
 	  case 0x05:
-	#ifdef DEV_VERSION
+#ifdef showdebug
+		extern u16 IntrWaitnum;
+		extern u32 VBlankIntrWaitentertimes;
+		IntrWaitnum = REG_VCOUNT;
+		VBlankIntrWaitentertimes++;
+
+#endif
+#ifdef DEV_VERSION
 		  Log("VBlankIntrWait: 0x%08X 0x%08X\n",REG_IE,anytimejmpfilter);
 		  //VblankHandler(); //todo
 	#endif
@@ -538,10 +546,14 @@ void BIOScall(int op,  s32 *R)
 		  Log("SoundBiasSet: 0x%08x \n",
 			  R[0]);      
 	//#endif    
-		//if(reg[0].I) //ichfly sound todo
-		  //systemSoundPause(); //ichfly sound todo
-		//else //ichfly sound todo
-		  //systemSoundResume(); //ichfly sound todo
+		if(reg[0].I) //ichfly sound todo
+		{
+		  UPDATE_REG(0x88, 0x200);
+		}
+		else //ichfly sound todo
+		{
+		  UPDATE_REG(0x88, 0);
+		}
 		break;
 	  case 0x1F:
 		BIOS_MidiKey2Freq();

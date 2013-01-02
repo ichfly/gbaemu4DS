@@ -55,6 +55,8 @@ extern int timer3Ticks;
 extern int timer3ClockReload;
 extern int cpuTotalTicks;
 
+extern "C" u32 cpu_GetMemPrem();
+
 void Logsd(const char *defaultMsg,...);
 
 
@@ -126,7 +128,7 @@ static inline u32 CPUReadMemoryrealpu(u32 address)
 #endif
   
 #ifdef printreads
-  iprintf("r32 %08x\n",address);
+  iprintf("r32 %08x %08X\n",address,cpu_GetMemPrem());
 #endif
   
   u32 value;
@@ -259,7 +261,7 @@ extern u32 myROM[];
 static inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
-	iprintf("r16 %08x\n",address);
+	iprintf("r16 %08x (%08X)\n",address,cpu_GetMemPrem());
 #endif
 #ifdef DEV_VERSION      
   if(address & 1) {

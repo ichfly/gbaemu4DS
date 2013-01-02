@@ -1,7 +1,7 @@
 #include <nds.h>
 #include <stdio.h>
 
-
+#include "../../gloabal/cpuglobal.h"
 #include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
@@ -407,9 +407,33 @@ void HblankHandler(void) {
 #endif
 #endif
 }
+
+#ifdef showdebug
+u16 IntrWaitnum = 0;
+u32 VBlankIntrWaitentertimes = 0;
+u32 VBlankIntrWaitentertimesshow = 0;
+u8 counterenters = 0;
+#endif
+
 //---------------------------------------------------------------------------------
 void VblankHandler(void) {
 //---------------------------------------------------------------------------------
+#ifdef showdebug
+	iprintf("\x1b[2J");
+	iprintf("%d %d\n",VBlankIntrWaitentertimesshow,IntrWaitnum);
+#ifdef anyarmcom
+	extern void showcomdebug();
+	showcomdebug();
+#endif
+	counterenters++;
+	if(counterenters == 60)
+	{
+		VBlankIntrWaitentertimesshow = VBlankIntrWaitentertimes;
+		counterenters = 0;
+		VBlankIntrWaitentertimes = 0;
+	}
+#endif
+
 #ifdef capture_and_pars
 #ifndef antyflicker
 	if(currentVRAMcapblock == 0)
@@ -464,24 +488,47 @@ lastdebugcurrent++;
 if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 #endif
 
-	CPUCheckDMA(1, 0x0f); //V-Blank
 
 	if(framewtf == frameskip)
 	{
 		framewtf = 0;
 		if((DISPCNT & 7) < 3)
 		{
+#ifndef nogfxsoundstruggler
 			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
+#else
+			extern void arm7dmareq();
+			arm7dmareq();
+			dmaCopyWords(3,(void*)0x06010000,(void*)0x06400000,0x2000);
+			arm7dmareq();
+			dmaCopyWords(3,(void*)0x06012000,(void*)0x06402000,0x2000);
+			arm7dmareq();
+			dmaCopyWords(3,(void*)0x06014000,(void*)0x06404000,0x2000);
+			arm7dmareq();
+			dmaCopyWords(3,(void*)0x06016000,(void*)0x06406000,0x2000);
+#endif
 		}
 		else
 		{
+#ifndef nogfxsoundstruggler
 			dmaCopyWordsAsynch(1,(void*)0x06014000,(void*)0x06404000,0x4000);
+#else
+			arm7dmareq();
+			dmaCopyWords(3,(void*)0x06014000,(void*)0x06404000,0x2000);
+			arm7dmareq();
+			dmaCopyWords(3,(void*)0x06016000,(void*)0x06406000,0x2000);
+			arm7dmareq();
+#endif
+
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
 				for(int iy = 0; iy <160; iy++){
-					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
+					dmaCopyWords(3, (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
 					pointertobild+=480;
+#ifdef priosound
+					arm7dmareq();
+#endif
 				}
 			}
 			else
@@ -491,9 +538,12 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 					u8 *pointertobild = (u8 *)(0x6000000);
 					if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 					for(int iy = 0; iy <160; iy++){
-						dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 240);
+						dmaCopyWords(3, (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 240);
 						pointertobild+=240;
 						//pointertobild+=120;
+#ifdef priosound
+					arm7dmareq();
+#endif
 					}
 				}
 				else
@@ -503,8 +553,11 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 						u8 *pointertobild = (u8 *)(0x6000000);
 						if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 						for(int iy = 0; iy <128; iy++){
-							dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
+							dmaCopyWords(3,(void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
 							pointertobild+=320;
+#ifdef priosound
+					arm7dmareq();
+#endif
 						}
 					}
 				}
@@ -539,11 +592,15 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 	}            
     UPDATE_REG(0x130, P1);
 
+	CPUCheckDMA(1, 0x0f); //V-Blank
 
 #ifdef lastdebug
 lasttime[lastdebugcurrent] = 0x0000001;
 lastdebugcurrent++;
 if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
+#endif
+#ifdef showdebug
+	//iprintf("ex %d\n",REG_VCOUNT);
 #endif
 }
 

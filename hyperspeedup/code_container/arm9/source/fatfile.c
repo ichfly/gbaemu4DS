@@ -1247,13 +1247,13 @@ void generatefilemap(int size)
 	int i = 0;
 	while(i < (partition->bytesPerCluster/chucksize)*clusCount+1)
 	{
-		sectortabel[i*2 + 1] = 0x0;
+		sectortabel[i*2] = 0x0;
 		i++;
 	}
 	i = 0;
 	while(i < buffslots)
 	{
-		allocedfild[i] = 0x0;
+		allocedfild[i] = 0x1;
 		i++;
 	}
 
@@ -1262,7 +1262,7 @@ void generatefilemap(int size)
 	i = 0;
 	while(i < (partition->bytesPerCluster/chucksize))
 	{
-		sectortabel[mappoffset*2] = _FAT_fat_clusterToSector(partition, cluster) + i;
+		sectortabel[mappoffset*2 + 1] = _FAT_fat_clusterToSector(partition, cluster) + i;
 		mappoffset++;
 		i++;
 	}
@@ -1273,7 +1273,7 @@ void generatefilemap(int size)
 		i = 0;
 		while(i < (partition->bytesPerCluster/chucksize))
 		{
-			sectortabel[mappoffset*2] = _FAT_fat_clusterToSector(partition, cluster) + i;
+			sectortabel[mappoffset*2 + 1] = _FAT_fat_clusterToSector(partition, cluster) + i;
 			mappoffset++;
 			i++;
 		}
@@ -1298,7 +1298,7 @@ void getandpatchmap(offsetgba,offsetthisfile)
 		clusCount--;
 		cluster = _FAT_fat_nextCluster (partition, cluster);
 	}
-	sectortabel[mappoffset*2] = _FAT_fat_clusterToSector(partition, cluster) + offset1;
+	sectortabel[mappoffset*2 + 1] = _FAT_fat_clusterToSector(partition, cluster) + offset1;
 
 
 

@@ -66,22 +66,22 @@ void CPUWriteByteextern(u32 address, u8 b)
 
 
 
-u8 ichfly_readu8(int pos);
+u8 ichfly_readu8(unsigned int pos);
 
-u32 ichfly_readu8extern(int pos)
+u32 ichfly_readu8extern(unsigned int pos)
  {
 	return ichfly_readu8(pos);
  }
 
-u16 ichfly_readu16(int pos);
+u16 ichfly_readu16(unsigned int pos);
 
-u16 ichfly_readu16extern(int pos)
+u16 ichfly_readu16extern(unsigned int pos)
  {
 	return ichfly_readu16(pos);
  }
-u32 ichfly_readu32(int pos);
+u32 ichfly_readu32(unsigned int pos);
 
-u32 ichfly_readu32extern(int pos)
+u32 ichfly_readu32extern(unsigned int pos)
  {
 	return ichfly_readu32(pos);
  }
