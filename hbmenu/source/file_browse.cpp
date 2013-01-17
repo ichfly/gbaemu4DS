@@ -450,7 +450,7 @@ void browseForFile (const vector<string> extensionList) {
 							}
 							}
 						}
-						if (pressed&KEY_DOWN && ausgewauhlt != 3){ ausgewauhlt++; break;}
+						if (pressed&KEY_DOWN && ausgewauhlt != 4){ ausgewauhlt++; break;}
 						if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--; break;}
 					}
 				}

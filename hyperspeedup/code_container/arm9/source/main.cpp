@@ -189,6 +189,10 @@ int main( int argc, char **argv) {
 //---------------------------------------------------------------------------------
 	//set the mode for 2 text layers and two extended background layers
 	//videoSetMode(MODE_5_2D); 
+						if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+						while(!(REG_DISPSTAT & DISP_IN_VBLANK)); //wait till arm7 is up
+						if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+						while(!(REG_DISPSTAT & DISP_IN_VBLANK));
   videoSetModeSub(MODE_5_2D);
 
 
@@ -291,8 +295,6 @@ else
 }
 //data protbuff
 #ifdef arm9advsound
-REG_IPC_FIFO_TX = 0x1FFFFFFA; //load buffer
-
 #ifdef anyarmcom
 *(u32*)arm7exchangefild = (u32)&amr7sendcom;
 *(u32*)(arm7exchangefild + 4) = (u32)&amr7senddma1;
@@ -303,7 +305,14 @@ REG_IPC_FIFO_TX = 0x1FFFFFFA; //load buffer
 *(u32*)(arm7exchangefild + 24) = (u32)&amr7fehlerfeld[0];
 #endif
 
+extern const unsigned char s7Bitpoly[];
+extern const unsigned char s15Bitpoly[];
+
+*(u32*)(arm7exchangefild + 0x50) = (u32)&s7Bitpoly[0];
+*(u32*)(arm7exchangefild + 0x54) = (u32)&s15Bitpoly[0];
+REG_IPC_FIFO_TX = 0x9FFFFFFA; //load buffer
 REG_IPC_FIFO_TX = arm7amr9buffer = (u32)arm7exchangefild; //buffer for arm7
+//while(1);
 #endif
 //test
 
@@ -445,7 +454,7 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 		if (isdaas&KEY_RIGHT) syncline+=10;
 		if (isdaas&KEY_LEFT && syncline != 0) syncline-=10;
 	}
-		bool slow;
+		u8 slow;
 	iprintf("\x1b[2J");
 	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
 	iprintf("press B for slow emuation A for normal\n");
@@ -458,12 +467,12 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 		int isdaas = keysDownRepeat();
 		if (isdaas&KEY_A)
 		{
-			slow = false;
+			slow = 0;
 			break;
 		}
 		if(isdaas&KEY_B)
 		{
-			slow = true;
+			slow = 1;
 			break;
 		}
 	}
@@ -490,11 +499,12 @@ else
 frameskip = (u32)strtol(argv[7],NULL,16);
 int syncline =(u32)strtol(argv[9],NULL,16);
 bool slow;
-if(argv[10][0] == '1')slow = true;
-else slow = false;
+if(argv[10][0] == '1')slow = 1;
+else if(argv[10][0] == '2')slow = 2;
+else slow = 0;
 if(argv[8][0] == '1')
 {
-	REG_IPC_FIFO_TX = 0x1FFFFFFC; //send cmd
+	REG_IPC_FIFO_TX = 0x9FFFFFFC; //send cmd
 	REG_IPC_FIFO_TX = 0;
 }
 #endif
@@ -601,7 +611,7 @@ REG_IPC_FIFO_TX = 0x7654321;
 
 
 	VblankHandler();
-	REG_IPC_FIFO_TX = 0x1FFFFFFF; //cmd
+	REG_IPC_FIFO_TX = 0x9FFFFFFF; //cmd
 	REG_IPC_FIFO_TX = syncline;
 	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))u32 src = REG_IPC_FIFO_RX;
 	iprintf("irqinit\n");

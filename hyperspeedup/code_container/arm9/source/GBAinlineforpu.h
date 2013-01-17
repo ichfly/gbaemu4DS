@@ -137,9 +137,14 @@ static inline u32 CPUReadMemoryrealpu(u32 address)
   
 	if(address > 0x40000FF && address < 0x4000111)
 	{
-		//todo timer shift
-		value = *(u32 *)(address);
-		break;
+		if(ioMem[address & 0x3FC] & 0x8000)
+		{
+			UPDATE_REG(address& 0x3FC, ((*(u16 *)(address& 0x40003FC)) >> 1) | 0x8000);
+		}
+		else
+		{
+			UPDATE_REG(address& 0x3FC, ((*(u16 *)(address& 0x40003FC)) >> 1));
+		}
 	}
 #ifdef gba_handel_IRQ_correct
 	if(address == 0x4000202 || address == 0x4000200)//ichfly update
@@ -403,8 +408,14 @@ iprintf("r8 %02x\n",address);
   
 	if(address > 0x40000FF && address < 0x4000111)
 	{
-		//todo timer shift
-		return *(u8 *)(address);
+		if(ioMem[address & 0x3FC] & 0x8000)
+		{
+			UPDATE_REG(address& 0x3FC, ((*(u16 *)(address& 0x40003FC)) >> 1) | 0x8000);
+		}
+		else
+		{
+			UPDATE_REG(address& 0x3FC, ((*(u16 *)(address& 0x40003FC)) >> 1));
+		}
 	}
   
   	if(address > 0x4000003 && address < 0x4000008)//ichfly update
@@ -753,7 +764,7 @@ static inline void CPUWriteBytepu(u32 address, u8 b)
 	holdType = -1;
   cpuNextEvent = cpuTotalTicks;
 	break;*/
-      case 0x60:
+      /*case 0x60:
       case 0x61:
       case 0x62:
       case 0x63:
@@ -776,7 +787,7 @@ static inline void CPUWriteBytepu(u32 address, u8 b)
       case 0x80:
       case 0x81:
       case 0x84:
-      case 0x85:
+      case 0x85:*/ //ichfly convert all to 16 Bit writes
       case 0x90:
       case 0x91:
       case 0x92:

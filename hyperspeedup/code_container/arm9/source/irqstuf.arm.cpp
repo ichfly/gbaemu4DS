@@ -104,6 +104,9 @@ extern "C" void cpu_SetCP15Cnt(u32 v);
 extern "C" u32 cpu_GetCP15Cnt();
 extern "C" u32 pu_Enable();
 
+extern "C" void copyMode_5(u32* src,u32* tar);
+extern "C" void copyMode_3(void* src ,void* tar );
+
 
 int main( int argc, char **argv);
 
@@ -468,8 +471,11 @@ void VblankHandler(void) {
 		DISPCAPCNT = 0x8030000F | (1 << 16);
 		u8 *pointertobild = (u8 *)(0x6820000);
 		for(int iy = 0; iy <160; iy++){
-			dmaCopy( (void*)pointertobild, (void*)0x6200000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
+			dmaCopyWords( (void*)pointertobild, (void*)0x6200000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
 			pointertobild+=512;
+#ifdef priosound
+					arm7dmareq();
+#endif
 		}
 #ifdef skipper
 	}
@@ -524,7 +530,8 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
 				for(int iy = 0; iy <160; iy++){
-					dmaCopyWords(3, (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
+					//dmaCopyWords(3, (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
+					copyMode_3((void*)pointertobild,(void*)0x6020000+512*(iy));
 					pointertobild+=480;
 #ifdef priosound
 					arm7dmareq();
@@ -553,7 +560,8 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 						u8 *pointertobild = (u8 *)(0x6000000);
 						if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 						for(int iy = 0; iy <128; iy++){
-							dmaCopyWords(3,(void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
+							copyMode_5((u32*)pointertobild,(u32*)(0x6020000+512*(iy)));
+							//dmaCopyWords(3,(void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
 							pointertobild+=320;
 #ifdef priosound
 					arm7dmareq();
@@ -568,6 +576,7 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 	{
 		framewtf++;
 	}
+
 	
 
 	

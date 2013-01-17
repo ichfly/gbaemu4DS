@@ -307,7 +307,7 @@ void undifinedresolver()
 }
 int durchgang = 0;
 
-void gbaInit(bool slow)
+void gbaInit(u8 slow)
 {
 
 
@@ -331,11 +331,17 @@ void gbaInit(bool slow)
 
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu while configurating pu
 
-	if(slow)
+	if(slow == 1)
 	{
 		pu_SetDataCachability(   0b01111100);
 		pu_SetCodeCachability(   0b01111100);
 		pu_GetWriteBufferability(0b01111100);
+	}
+	else if(slow == 2)
+	{
+		pu_SetDataCachability(   0b00000010);
+		pu_SetCodeCachability(   0b00001110);
+		pu_GetWriteBufferability(0b00000010);
 	}
 	else
 	{
@@ -353,7 +359,7 @@ void gbaInit(bool slow)
 
 	WRAM_CR = 0; //swap wram in
 
-	if(slow)
+	if(slow == 1)
 	{
 		pu_SetRegion(0, 0x00000000 | PU_PAGE_128M | 1);
 		//pu_SetRegion(1, 0x0b000000 | PU_PAGE_16K | 1);
@@ -363,6 +369,17 @@ void gbaInit(bool slow)
 		pu_SetRegion(4, 0x020C0000 | PU_PAGE_128K | 1);
 		pu_SetRegion(5, 0x020E0000 | PU_PAGE_16K | 1);
 		pu_SetRegion(6, 0x00000000 | PU_PAGE_16M | 1);
+		pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
+	}
+	else if(slow == 2)
+	{
+		pu_SetRegion(0, 0x00000000 | PU_PAGE_128M | 1);
+		pu_SetRegion(1, 0x02000000 | PU_PAGE_4M | 1);
+		pu_SetRegion(2, 0x02000000 | PU_PAGE_256K | 1);
+		pu_SetRegion(3, 0x03000000 | PU_PAGE_16M | 1);
+		pu_SetRegion(4, 0);
+		pu_SetRegion(5, 0);
+		pu_SetRegion(6, 0);
 		pu_SetRegion(7, 0x04000000 | PU_PAGE_16M | 1);
 	}
 	else
@@ -413,9 +430,10 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 
 void BIOScall(int op,  s32 *R)
 {
-	int comment = op & 0x003F;
-	
-	switch(comment) {
+	op = op & 0x003F;
+	//int comment = op & 0x003F;
+	//printf("%X %X\r\n",op,R);
+	switch(op) {
 	  case 0x00:
 		BIOS_SoftReset();
 		break;
@@ -475,9 +493,9 @@ void BIOScall(int op,  s32 *R)
 		if((REG_DISPSTAT & DISP_IN_VBLANK) || (REG_VCOUNT < 60))frameasyncsync(); //hope it don't need more than 100 Lines this give the emulator more power
 #endif
 		//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-#ifndef sounddebugeraddv
+#ifdef not_definedases
 		//send cmd
-		REG_IPC_FIFO_TX = 0x1FFFFFFB; //tell the arm7
+		REG_IPC_FIFO_TX = 0x9FFFFFFB; //tell the arm7
 		REG_IPC_FIFO_TX = 0;
 #endif
 		ichflyswiWaitForVBlank();
@@ -573,16 +591,16 @@ void BIOScall(int op,  s32 *R)
 		while(1);
 		break;
 	  default:
-		if((comment & 0x30) == 0x30)
+		if((op & 0x30) == 0x30)
 		{
-			iprintf("r%x %08x",(comment & 0xF),R[(comment & 0x30)]);
+			iprintf("r%x %08x",(op & 0xF),R[(op & 0x30)]);
 		}
 		else
 		{
 			if(!disableMessage) {
 			  systemMessage(MSG_UNSUPPORTED_BIOS_FUNCTION,
 							N_("Unsupported BIOS function %02x. A BIOS file is needed in order to get correct behaviour."),
-							comment);
+							op);
 			  disableMessage = true;
 			}
 		}

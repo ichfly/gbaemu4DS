@@ -6,7 +6,7 @@
 
 #define nogfxsoundstruggler
 
-//#define priosound
+#define priosound
 
 //#define sounddebugeraddv
 
@@ -75,9 +75,9 @@
 
 #define ichflyDebugdumpon
 
-#define countpagefalts
+//#define countpagefalts
 
-#define showdebug
+//#define showdebug
 
 //#define lastdebug
 

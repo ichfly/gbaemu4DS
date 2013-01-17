@@ -175,9 +175,14 @@ static inline u32 CPUReadMemoryreal(u32 address) //ichfly not inline is faster b
   
 	if(address > 0x40000FF && address < 0x4000111)
 	{
-		//todo timer shift
-		value = *(u32 *)(address);
-		break;
+		if(ioMem[address & 0x3FC] & 0x8000)
+		{
+			UPDATE_REG(address& 0x3FC, ((*(u16 *)(address& 0x40003FC)) >> 1) | 0x8000);
+		}
+		else
+		{
+			UPDATE_REG(address& 0x3FC, ((*(u16 *)(address& 0x40003FC)) >> 1));
+		}
 	}
 #ifdef gba_handel_IRQ_correct
 	if(address == 0x4000202 || address == 0x4000200)//ichfly update
@@ -545,8 +550,14 @@ iprintf("r8 %02x\n",address);
   
 	if(address > 0x40000FF && address < 0x4000111)
 	{
-		//todo timer shift
-		return *(u8 *)(address);
+		if(ioMem[address & 0x3FC] & 0x8000)
+		{
+			UPDATE_REG(address& 0x3FC, ((*(u16 *)(address& 0x40003FC)) >> 1) | 0x8000);
+		}
+		else
+		{
+			UPDATE_REG(address& 0x3FC, ((*(u16 *)(address& 0x40003FC)) >> 1));
+		}
 	}
   
   	if(address > 0x4000003 && address < 0x4000008)//ichfly update
@@ -965,14 +976,13 @@ static inline void CPUWriteByte(u32 address, u8 b)
   
     if(address < 0x4000400) {
       switch(address & 0x3FF) {
-      case 0x301:
 	/*if(b == 0x80) //todo
 	  stopState = true;
 	holdState = 1;
 	holdType = -1;
   cpuNextEvent = cpuTotalTicks;
 	break;*/
-      case 0x60:
+      /*case 0x60:
       case 0x61:
       case 0x62:
       case 0x63:
@@ -995,7 +1005,7 @@ static inline void CPUWriteByte(u32 address, u8 b)
       case 0x80:
       case 0x81:
       case 0x84:
-      case 0x85:
+      case 0x85:*/ //ichfly convert them to 16 Bit writes
       case 0x90:
       case 0x91:
       case 0x92:
@@ -1018,9 +1028,11 @@ static inline void CPUWriteByte(u32 address, u8 b)
 #endif
 	  #ifdef arm9advsound
 		  REG_IPC_FIFO_TX = ((address & 0x3FF) | 0x40000000);
-		  REG_IPC_FIFO_TX = b; //faster in case we send a 0
+		  REG_IPC_FIFO_TX = b;
 		#endif
 	break;
+	//case 0x301: //todo
+	//	break;
       default:
 	/*if((0x4000060 > address && address > 0x4000008) || (address > 0x40000FF && address < 0x4000110))
 	{

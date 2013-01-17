@@ -343,3 +343,88 @@ ichflyswiHalt:
 resettostartup:
 @---------------------------------------------------------------------------------
 	B main
+	
+	
+	
+@---------------------------------------------------------------------------------
+	.global copyMode_5
+	.type   copyMode_5 STT_FUNC
+@---------------------------------------------------------------------------------
+copyMode_5: @r0 = src r1 =tar
+@---------------------------------------------------------------------------------
+	push {r4-r11,r14}
+	
+	mov r2 , #0x80000000
+	add r2 ,r2, #0x8000
+
+	mov r3 , #0x8 @8 times
+loop:
+
+	LDMIA r0!, {r4-r12,r14}
+	and	r4, r4, r2
+	and	r5, r5, r2
+	and	r6, r6, r2
+	and	r7, r7, r2
+	and	r8, r8, r2
+	and	r9, r9, r2
+	and	r10, r10, r2
+	and	r11, r11, r2
+	and	r12, r12, r2
+	and	r14, r14, r2	
+	STMIA r1!, {r4-r12,r14}
+	
+	subs r3, #1
+	BEQ loop
+	
+	LDMIA r0!, {r4-r12} @end with one missing
+	and	r4, r4, r2
+	and	r5, r5, r2
+	and	r6, r6, r2
+	and	r7, r7, r2
+	and	r8, r8, r2
+	and	r9, r9, r2
+	and	r10, r10, r2
+	and	r11, r11, r2
+	and	r12, r12, r2	
+	STMIA r1!, {r4-r12}
+	
+	pop {r4-r11,r14}
+	
+	
+@---------------------------------------------------------------------------------
+	.global copyMode_3
+	.type   copyMode_3 STT_FUNC
+@---------------------------------------------------------------------------------
+copyMode_3: @r0 = src r1 =tar
+@---------------------------------------------------------------------------------
+	push {r4-r11,r14}
+	
+	mov r2 , #0x80000000
+	add r2 ,r2, #0x8000
+
+	mov r3 , #13 @13 times
+loop2:
+
+	LDMIA r0!, {r4-r12,r14}
+	and	r4, r4, r2
+	and	r5, r5, r2
+	and	r6, r6, r2
+	and	r7, r7, r2
+	and	r8, r8, r2
+	and	r9, r9, r2
+	and	r10, r10, r2
+	and	r11, r11, r2
+	and	r12, r12, r2
+	and	r14, r14, r2	
+	STMIA r1!, {r4-r12,r14}
+	
+	subs r3, #1
+	BEQ loop2
+	
+	LDMIA r0!, {r4-r6} @end with one missing
+	and	r4, r4, r2
+	and	r5, r5, r2
+	and	r6, r6, r2
+	STMIA r1!, {r4-r6}
+	
+	pop {r4-r11,r14}

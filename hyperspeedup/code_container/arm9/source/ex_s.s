@@ -267,43 +267,46 @@ nop
 #endif
 
 
+
 .global SPtoloadswi
 SPtoloadswi:
-	.word __sp_svc
+.word __sp_svc
 inter_swi:
 
 
-	@ change the PU to nds mode
-	ldr	SP,=0x36333333	@ see cpumg.cpp for meanings protections
-	mcr	p15, 0, SP, c5, c0, 2
-	ldr	SP, =exRegs
-	
-	str	lr, [SP, #(15 * 4)]	@ save r15 (lr is r15)
-	
-	@ save the registres 0->12
-	stmia	SP, {r0-r12}
-	
-	@ jump into the personal handler
-	ldr	r1, =exHandlerswi
-	ldr	r1, [r1]
-	
-	
-	ldr	sp, =SPtoloadswi	@ use the new stack
-	ldr sp, [sp]
-	
-	blx	r1 @ichfly change back if possible
-	
-	
-	ldr	r1, =SPtoloadswi	@save old stack
-	str sp, [r1]
-	
-	@ restore the registres 0->12
-	ldr	lr, =exRegs
-	ldmia	lr, {r0-r12}
-	
-	ldr	lr, [lr, #(15 * 4)] 
-	
-	subs    pc, lr, #0 @ichfly this is not working	
+@ change the PU to nds mode
+ldr	SP,=0x36333333	@ see cpumg.cpp for meanings protections
+mcr	p15, 0, SP, c5, c0, 2
+ldr	SP, =exRegs
+
+str	lr, [SP, #(15 * 4)] @ save r15 (lr is r15)
+
+@ save the registres 0->12
+stmia	SP, {r0-r12}
+
+@ jump into the personal handler
+ldr	r1, =exHandlerswi
+ldr	r1, [r1]
+
+
+ldr	sp, =SPtoloadswi	@ use the new stack
+ldr sp, [sp]
+
+blx	r1 @ichfly change back if possible
+
+
+ldr	r1, =SPtoloadswi	@save old stack
+str sp, [r1]
+
+@ restore the registres 0->12
+ldr	lr, =exRegs
+ldmia	lr, {r0-r12}
+
+ldr	lr, [lr, #(15 * 4)]
+
+subs pc, lr, #0 @ichfly this is not working
+
+
 
 
 

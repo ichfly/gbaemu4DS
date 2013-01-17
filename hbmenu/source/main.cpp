@@ -184,8 +184,8 @@ int main(int argc, char **argv) {
 
 			//filename = browseForFile(extensionList);
 			browseForFile(extensionList);
-			argarray.push_back("a");
 			if(arcvsave != (char*)0) goto dataluncher;
+			argarray.push_back("a");
 			argarray.push_back(szFile);
 			argarray.push_back(savePath);
 			argarray.push_back(biosPath);
@@ -317,7 +317,7 @@ int main(int argc, char **argv) {
 
 	iprintf("\x1b[2J");
 	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press B for slow A for normal\n");
+	iprintf("press B for slow A for normal UP for speedhack\n");
 	while(1) 
 	{
 
@@ -334,6 +334,12 @@ int main(int argc, char **argv) {
 			argarray.push_back("1");
 			break;
 		}
+		if (isdaas&KEY_UP)
+		{
+			argarray.push_back("2");
+			break;
+		}
+
 	}
 		iprintf("\x1b[2J");
 	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
@@ -499,7 +505,8 @@ dataluncher:
 			sprintf(temp3,"%X",entries[matching].frameline);
 			argarray.push_back(temp3);
 			
-			if(entries[matching].fastpu)argarray.push_back("1");
+			if(entries[matching].fastpu == 1)argarray.push_back("1");
+			else if(entries[matching].fastpu == 2)argarray.push_back("2");
 			else argarray.push_back("0");
 			
 			if(entries[matching].mb)argarray.push_back("1");

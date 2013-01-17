@@ -237,7 +237,19 @@ u8 biosProtected[4];
 #ifdef WORDS_BIGENDIAN
 bool cpuBiosSwapped = false;
 #endif
-
+u16 soundvalbitmask[0x50] =
+{
+		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0
+		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x10
+		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x20
+		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x30
+		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x40
+		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x50
+		0xFFFF,0xFFC0,0x7800,0xFFFF,0xFFC0,0xFFFF,0x7800,0xFFFF, //0x60
+		0xFFFF,0xFF00,0x7800,0xFFFF,0xFFC0,0xFFFF,0x7FFF,0xFFFF, //0x70
+		0xFFFF,0xFFFF,0xFFF0,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x80
+		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x90
+};
 u32 myROM[] = {
 0xEA000006,
 0xEA000093,
@@ -1535,6 +1547,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	  REG_IPC_FIFO_TX = (address | 0x80000000);
 	  REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
+	  value &= soundvalbitmask[address>>1];
 	  UPDATE_REG(address,value);
     break;
   case 0xB0:
@@ -1786,7 +1799,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	REG_IPC_FIFO_TX = (address | 0x80000000);
 	REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
-
+	*(u16 *)(0x4000100) = timer1Reload << 1;
 	UPDATE_REG(0x100, value);
     break;
   case 0x102:
@@ -1801,34 +1814,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	REG_IPC_FIFO_TX = (address | 0x80000000);
 	REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
-	/*if(timer0Reload & 0x8000)
-	{
-		if((value & 0x3) == 0)
-		{
-			*(u16 *)(0x4000100) = timer0Reload >> 5;
-			*(u16 *)(0x4000102) = value + 1;
-			break;
-		}
-		if((value & 0x3) == 1)
-		{
-			*(u16 *)(0x4000100) = timer0Reload >> 1;
-			*(u16 *)(0x4000102) = value + 1;
-			break;
-		}
-		if((value & 3) == 2)
-		{
-			*(u16 *)(0x4000100) = timer0Reload >> 1;
-			*(u16 *)(0x4000102) = value + 1;
-			break;
-		}
-		*(u16 *)(0x4000102) = value;
-		iprintf("big reload0\r\n");//todo 
-	}
-	else*/
-	{	
-		*(u16 *)(0x4000100) = timer1Reload << 1;
-		*(u16 *)(0x4000102) = value;
-	}
+	//*(u16 *)(0x4000100) = timer1Reload << 1;
+	*(u16 *)(0x4000102) = value;
     break;
   case 0x104:
     timer1Reload = value;
@@ -1839,7 +1826,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	REG_IPC_FIFO_TX = (address | 0x80000000);
 	REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
-
+	*(u16 *)(0x4000104) = timer1Reload << 1;
 	UPDATE_REG(0x104, value);
 	break;
   case 0x106:
@@ -1855,35 +1842,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     //timerOnOffDelay|=2;
     //cpuNextEvent = cpuTotalTicks;
 	UPDATE_REG(0x106, value);
-
-	/*if(timer1Reload & 0x8000)
-	{
-		if((value & 0x3) == 0)
-		{
-			*(u16 *)(0x4000104) = timer1Reload >> 5;
-			*(u16 *)(0x4000106) = value + 1;
-			break;
-		}
-		if((value & 0x3) == 1)
-		{
-			*(u16 *)(0x4000104) = timer1Reload >> 1;
-			*(u16 *)(0x4000106) = value + 1;
-			break;
-		}
-		if((value & 3) == 2)
-		{
-			*(u16 *)(0x4000104) = timer1Reload >> 1;
-			*(u16 *)(0x4000106) = value + 1;
-			break;
-		}
-		*(u16 *)(0x4000106) = value;
-		iprintf("big reload1\r\n");//todo 
-	}
-	else*/
-	{	
-		*(u16 *)(0x4000104) = timer1Reload << 1;
-		*(u16 *)(0x4000106) = value;
-	}
+	//*(u16 *)(0x4000104) = timer1Reload << 1;
+	*(u16 *)(0x4000106) = value;
 	  break;
   case 0x108:
     timer2Reload = value;
@@ -1895,38 +1855,13 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     //timerOnOffDelay|=4;
     //cpuNextEvent = cpuTotalTicks;
 	UPDATE_REG(0x10A, value);
-
-	/*if(timer2Reload & 0x8000)
-	{
-		if((value & 0x3) == 0)
-		{
-			*(u16 *)(0x4000108) = timer2Reload >> 5;
-			*(u16 *)(0x400010A) = value + 1;
-			break;
-		}
-		if((value & 0x3) == 1)
-		{
-			*(u16 *)(0x4000108) = timer2Reload >> 1;
-			*(u16 *)(0x400010A) = value + 1;
-			break;
-		}
-		if((value & 3) == 2)
-		{
-			*(u16 *)(0x4000108) = timer2Reload >> 1;
-			*(u16 *)(0x400010A) = value + 1;
-			break;
-		}
-		iprintf("big reload2\r\n");//todo 
-		*(u16 *)(0x400010A) = value;
-	}
-	else*/
-	{	
-		*(u16 *)(0x4000108) = timer2Reload << 1;
-		*(u16 *)(0x400010A) = value;
-	}
+	
+	//*(u16 *)(0x4000108) = timer2Reload << 1;
+	*(u16 *)(0x400010A) = value;
 	  break;
   case 0x10C:
     timer3Reload = value;
+	*(u16 *)(0x400010C) = timer3Reload << 1;
 	UPDATE_REG(0x10C, value);
 	  break;
   case 0x10E:
@@ -1935,34 +1870,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     //cpuNextEvent = cpuTotalTicks;
 	UPDATE_REG(0x10E, value);
 
-	/*if(timer3Reload & 0x8000)
-	{
-		if((value & 0x3) == 0)
-		{
-			*(u16 *)(0x400010C) = timer3Reload >> 5;
-			*(u16 *)(0x400010E) = value + 1;
-			break;
-		}
-		if((value & 0x3) == 1)
-		{
-			*(u16 *)(0x400010C) = timer3Reload >> 1;
-			*(u16 *)(0x400010E) = value + 1;
-			break;
-		}
-		if((value & 3) == 2)
-		{
-			*(u16 *)(0x400010C) = timer3Reload >> 1;
-			*(u16 *)(0x400010E) = value + 1;
-			break;
-		}
-		iprintf("big reload3\r\n");//todo 
-		*(u16 *)(0x400010E) = value;
-	}
-	else*/
-	{	
-		*(u16 *)(0x400010C) = timer3Reload << 1;
-		*(u16 *)(0x400010E) = value;
-	}
+	//*(u16 *)(0x400010C) = timer3Reload << 1;
+	*(u16 *)(0x400010E) = value;
   break;
   case 0x128:
     if(value & 0x80) {
