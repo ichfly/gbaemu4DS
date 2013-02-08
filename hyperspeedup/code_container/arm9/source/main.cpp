@@ -33,10 +33,6 @@
 
 #include "main.h"
 
-#define UPDATE_REG(address, value)\
-  {\
-    WRITE16LE(((u16 *)&ioMem[address]),value);\
-  }\
 
 char biosPath[MAXPATHLEN * 2];
 
@@ -96,7 +92,6 @@ extern DLDI_INTERFACE _io_dldi_stub;
 
 
 
-//#define loaddirect
 
 void emulateedbiosstart();
 
@@ -107,7 +102,6 @@ extern void HblankHandler(void);
 
 void downgreadcpu();
 
-//volatile u16 DISPCNT  = 0x0080;
 
 
 
@@ -116,10 +110,6 @@ void downgreadcpu();
 #include <nds/disc_io.h>
 #include <dirent.h>
 
-   #define DEFAULT_CACHE_PAGES 16
-   #define DEFAULT_SECTORS_PAGE 8
-
-#define public
 
 
 
@@ -145,23 +135,8 @@ extern "C" u32 pu_Enable();
 
 
 
-
-
-
-#define READ16LE(x) \
-  swap16(*((u16 *)(x)))
-
-
-
-
 extern int frameskip;
 
-extern int framewtf;
-
-
-
-extern "C" int SPtoload;
-extern "C" int SPtemp;
 
 u32 arm7amr9buffer = 0;
 
@@ -179,24 +154,6 @@ u32 amr7fehlerfeld[10];
 //---------------------------------------------------------------------------------
 int main( int argc, char **argv) {
 
-  biosPath[0] = 0;
-  savePath[0] = 0;
-  patchPath[0] = 0;
-
-
-
-
-//---------------------------------------------------------------------------------
-	//set the mode for 2 text layers and two extended background layers
-	//videoSetMode(MODE_5_2D); 
-						if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-						while(!(REG_DISPSTAT & DISP_IN_VBLANK)); //wait till arm7 is up
-						if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-						while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-  videoSetModeSub(MODE_5_2D);
-
-
-	//defaultExceptionHandler();	//for debug befor gbainit
 
 	//set the first two banks as background memory and the third as sub background memory
 	//D is not used..if you need a bigger background then you will need to map
@@ -207,6 +164,33 @@ int main( int argc, char **argv) {
 	vramSetBanks_EFG(VRAM_E_MAIN_SPRITE/*for gba sprite*/,VRAM_F_LCD/*cant use*/,VRAM_G_LCD/*cant use*/);
 	vramSetBankH(VRAM_H_SUB_BG); //only sub /*for prints to lowern screan*/ 
 	vramSetBankI(VRAM_I_SUB_BG_0x06208000); //only sub
+	videoSetModeSub(MODE_5_2D);
+	consoleDemoInit();
+
+
+
+
+  biosPath[0] = 0;
+  savePath[0] = 0;
+  patchPath[0] = 0;
+
+
+
+
+//---------------------------------------------------------------------------------
+	//set the mode for 2 text layers and two extended background layers
+	//videoSetMode(MODE_5_2D); 
+
+
+
+	if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+	while(!(REG_DISPSTAT & DISP_IN_VBLANK)); //wait till arm7 is up
+	if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
+	while(!(REG_DISPSTAT & DISP_IN_VBLANK));
+
+
+	iprintf("gbaemu4DS for r4i gold (3DS) (r4ids.cn) by ichfly\nBuild " __DATE__ "\n" );
+	//iprintf("test1");
 
 
 #ifdef advanced_irq_check
@@ -217,16 +201,15 @@ int main( int argc, char **argv) {
 #endif
 	__irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareq,irqTable); //todo async
 	irqEnable(IRQ_FIFO_NOT_EMPTY);
-
+	//iprintf("test2");
+	//while(1);
 
 
 	//bg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
-	consoleDemoInit();
 
 	REG_POWERCNT &= ~((POWER_3D_CORE | POWER_MATRIX) & 0xFFFF);//powerOff(POWER_3D_CORE | POWER_MATRIX); //3D use power so that is not needed
 
 	//consoleDemoInitsubsc();
-	//iprintf("gbaemu4DS for r4i gold (3DS) (r4ids.cn) by ichfly\nBuildday" __DATE__);
 	//consoleDemoInit();
 	//soundEnable(); //sound finaly
 	//fifoSetDatamsgHandler(FIFO_USER_02, arm7debugMsgHandler, 0);
@@ -259,10 +242,29 @@ if (0 != argc )
 	}
 }
 #else
+		u32 tempPMD = 0;
+#ifndef arm9advsound
+		tempPMD |= 0x2;
+#else
+		tempPMD |= 0x1;
+#endif
 		if(argv[5][0] == '1')
 		{
 			lcdSwap();
+#ifdef capture_and_pars
+			tempPMD |= 0x4;
+#endif
 		}
+#ifdef capture_and_pars
+		else
+		{
+			tempPMD |= 0x8;
+		}
+#else
+		tempPMD |= 0xC;
+#endif
+REG_IPC_FIFO_TX = 0x9FFFFFF9;
+REG_IPC_FIFO_TX = tempPMD;
 #endif
 if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0x4E) && temptest)
 {
@@ -316,20 +318,6 @@ REG_IPC_FIFO_TX = arm7amr9buffer = (u32)arm7exchangefild; //buffer for arm7
 #endif
 //test
 
-/*REG_IPC_FIFO_TX = 0;
-while(true)
-{
-	int i = REG_IPC_FIFO_RX;
-	iprintf("%08X\r\n",i);
-	REG_IPC_FIFO_TX = i;
-
-}*/
-
-/*	iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
-malloc(0x4000);
-iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
-	while(1);*/ //test getHeapEnd() is the needed thing
-
 	iprintf("Init Fat...");
     
 
@@ -339,37 +327,13 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
         iprintf("OK\n");
     }else{
         iprintf("failed\n");
-        int i = 0;
-		while(i< 300)
-		{
-			//swiWaitForVBlank();
-			if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-			while(!(REG_DISPSTAT & DISP_IN_VBLANK));
-			i++;
-		}
+		while(1);
     }
 
-	//irqInit();
-	
-
-//main menü ende aber bleibe im while
-
-	
-
-	//dirfolder("nitro:/");
-	
-	
-	bool nichtausgewauhlt = true;
-	
-
-	
-	iprintf("\x1b[2J");
-//main menü
-
-//while(1)iprintf("o");
 
 
 #ifdef standalone
+	iprintf("\x1b[2J");
 	browseForFile("");
 
 
@@ -476,6 +440,7 @@ iprintf("\n%x %x %x",getHeapStart(),getHeapEnd(),getHeapLimit());
 			break;
 		}
 	}
+	iprintf("\x1b[2J");
 
 
 #else
@@ -514,32 +479,12 @@ if(argv[8][0] == '1')
 
 
 
-
-	//sprintf(szFile,"%s","nitro:/puzzle.gba"); //ichfly test
-	
-	/*scanKeys();
-
-	while(keysDownRepeat()&KEY_A)
-	{
-		scanKeys();
-		swiWaitForVBlank();
-	}*/
-
 	bool extraram =false; 
-	//if(!REG_DSIMODE) extraram = ram_init(DETECT_RAM); 
-	//extraram = true; //testtest
 
 initspeedupfelder();
 
-	//iprintf("\x1b[2J");
 
 
-
-
-
-  iprintf("\x1b[2J");
-
-  parseDebug = true;
 
   //if(argc == 2) {
   //iprintf("%s",szFile);
@@ -597,16 +542,10 @@ initspeedupfelder();
 
 	pu_Enable();
 	
-	//memcopy((void*)0x2000000,(void*)rom, 0x40000);
-	
 	iprintf("dmaCopy\n");
 
-/*REG_IPC_FIFO_TX = 0; //test backcall
-REG_IPC_FIFO_TX = 0x7654321;
-				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
-
 	dmaCopy( (void*)rom,(void*)0x2000000, 0x40000);
+
 	iprintf("arm7init\n");
 
 
@@ -618,27 +557,14 @@ REG_IPC_FIFO_TX = 0x7654321;
 
 	anytimejmpfilter = 0;
 	
-	//anytimejmp = (VoidFn)0x3007FFC; //bios import
-/*
-REG_IPC_FIFO_TX = 0; //test backcall
-REG_IPC_FIFO_TX = 0x1234567;
-				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
 	iprintf("emulateedbiosstart\n");
 
 	emulateedbiosstart();
-/*REG_IPC_FIFO_TX = 0; //test backcall
-REG_IPC_FIFO_TX = 0x1111111;
-				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
 
     iprintf("ndsMode\n");
 
 	ndsMode();
-/*REG_IPC_FIFO_TX = 0; //test backcall
-REG_IPC_FIFO_TX = 0x2222222;
-				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
+
     iprintf("gbaInit\n");
 
 
@@ -646,11 +572,8 @@ REG_IPC_FIFO_TX = 0x2222222;
 	videoBgDisableSub(0);
 	vramSetBankH(VRAM_H_LCD); //only sub
 	vramSetBankI(VRAM_I_LCD); //only sub
-	 int iback = bgInitSub(3, BgType_ExRotation, BgSize_B16_256x256, 0,0);
+	int iback = bgInitSub(3, BgType_ExRotation, BgSize_B16_256x256, 0,0);
 
-	//bgSetScale(3,0x111,0x133);
-	//bgSetRotateScale(iback,0,0x111,0x133);
-	//bgSetRotateScale(iback,0,0x0F0,0x0D5);
 	bgSetRotateScale(iback,0,0x0F0,0x0D6);
 	bgUpdate();
 #endif
@@ -658,21 +581,6 @@ REG_IPC_FIFO_TX = 0x2222222;
 	gbaInit(slow);
 
 
-	//iprintf("\n\r%08X",CPUReadMemoryreal(0x08400000));
-	//while(1);
-/*REG_IPC_FIFO_TX = 0; //test backcall
-REG_IPC_FIFO_TX = 0x3333333;
-				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
-	//iprintf("irqSet\n");
-
-	//irqSet(IRQ_VBLANK, VblankHandler);
-
-	//irqEnable(IRQ_VBLANK);
-/*REG_IPC_FIFO_TX = 0; //test backcall
-REG_IPC_FIFO_TX = 0x4444444;
-				if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
-				while(!(REG_DISPSTAT & DISP_IN_VBLANK));*/
 #ifndef capture_and_pars
 	iprintf("gbaMode2\n");
 #endif

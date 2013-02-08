@@ -414,7 +414,7 @@ void gbaswieulatedbios()
 	//Log("%08X S\n", readbankedsp(0x12));
 
 
-	u16 tempforwtf = *(u16*)(exRegs[15] - 2);
+	u8 tempforwtf = *(u8*)(exRegs[15] - 2);
 	BIOScall(tempforwtf,  exRegs);
 #ifdef lastdebug
 	if(readbankedsp(0x12) < 0x1000000)debugandhalt();
@@ -430,7 +430,7 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 
 void BIOScall(int op,  s32 *R)
 {
-	op = op & 0x003F;
+	//op = op & 0x003F;
 	//int comment = op & 0x003F;
 	//printf("%X %X\r\n",op,R);
 	switch(op) {

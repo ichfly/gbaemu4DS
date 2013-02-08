@@ -284,19 +284,23 @@ str	lr, [SP, #(15 * 4)] @ save r15 (lr is r15)
 @ save the registres 0->12
 stmia	SP, {r0-r12}
 
-@ jump into the personal handler
-ldr	r1, =exHandlerswi
-ldr	r1, [r1]
 
+mov r1, SP @u32 *R
+	
+ldrb r0,[lr,#-2] @int op
+	
+	
+thisi4:	
+ldr sp, [pc,#(SPtoloadswi - thisi4 -8)] @ use the new stack
+	
+BL _Z8BIOScalliPi @(int op,  s32 *R)
+	
+thisi5:	
+str sp, [pc,#(SPtoloadswi - thisi5 -8)] @save old stack
 
-ldr	sp, =SPtoloadswi	@ use the new stack
-ldr sp, [sp]
-
-blx	r1 @ichfly change back if possible
-
-
-ldr	r1, =SPtoloadswi	@save old stack
-str sp, [r1]
+ldr	SP,=0x06333333	@ change the PU to gba mode
+mcr	p15, 0, SP, c5, c0, 2
+	
 
 @ restore the registres 0->12
 ldr	lr, =exRegs

@@ -289,7 +289,7 @@ inter_swi:
 thisi4:	
 	ldr sp, [pc,#(SPtoloadswi - thisi4 -8)] @ use the new stack
 	
-	BL _Z8BIOScalliPj @(int op,  u32 *R)
+	BL _Z8BIOScalliPi @(int op,  int *R)
 	
 thisi5:	
 	str sp, [pc,#(SPtoloadswi - thisi5 -8)] @save old stack

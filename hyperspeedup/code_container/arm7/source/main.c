@@ -1,9 +1,9 @@
 #include <nds.h>
 #include <nds/arm7/audio.h>
 
-#include "../../gloabal/cpuglobal.h"
+#include "timer20.h"
 
-u16 callline = 0xFFFF;
+#include "../../gloabal/cpuglobal.h"
 
 #ifdef anyarmcom
 u32* amr7sendcom = 0;
@@ -23,19 +23,28 @@ u32 currfehler = 0;
 //also we are 3 sampels + some overlayer back in the file fix that
 
 
-	u8* soundbuffA = 0;
-	u8* soundbuffB = 0;
+//internal vals
+
+u16 callline = 0xFFFF;
+
+bool autodetectdetect = false;
+
+u8 tacktgeber_sound_FIFO_DMA_A = 0;
+u8 tacktgeber_sound_FIFO_DMA_B = 0;
+
+u8* soundbuffA = 0;
+u8* soundbuffB = 0;
 
 u8 dmaApart = 0;
 u8 dmaBpart = 0;
 
 u32 dmabuffer = 0;
 
+//sound regs
+
 u16 SOUNDCNT_L = 0;
 u16 SOUNDCNT_H = 0;
 
-u8 tacktgeber_sound_FIFO_DMA_A = 0;
-u8 tacktgeber_sound_FIFO_DMA_B = 0;
 u16 TM0CNT_L = 0;
 u16 TM1CNT_L = 0;
 
@@ -58,6 +67,8 @@ u16 DMA2DAD_H  = 0;
 
 u16 SOUND3CNT_H = 0;
 u16 SOUND4CNT_H = 0;
+u16 SOUND4CNT_L = 0;
+u16 SOUND1CNT_L = 0;
 u16 SOUND1CNT_H = 0;
 u16 SOUND1CNT_X = 0;
 u16 SOUND2CNT_H = 0;
@@ -68,17 +79,18 @@ u16 SOUND3CNT_X = 0;
 
 u8 WAVE_RAM[0x10*3*2];
 
-//debug stuff
+//more or less debug stuff
 
 vu32 debugsrc1 = 0;
 vu32 debugsrc2  = 0;
 vu32 debugfr1 = 0;
 vu32 debugfr2  = 0;
 
-//DSP
+//DSP sound data
 u32 pointer_7Bitpoly;
 u32 pointer_15Bitpoly;
 
+//debug stuff
 void senddebug32(u32 val)
 {
 	REG_IPC_FIFO_TX = 0x4000BEEF;
@@ -88,6 +100,60 @@ void senddebug32(u32 val)
 #endif
 }
 
+//time based functions
+u32 stop(u8 back)
+{
+	if(back < 2)SCHANNEL_CR(back + 8) &= ~0x80000000;
+	else SCHANNEL_CR(back) &= ~0x80000000;
+	return 0;
+}
+
+u32 sweepspeed = 0;
+u32 sweep(u8 back)
+{
+	if(SOUND1CNT_L & 0x8)sweepspeed = sweepspeed - sweepspeed/2^((SOUND1CNT_L & 0x7));
+	else sweepspeed = sweepspeed + sweepspeed/2^((SOUND1CNT_L & 0x7));
+	SCHANNEL_TIMER(8) = -(33513982/2)/(sweepspeed);
+	return TIMER_FREQ(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1));
+}
+u32 Envelope(u8 back)
+{
+	u32 Vol = SOUNDCNT_H & 0x3;
+	switch(Vol)
+	{
+	case 3:
+	case 0:
+		Vol = 1;
+		break;
+	case 1:
+		Vol = 2;
+		break;
+	case 2:
+		Vol = 4;
+		break;
+	}
+	u32 Masterright = SOUNDCNT_L & 0x7;
+	u32 Masterleft =  (SOUNDCNT_L << 4) & 0x7;
+	if(back == 1)
+	{
+		if(SOUND1CNT_H & 0x800)SOUND1CNT_H += 0x1000;
+		else SOUND1CNT_H -= 0x1000;
+		SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_L & 0xF000) >> 12)*127/840);  //max:127
+		return TIMER_FREQ(0x40/((SOUND1CNT_H & 0x700) >> 8));
+	} else if (back == 2)
+	{
+		if(SOUND2CNT_H & 0x800)SOUND2CNT_H += 0x1000;
+		else SOUND2CNT_H -= 0x1000;
+		SCHANNEL_CR(9) = ((SCHANNEL_CR(9) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(9)) >> 9) + Masterleft * ((SOUNDCNT_L & BIT(13)) >> 13) ) * Vol) * ((SOUND2CNT_H & 0xF000) >> 12)*127/840);  //max:127
+		return TIMER_FREQ(0x40/((SOUND2CNT_H & 0x700) >> 8));
+	} else if(back == 3)
+	{
+		if(SOUND4CNT_L & 0x800)SOUND4CNT_L += 0x1000;
+		else SOUND4CNT_L -= 0x1000;
+		SCHANNEL_CR(3) = ((SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol) * ((SOUND4CNT_L & 0xF000) >> 12)*127/840);
+		return TIMER_FREQ(0x40/((SOUND4CNT_L & 0x700) >> 8));
+	}
+}
 
 void dmaAtimerinter()
 {
@@ -111,7 +177,8 @@ void dmaBtimerinter()
 	*amr7senddma2 = *amr7senddma2 + 1;
 #endif
 }
-bool autodetectdetect = false;
+
+
 
 void newvalwrite8(u32 addr,u8 val)
 {
@@ -171,16 +238,16 @@ void newvalwrite16(u32 addr,u32 val)
 					switch(val & 0xC0)
 					{
 					case 0:
-						SCHANNEL_CR(8) |= 0xE0000200 | SOUND_REPEAT; //start div by 4 and PSG (12,5% up)
+						SCHANNEL_CR(8) |= 0x60000200 | SOUND_REPEAT; //start div by 4 and PSG (12,5% up)
 						break;
 					case 0x40:
-						SCHANNEL_CR(8) |= 0xE1000200 | SOUND_REPEAT; //start div by 4 and PSG (25% up)
+						SCHANNEL_CR(8) |= 0x61000200 | SOUND_REPEAT; //start div by 4 and PSG (25% up)
 						break;
 					case 0x80:
-						SCHANNEL_CR(8) |= 0xE3000200 | SOUND_REPEAT; //start div by 4 and PSG (50% up)
+						SCHANNEL_CR(8) |= 0x63000200 | SOUND_REPEAT; //start div by 4 and PSG (50% up)
 						break;
 					case 0xC0:
-						SCHANNEL_CR(8) |= 0xE6000200 | SOUND_REPEAT; //start div by 4 and PSG (75% up)
+						SCHANNEL_CR(8) |= 0x66000200 | SOUND_REPEAT; //start div by 4 and PSG (75% up)
 						break;
 					}
 				}
@@ -188,6 +255,28 @@ void newvalwrite16(u32 addr,u32 val)
 			case 0x64:
 				SOUND1CNT_X = val;
 				SCHANNEL_TIMER(8) = -(33513982/2)/(131072*8/(2048-(val&0xFFF)));
+				if(val &0x8000) //reinit
+				{
+					SCHANNEL_CR(8) &= ~0x80000000;
+					SCHANNEL_CR(8) |= 0x80000000;
+					sweepspeed = 131072*8/(2048-(val&0xFFF));
+					if((SOUND1CNT_L & 0x7) != 0)timerotheradd(0,TIMER_FREQ(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1)),stop);
+					else timerotheradd(0,0,stop);
+					if((SOUND1CNT_H & 0x700) != 0)
+					{
+						timerotheradd(1,TIMER_FREQ(0x40/((SOUND1CNT_H & 0x700) >> 8)),Envelope);
+					}
+					else
+					{
+						timerotheradd(1,0,Envelope);
+					}
+					updatevol(); //todo do it better
+
+				}
+				if(val &0x4000)
+				{
+					timerlenadd(0,TIMER_FREQ(256/(0x40-(SOUND1CNT_H&0x3F))),stop);
+				}
 				break;
 			case 0x68:
 				{
@@ -195,16 +284,16 @@ void newvalwrite16(u32 addr,u32 val)
 					switch(val & 0xC0)
 					{
 					case 0:
-						SCHANNEL_CR(9) |= 0xE0000200 | SOUND_REPEAT; //start div by 4 and PSG (12,5% up)
+						SCHANNEL_CR(9) |= 0x60000200 | SOUND_REPEAT; //start div by 4 and PSG (12,5% up)
 						break;
 					case 0x40:
-						SCHANNEL_CR(9) |= 0xE1000200 | SOUND_REPEAT; //start div by 4 and PSG (25% up)
+						SCHANNEL_CR(9) |= 0x61000200 | SOUND_REPEAT; //start div by 4 and PSG (25% up)
 						break;
 					case 0x80:
-						SCHANNEL_CR(9) |= 0xE3000200 | SOUND_REPEAT; //start div by 4 and PSG (50% up)
+						SCHANNEL_CR(9) |= 0x63000200 | SOUND_REPEAT; //start div by 4 and PSG (50% up)
 						break;
 					case 0xC0:
-						SCHANNEL_CR(9) |= 0xE6000200 | SOUND_REPEAT; //start div by 4 and PSG (75% up)
+						SCHANNEL_CR(9) |= 0x66000200 | SOUND_REPEAT; //start div by 4 and PSG (75% up)
 						break;
 					}
 				}
@@ -212,6 +301,27 @@ void newvalwrite16(u32 addr,u32 val)
 			case 0x6C:
 				SOUND2CNT_X = val;
 				SCHANNEL_TIMER(9) = -(33513982/2)/(131072*8/(2048-(val&0xFFF)));
+				if(val &0x8000) //reinit
+				{
+					SCHANNEL_CR(9) &= ~0x80000000;
+					SCHANNEL_CR(9) |= 0x80000000;
+					if((SOUND2CNT_H & 0x700) != 0)
+					{
+						timerotheradd(2,TIMER_FREQ(0x40/((SOUND2CNT_H & 0x700) >> 8)),Envelope);
+					}
+					else
+					{
+						timerotheradd(2,0,Envelope);
+					}
+					updatevol(); //todo do it better
+				}
+				if(val &0x4000)
+				{
+					timerlenadd(1,TIMER_FREQ(256/(0x40-(SOUND2CNT_H&0x3F))),stop);
+				}
+				break;
+			case 0x78:
+				SOUND4CNT_L = val;
 				break;
 			case 0x7C:
 				{
@@ -229,8 +339,26 @@ void newvalwrite16(u32 addr,u32 val)
 					SCHANNEL_SOURCE(3) = pointer_15Bitpoly;
 					SCHANNEL_LENGTH(3) = 0x7FFF;
 				}
-				SCHANNEL_CR(3) |= 0x80000200 | SOUND_REPEAT; //start div by 4
+				if(val &0x8000) //reinit
+				{
+					SCHANNEL_CR(3) &= ~0x80000200;
+					SCHANNEL_CR(3) |= 0x80000200;
+					if((SOUND4CNT_L & 0x700) != 0)
+					{
+						timerotheradd(3,TIMER_FREQ(0x40/((SOUND4CNT_L & 0x700) >> 8)),Envelope);
+					}
+					else
+					{
+						timerotheradd(3,0,Envelope);
+					}
+					updatevol(); //todo do it better
+				}
+				//SCHANNEL_CR(3) |= 0x80000200 | SOUND_REPEAT; //start div by 4
 				SOUND4CNT_H = val;
+				if(val &0x4000)
+				{
+					timerlenadd(3,TIMER_FREQ(256/(0x40-(SOUND4CNT_L&0x3F))),stop);
+				}
 				}
 				break;
 			case 0x72:
@@ -258,16 +386,20 @@ void newvalwrite16(u32 addr,u32 val)
 			case 0x70:
 				SOUND3CNT_L = val;
 				SCHANNEL_CR(2) &= ~0x80000000; //stop
-				if(val&0x20) SCHANNEL_LENGTH(3) = 0x10*2*2;
-				else SCHANNEL_LENGTH(3) = 0x10*2;
-				if(val&0x40) SCHANNEL_SOURCE(3) = WAVE_RAM;
-				else SCHANNEL_SOURCE(3) = WAVE_RAM +0x10*2;
+				if(val&0x20) SCHANNEL_LENGTH(2) = 0x10*2*2;
+				else SCHANNEL_LENGTH(2) = 0x10*2;
+				if(val&0x40) SCHANNEL_SOURCE(2) = WAVE_RAM;
+				else SCHANNEL_SOURCE(2) = WAVE_RAM +0x10*2;
 				if(val&0x80)SCHANNEL_CR(2) |= 0x80000200 | SOUND_REPEAT; //start div by 4
 				//SCHANNEL_CR(3) |= 0x80000200 | SOUND_REPEAT; //start div by 4
 				break;
 			case 0x74:
 				SOUND3CNT_X = val;
-				SCHANNEL_TIMER(8) = -(33513982/2)/(2097152/(2048-(val&0xFFF)));
+				SCHANNEL_TIMER(2) = -(33513982/2)/(2097152/(2048-(val&0xFFF)));
+				if(val &0x4000)
+				{
+					timerlenadd(2,TIMER_FREQ(256/(0x40-(SOUND3CNT_H&0x3F))),stop);
+				}
 				break;
 			  case 0xBC:
 				DMA1SAD_L = val;
@@ -399,6 +531,9 @@ void newvalwrite16(u32 addr,u32 val)
 					  }
 				  }
 				break;
+			  case 0x1FFFFFF9:
+				writePowerManagement(0,val);
+				 break;
 			  case 0x1FFFFFFA:
 				//senddebug32(val);
 
@@ -475,6 +610,8 @@ int main() {
 	initClockIRQ();
 
 	enableSound();
+
+	initimer();
 
 	REG_IPC_SYNC = 0;
 	REG_IPC_FIFO_CR = IPC_FIFO_ENABLE;
@@ -580,6 +717,8 @@ int main() {
 	return 0;
 }
 
+//global update stuff
+
 void updatevol()
 {
 
@@ -590,8 +729,8 @@ void updatevol()
 
 	//Sound_chan = (Volume_Right * enabeled + Volume_Left * enabeled) * (Soundcnt(1,2,4))*static_for_max
 	//DMA = (Soundcnt(1,2) * enabeled + Soundcnt(1,2) * enabeled) * sataic_for_max
-	SCHANNEL_CR(4) = (SCHANNEL_CR(4) & ~0xFF) | ((( 1 + ((SOUNDCNT_H & 0x4) >> 2))*((SOUNDCNT_H & BIT(8)) >> 8) + ( 1 + ((SOUNDCNT_H & 0x4) >> 2))*((SOUNDCNT_H & BIT(9)) >> 9))*31);     //max:124
-	SCHANNEL_CR(5) = (SCHANNEL_CR(5) & ~0xFF) | ((( 1 + ((SOUNDCNT_H & 0x8) >> 3))*((SOUNDCNT_H & BIT(12)) >> 12) + ( 1 + ((SOUNDCNT_H & 0x8) >> 3))*((SOUNDCNT_H & BIT(13)) >> 13))*31); //max:124
+	SCHANNEL_CR(4) = (SCHANNEL_CR(4) & ~0xFF) | ((( 1 + ((SOUNDCNT_H & 0x4) >> 2))*((SOUNDCNT_H & BIT(8)) >> 8) + ( 1 + ((SOUNDCNT_H & 0x4) >> 2))*((SOUNDCNT_H & BIT(9)) >> 9))*127/4);     //max:127
+	SCHANNEL_CR(5) = (SCHANNEL_CR(5) & ~0xFF) | ((( 1 + ((SOUNDCNT_H & 0x8) >> 3))*((SOUNDCNT_H & BIT(12)) >> 12) + ( 1 + ((SOUNDCNT_H & 0x8) >> 3))*((SOUNDCNT_H & BIT(13)) >> 13))*127/4); //max:127
 	u32 Vol = SOUNDCNT_H & 0x3;
 	switch(Vol)
 	{
@@ -608,9 +747,9 @@ void updatevol()
 	}
 	u32 Masterright = SOUNDCNT_L & 0x7;
 	u32 Masterleft =  (SOUNDCNT_L << 4) & 0x7;
-	SCHANNEL_CR(8) = (SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol *2);  //max:112
-	SCHANNEL_CR(9) = (SCHANNEL_CR(9) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(9)) >> 9) + Masterleft * ((SOUNDCNT_L & BIT(13)) >> 13) ) * Vol *2);  //max:112
-	SCHANNEL_CR(3) = (SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol *2 );//max:112
+	SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_L & 0xF000) >> 12)*127/840);  //max:127
+	SCHANNEL_CR(9) = ((SCHANNEL_CR(9) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(9)) >> 9) + Masterleft * ((SOUNDCNT_L & BIT(13)) >> 13) ) * Vol) * ((SOUND2CNT_H & 0xF000) >> 12)*127/840);  //max:127
+	SCHANNEL_CR(3) = ((SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol) * ((SOUND4CNT_L & 0xF000) >> 12)*127/840); //max:127 
 
 
 	u16 sound3dif = (SOUND3CNT_H & 0x6000) >> 14;
@@ -674,7 +813,7 @@ void updatetakt()
 	//FIFO A
 	if(tacktgeber_sound_FIFO_DMA_A == 0)
 	{
-		/*int seek;
+		u8 seek;
 		switch(TM0CNT_H & 0x3)
 		{
 			case 0:
@@ -689,13 +828,12 @@ void updatetakt()
 			case 3:
 				seek = 10;
 				break;
-		}*/
-		//SCHANNEL_TIMER(4) = debugfr1 = (((-TM0CNT_L) << seek) & 0xFFFF) << 1;
-		SCHANNEL_TIMER(4) = debugfr1 = TM0CNT_L;
+		}
+		SCHANNEL_TIMER(4) = debugfr1 = TM0CNT_L << seek;
 	}
 	else
 	{
-		/*int seek;
+		u8 seek;
 		switch(TM1CNT_H & 0x3)
 		{
 			case 0:
@@ -710,14 +848,13 @@ void updatetakt()
 			case 3:
 				seek = 10;
 				break;
-		}*/
-		//SCHANNEL_TIMER(4) = debugfr1 = (((-TM1CNT_L) & 0xFFFF) << seek) << 1;
-		SCHANNEL_TIMER(4) = debugfr1 = TM1CNT_L;
+		}
+		SCHANNEL_TIMER(4) = debugfr1 = TM1CNT_L  << seek;
 	}
 	//FIFO B
 	if(tacktgeber_sound_FIFO_DMA_B == 0)
 	{
-		/*int seek;
+		u8 seek;
 		switch(TM0CNT_H & 0x3)
 		{
 			case 0:
@@ -732,13 +869,12 @@ void updatetakt()
 			case 3:
 				seek = 10;
 				break;
-		}*/
-		//SCHANNEL_TIMER(5) = debugfr2 = (((-TM0CNT_L) << seek) & 0xFFFF) << 1;
-		SCHANNEL_TIMER(5) = debugfr2 = TM0CNT_L;
+		}
+		SCHANNEL_TIMER(5) = debugfr2 = TM0CNT_L  << seek;
 	}
 	else
 	{
-		/*int seek;
+		u8 seek;
 		switch(TM1CNT_H & 0x3)
 		{
 			case 0:
@@ -753,9 +889,8 @@ void updatetakt()
 			case 3:
 				seek = 10;
 				break;
-		}*/
-		//SCHANNEL_TIMER(5) = debugfr2 = (((-TM1CNT_L) << seek) & 0xFFFF) << 1; //everything is 2 times faster than on ther gba here
-		SCHANNEL_TIMER(5) = debugfr2 = TM1CNT_L; //everything is 2 times faster than on ther gba here
+		}
+		SCHANNEL_TIMER(5) = debugfr2 = TM1CNT_L  << seek;
 	}
 }
 
