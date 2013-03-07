@@ -919,7 +919,11 @@ u8 *utilLoad(const char *file, //ichfly todo
 
   if(data == NULL)
   {
+#ifdef wifidebuger
+	  romSize = 0x02380000 - ((u32)sbrk(0) + 0x5000 + 0x2000);
+#else
 	  romSize = 0x02400000 - ((u32)sbrk(0) + 0x5000 + 0x2000);
+#endif
 	  rom = (u8 *)(sbrk(0) + 0x2000/*8K for futur alloc*/);              //rom = (u8 *)0x02180000; //old
 	  image = data = rom;
 	  size = romSize;

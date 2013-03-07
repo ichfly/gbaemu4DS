@@ -1,9 +1,19 @@
 #include <nds.h>
 #include <nds/arm7/audio.h>
 
+#include "main.h"
+
+#include "dsregs.h"
+
 #include "timer20.h"
 
 #include "../../gloabal/cpuglobal.h"
+
+#include "wifi_arm7.h"
+
+#include <netinet/in.h>
+
+void installWifiFIFO();
 
 #ifdef anyarmcom
 u32* amr7sendcom = 0;
@@ -16,6 +26,8 @@ u32* amr7fehlerfeld;
 u32 currfehler = 0;
 #define maxfehler 8
 #endif
+
+bool __dsimode = false;
 
 //#define checkforerror
 
@@ -86,7 +98,7 @@ vu32 debugsrc2  = 0;
 vu32 debugfr1 = 0;
 vu32 debugfr2  = 0;
 
-//DSP sound data
+//DSP sound data pointer
 u32 pointer_7Bitpoly;
 u32 pointer_15Bitpoly;
 
@@ -98,6 +110,12 @@ void senddebug32(u32 val)
 #ifdef anyarmcom
 	*amr7sendcom = *amr7sendcom + 2;
 #endif
+}
+
+//---------------------------------------------------------------------------------
+void VblankHandler(void) {
+//---------------------------------------------------------------------------------
+	Wifi_Update();
 }
 
 //time based functions
@@ -206,12 +224,12 @@ void newvalwrite8(u32 addr,u8 val)
 					  valtostr |=  ((u8)((((val &0xF) << 0) + ((val &0xF) << 4)) - 0x80) << 8);
 					  if(val&0x40)
 					  {
-							*(u16*)&WAVE_RAM[(addr - 90)*2] = valtostr;
-							*(u16*)&WAVE_RAM[(addr - 70)*2] = valtostr;
+							*(u16*)&WAVE_RAM[(addr - 0x90)*2] = valtostr;
+							*(u16*)&WAVE_RAM[(addr - 0x70)*2] = valtostr;
 					  }
 					  else
 					  {
-							*(u16*)&WAVE_RAM[(addr - 80)*2] = valtostr;
+							*(u16*)&WAVE_RAM[(addr - 0x80)*2] = valtostr;
 					  }
 				  }
 				break;
@@ -247,7 +265,7 @@ void newvalwrite16(u32 addr,u32 val)
 						SCHANNEL_CR(8) |= 0x63000200 | SOUND_REPEAT; //start div by 4 and PSG (50% up)
 						break;
 					case 0xC0:
-						SCHANNEL_CR(8) |= 0x66000200 | SOUND_REPEAT; //start div by 4 and PSG (75% up)
+						SCHANNEL_CR(8) |= 0x65000200 | SOUND_REPEAT; //start div by 4 and PSG (75% up)
 						break;
 					}
 				}
@@ -293,7 +311,7 @@ void newvalwrite16(u32 addr,u32 val)
 						SCHANNEL_CR(9) |= 0x63000200 | SOUND_REPEAT; //start div by 4 and PSG (50% up)
 						break;
 					case 0xC0:
-						SCHANNEL_CR(9) |= 0x66000200 | SOUND_REPEAT; //start div by 4 and PSG (75% up)
+						SCHANNEL_CR(9) |= 0x65000200 | SOUND_REPEAT; //start div by 4 and PSG (75% up)
 						break;
 					}
 				}
@@ -304,7 +322,6 @@ void newvalwrite16(u32 addr,u32 val)
 				if(val &0x8000) //reinit
 				{
 					SCHANNEL_CR(9) &= ~0x80000000;
-					SCHANNEL_CR(9) |= 0x80000000;
 					if((SOUND2CNT_H & 0x700) != 0)
 					{
 						timerotheradd(2,TIMER_FREQ(0x40/((SOUND2CNT_H & 0x700) >> 8)),Envelope);
@@ -314,6 +331,7 @@ void newvalwrite16(u32 addr,u32 val)
 						timerotheradd(2,0,Envelope);
 					}
 					updatevol(); //todo do it better
+					SCHANNEL_CR(9) |= 0x80000000;
 				}
 				if(val &0x4000)
 				{
@@ -328,7 +346,7 @@ void newvalwrite16(u32 addr,u32 val)
 				int r = val & 0x7 << 1;
 				int s = (val &0xF0) >> 4;
 				if(r = 0)r = 1;
-				SCHANNEL_TIMER(3) = -(33513982/2)/(524288 * 2 / r / 2^(s+1));
+				SCHANNEL_TIMER(3) = -(33513982/2)/(524288 * 2 / r / (2^(s+1)));
 				if(val&0x8)
 				{
 					SCHANNEL_SOURCE(3) = pointer_7Bitpoly;
@@ -388,8 +406,8 @@ void newvalwrite16(u32 addr,u32 val)
 				SCHANNEL_CR(2) &= ~0x80000000; //stop
 				if(val&0x20) SCHANNEL_LENGTH(2) = 0x10*2*2;
 				else SCHANNEL_LENGTH(2) = 0x10*2;
-				if(val&0x40) SCHANNEL_SOURCE(2) = WAVE_RAM;
-				else SCHANNEL_SOURCE(2) = WAVE_RAM +0x10*2;
+				if(val&0x40) SCHANNEL_SOURCE(2) = (u32)WAVE_RAM;
+				else SCHANNEL_SOURCE(2) = (u32)WAVE_RAM +0x10*2;
 				if(val&0x80)SCHANNEL_CR(2) |= 0x80000200 | SOUND_REPEAT; //start div by 4
 				//SCHANNEL_CR(3) |= 0x80000200 | SOUND_REPEAT; //start div by 4
 				break;
@@ -522,17 +540,100 @@ void newvalwrite16(u32 addr,u32 val)
 					  valtostr |=  ((u8)((((val &0xF00) << 4) + ((val &0xF00) << 8)) - 0x80) << 0x18);
 					  if(val&0x40)
 					  {
-							*(u32*)&WAVE_RAM[(addr - 90)*2] = valtostr;
-							*(u32*)&WAVE_RAM[(addr - 70)*2] = valtostr;
+							*(u32*)&WAVE_RAM[(addr - 0x90)*2] = valtostr;
+							*(u32*)&WAVE_RAM[(addr - 0x70)*2] = valtostr;
 					  }
 					  else
 					  {
-							*(u32*)&WAVE_RAM[(addr - 80)*2] = valtostr;
+							*(u32*)&WAVE_RAM[(addr - 0x80)*2] = valtostr;
 					  }
 				  }
 				break;
+
+			  case 0x1FFFFFF8: //wifi startup
+				installWifiFIFO();
+				if(!netinter->Wifi_InitDefault(true /*WFC_CONNECT*/))
+				{
+		REG_IPC_FIFO_TX = 0x1; //send fail 1
+		break;
+				}
+
+
+//start socket
+#define RCVBUFSIZE 0x100
+
+
+				int sock;                        /* Socket descriptor */
+				struct sockaddr_in echoServAddr; /* Echo server address */
+				unsigned short echoServPort;     /* Echo server port */
+				char *servIP;                    /* Server IP address (dotted quad) */
+				char *echoString;                /* String to send to echo server */
+				char echoBuffer[RCVBUFSIZE];     /* Buffer for echo string */
+				unsigned int echoStringLen;      /* Length of string to echo */
+				int bytesRcvd, totalBytesRcvd;   /* Bytes read in single recv() 
+                                        and total bytes read */
+
+
+    servIP = "192.168.178.92";             /* First arg: server IP address (dotted quad) */
+    echoString = "testerstr";         /* Second arg: string to echo */
+	echoStringLen = 10;          /* Determine input length */
+
+    echoServPort = 9876; /*port*/
+
+    /* Create a reliable, stream socket using TCP */
+    if ((sock = netinter->socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	{
+		REG_IPC_FIFO_TX = 0x2; //send fail 2
+		break;
+	}
+
+    /* Construct the server address structure */
+    //memset(&echoServAddr, 0, sizeof(echoServAddr));     /* Zero out structure */
+    echoServAddr.sin_family      = AF_INET;             /* Internet address family */
+    echoServAddr.sin_addr.s_addr = netinter->inet_addr(servIP);   /* Server IP address */
+    echoServAddr.sin_port        = netinter->htons(echoServPort); /* Server port */
+
+    /* Establish the connection to the echo server */
+    if (netinter->connect(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
+	{
+				REG_IPC_FIFO_TX = 0x3; //send fail 3
+		break;
+	}
+
+    /* Send the string to the server */
+    if (netinter->send(sock, echoString, echoStringLen, 0) != echoStringLen)
+	{
+				REG_IPC_FIFO_TX = 0x4; //send fail 4
+		break;
+	}
+
+    /* Receive the same string back from the server */
+    /*totalBytesRcvd = 0;
+    printf("Received: ");                /* Setup to print the echoed string *//*
+    while (totalBytesRcvd < echoStringLen)
+    {
+        /* Receive up to the buffer size (minus 1 to leave space for
+           a null terminator) bytes from the sender *//*
+        if ((bytesRcvd = netinter->recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0)
+            DieWithError("recv() failed or connection closed prematurely");
+        totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes *//*
+        echoBuffer[bytesRcvd] = '\0';  /* Terminate the string! *//*
+        printf("%s", echoBuffer);      /* Print the echo buffer *//*
+    }
+
+    printf("\n");    /* Print a final linefeed */
+
+    //netinter->close(sock);
+
+
+
+
+
+				REG_IPC_FIFO_TX = 0x1111; //send OK
+				 break;
+
 			  case 0x1FFFFFF9:
-				writePowerManagement(0,val);
+				writePowerManagement(0,(int)val);
 				 break;
 			  case 0x1FFFFFFA:
 				//senddebug32(val);
@@ -547,12 +648,12 @@ void newvalwrite16(u32 addr,u32 val)
 				amr7indirectrec = (u32*)(*(u32*)(dmabuffer + 20));
 				amr7fehlerfeld = (u32*)(*(u32*)(dmabuffer + 24));
 #endif
-				pointer_7Bitpoly = (u32*)(*(u32*)(dmabuffer + 0x50));
-				pointer_15Bitpoly = (u32*)(*(u32*)(dmabuffer + 0x54));
-				soundbuffA = (u32*)(dmabuffer);
-				SCHANNEL_SOURCE(4) = soundbuffA;
-				soundbuffB = (u32*)(dmabuffer + 0x50);
-				SCHANNEL_SOURCE(5) = soundbuffB;
+				pointer_7Bitpoly = (u32)(*(u32*)(dmabuffer + 0x50));
+				pointer_15Bitpoly = (u32)(*(u32*)(dmabuffer + 0x54));
+				soundbuffA = (u8*)(dmabuffer);
+				SCHANNEL_SOURCE(4) = (u32)soundbuffA;
+				soundbuffB = (u8*)(dmabuffer + 0x50);
+				SCHANNEL_SOURCE(5) = (u32)soundbuffB;
 
 			break;
 			case WaitforVblancarmcmd: //wait
@@ -567,7 +668,7 @@ void newvalwrite16(u32 addr,u32 val)
 			case enableWaitforVblancarmcmdirq: //setauto
 				autodetectdetect = true;
 				break;
-			case getarm7keys: //getkeys
+			/*case getarm7keys: //getkeys
 				{
 					touchPosition tempPos = {0};
 					u16 keys= REG_KEYXY;
@@ -582,7 +683,7 @@ void newvalwrite16(u32 addr,u32 val)
 					REG_IPC_FIFO_TX = tempPos.px;
 					REG_IPC_FIFO_TX = tempPos.py;
 				}
-				break;
+				break;*/
 			case set_callline: //set callline
 				callline = val;
 				break;
@@ -602,14 +703,18 @@ void newvalwrite16(u32 addr,u32 val)
 //---------------------------------------------------------------------------------
 int main() {
 //---------------------------------------------------------------------------------
-	ledBlink(0);
 	readUserSettings();
+	ledBlink(0);
 	
 	irqInit();
 	// Start the RTC tracking IRQ
 	initClockIRQ();
 
 	enableSound();
+
+	irqSet(IRQ_VBLANK, VblankHandler);
+
+	irqEnable( IRQ_VBLANK | IRQ_NETWORK);
 
 	initimer();
 
@@ -677,7 +782,7 @@ int main() {
 			// Save current power state.
 			u32 power = readPowerManagement(PM_CONTROL_REG);
 			// Set sleep LED.
-			writePowerManagement(PM_CONTROL_REG, PM_LED_CONTROL(1));
+			writePowerManagement(PM_CONTROL_REG, (int)PM_LED_CONTROL(1));
 			// Register for the lid interrupt.
 			REG_IE = IRQ_LID;
 			// Power down till we get our interrupt.
@@ -687,7 +792,7 @@ int main() {
 			// Restore the interrupt state.
 			REG_IE = ie_save;
 			// Restore power state.
-			writePowerManagement(PM_CONTROL_REG, power);
+			writePowerManagement(PM_CONTROL_REG, (int)power);
 			// Turn the speaker up.
 			if (REG_POWERCNT & 1) swiChangeSoundBias(1,0x400);
 			// update clock tracking
@@ -1026,4 +1131,13 @@ void checkstart()
 
 
 
+}
+
+//---------------------------------------------------------------------------------
+void enableSound() {
+//---------------------------------------------------------------------------------
+	powerOn(POWER_SOUND);
+	writePowerManagement(PM_CONTROL_REG, ( readPowerManagement(PM_CONTROL_REG) & ~PM_SOUND_MUTE ) | PM_SOUND_AMP );
+	REG_SOUNDCNT = SOUND_ENABLE;
+	REG_MASTER_VOLUME = 127;
 }

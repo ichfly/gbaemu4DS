@@ -330,7 +330,15 @@ REG_IPC_FIFO_TX = arm7amr9buffer = (u32)arm7exchangefild; //buffer for arm7
 		while(1);
     }
 
-
+#ifdef wifidebuger
+	File* patchf = fopen("fat:/wifimodul.bin", "rb");
+	fread((void*)0x02380000,1,0x80000,patchf);
+	fclose(patchf);
+	REG_IPC_FIFO_TX = 0x9FFFFFF8;//wifi startup cmd
+	REG_IPC_FIFO_TX = 0x0;//wifi startup val
+	while((REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY));
+	printf("%08X",REG_IPC_FIFO_RX)
+#endif
 
 #ifdef standalone
 	iprintf("\x1b[2J");

@@ -5,33 +5,31 @@
 
 #include "timer20.h"
 
-u32 soundLentimefild[4];
-Functiondec lenfunctions[4];
+#define minval 0x1000 //can cause delays
+
+u32 soundLentimefild[8];
+Functiondec lenfunctions[8];
 u32 nexttimelen = 0xFFFF;
 u32 nexttimelendurchlauf = 0xFFFF;
 
-u32 soundothertimefild[4];
-Functiondec otherfunctions[4];
-u32 nexttimeother = 0xFFFF;
-u32 nexttimeotherdurchlauf = 0xFFFF;
 
+#ifdef timeron
 void initimer()
 {
 	int i = 0;
-	while(i < 4)
+	while(i < 8)
 	{
 		soundLentimefild[i] = 0;
 		soundothertimefild[i] = 0;
 		i++;
 	}
 	timerStart(2, ClockDivider_1,0x10000-0xFFFF, timerlen); //512 Hz
-	timerStart(3, ClockDivider_1,0x10000-0xFFFF, timerother); //512 Hz
 }
 void timerlen()
 {
 	u32 min = 0xFFFF;
 	int i = 0;
-	while(i < 4)
+	while(i < 8)
 	{
 		if(soundLentimefild[i] != 0)
 		{
@@ -56,6 +54,7 @@ void timerlen()
 			}
 			nexttimelendurchlauf = nexttimelen;
 			nexttimelen = min;
+			min = (min > minval) ? min :  minval;
 			TIMER_DATA(2) = 0x10000-min;
 		}
 		i++;
@@ -75,51 +74,14 @@ void timerlenadd(u8 chan,u32 val,Functiondec func) //val min 0x20000
 		soundLentimefild[chan] =  0;
 	}
 }
-void timerother()
+#else
+void initimer()
 {
-	u32 min = 0xFFFF;
-	int i = 0;
-	while(i < 4)
-	{
-		if(soundothertimefild[i] != 0)
-		{
-			if(1 == soundothertimefild[i])
-			{
-				soundothertimefild[i] = 0xFFFFFFFF;
-			}
-			else if(0xFFFFFFFF == soundothertimefild[i])
-			{
-				//jump
-				u32 temp5 = otherfunctions[i](i);
-				if(temp5 != 0)soundothertimefild[i] = temp5 + nexttimeotherdurchlauf;
-				else soundothertimefild[i] = 0;
-			}
-			else
-			{
-				soundothertimefild[i]-= nexttimeother;
-				if(min > soundothertimefild[i])
-				{
-					min = (soundothertimefild[i] - 1);
-				}
-			}
-			nexttimeotherdurchlauf = nexttimelen;
-			nexttimeother = min;
-			TIMER_DATA(3) = 0x10000-min;
-		}
-		i++;
-	}
 }
-void timerotheradd(u8 chan,u32 val,Functiondec func) //val min 0x20000
+void timerlen()
 {
-	if(val != 0)
-	{
-		val =- 0x10000-TIMER_DATA(3);
-		val =+ nexttimeotherdurchlauf;
-		soundothertimefild[chan] =  val;
-		otherfunctions[chan] = func;
-	}
-	else
-	{
-		soundothertimefild[chan] =  0;
-	}
 }
+void timerlenadd(u8 chan,u32 val,Functiondec func) //val min 0x20000
+{
+}
+#endif
