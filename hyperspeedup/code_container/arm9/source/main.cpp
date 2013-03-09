@@ -75,7 +75,7 @@ typedef struct
 #include <stdarg.h>
 #include <string.h>
 
-u8 arm7exchangefild[0x100];
+u8 arm7exchangefild[0x500];
 
 #define INT_TABLE_SECTION __attribute__((section(".dtcm")))
 
@@ -334,7 +334,7 @@ REG_IPC_FIFO_TX = arm7amr9buffer = (u32)arm7exchangefild; //buffer for arm7
 	File* patchf = fopen("fat:/wifimodul.bin", "rb");
 	fread((void*)0x02380000,1,0x80000,patchf);
 	fclose(patchf);
-	REG_IPC_FIFO_TX = 0x9FFFFFF8;//wifi startup cmd
+	REG_IPC_FIFO_TX = 0xCFFFFFF8;//wifi startup cmd
 	REG_IPC_FIFO_TX = 0x0;//wifi startup val
 	while((REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY));
 	printf("%08X",REG_IPC_FIFO_RX)
@@ -477,7 +477,7 @@ else if(argv[10][0] == '2')slow = 2;
 else slow = 0;
 if(argv[8][0] == '1')
 {
-	REG_IPC_FIFO_TX = 0x9FFFFFFC; //send cmd
+	REG_IPC_FIFO_TX = 0xCFFFFFFC; //send cmd
 	REG_IPC_FIFO_TX = 0;
 }
 #endif
@@ -558,7 +558,7 @@ initspeedupfelder();
 
 
 	VblankHandler();
-	REG_IPC_FIFO_TX = 0x9FFFFFFF; //cmd
+	REG_IPC_FIFO_TX = 0xCFFFFFFF; //cmd
 	REG_IPC_FIFO_TX = syncline;
 	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))u32 src = REG_IPC_FIFO_RX;
 	iprintf("irqinit\n");

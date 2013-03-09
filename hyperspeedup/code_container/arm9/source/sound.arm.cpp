@@ -112,126 +112,6 @@ int dasistnurzumtesten = 0;
 extern u32 arm7amr9buffer;
 
 
-#ifdef very_old_sound
-void arm7dmareq()
-{
-#ifdef advanced_irq_check
-	REG_IF = IRQ_FIFO_NOT_EMPTY;
-#endif
-#ifdef anyarmcom
-recdir++;
-#endif
-	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //handel all cmds
-	{
-#ifdef anyarmcom
-recdel++;
-#endif
-		//counttrans++;
-		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
-		int i = 0;
-		u32* src = (u32*)REG_IPC_FIFO_RX;
-#ifdef unsecamr7com
-		if(src < (u32*)0x10000000)		
-#else
-		if(src < (u32*)0x8000000 && src > (u32*)0x2000000)
-#endif
-		{
-			//iprintf("%08X\r\n",REG_IPC_FIFO_RX);
-			//iprintf("%08X %08X\n\r",src,REG_IPC_FIFO_CR);
-			if(counttrans < (u32)src)counttrans = (u32)src;
-			REG_IPC_FIFO_TX = 0x1;
-			while(i < 4)
-			{
-				REG_IPC_FIFO_TX = *src;
-				//REG_IPC_FIFO_TX = 0;
-				src++;
-				i++;
-			}
-		}
-		else
-		{
-			if(src == (u32*)0x3F00BEEF)
-			{
-				VblankHandler();
-				dasistnurzumtesten++;
-				if(dasistnurzumtesten == 60)
-				{
-					iprintf("alive %08X\r\n",counttrans);
-					dasistnurzumtesten = 0;
-					counttrans = 0;
-				}
-				//counttrans = 0;
-				continue;
-			}
-			if(src == (u32*)0x4000BEEF)
-			{
-				while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
-				iprintf("arm7 %08X\r\n",REG_IPC_FIFO_RX);
-				continue;
-			}
-			if(src == (u32*)0x4100BEEF)
-			{
-				frameasyncsync();
-				continue;
-			}
-			if(src == (u32*)0x4200BEEF)
-			{
-				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
-				CPUWriteBatteryFile(savePath);
-				//REG_IPC_FIFO_TX = 0;
-				continue;
-			}
-			iprintf("error rec %08X %08X\r\n",src,REG_IPC_FIFO_CR);
-		}
-		//iprintf("e %08X\r\n",REG_IPC_FIFO_CR);
-	}
-
- }
-void arm7dmareqandcheat()
-{
-#ifdef advanced_irq_check
-	REG_IF = IRQ_FIFO_NOT_EMPTY;
-#endif
-	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)) //handel all cmds
-	{
-		//iprintf("SPtoload %x sptemp %x\r\n",SPtoload,SPtemp);
-		int i = 0;
-		u32* src = (u32*)REG_IPC_FIFO_RX;
-		//iprintf("i %08X\r\n",src);
-		if(src < (u32*)0x10000000)
-		{
-			//iprintf("%08X\r\n",REG_IPC_FIFO_RX);
-			//iprintf("%08X %08X\n\r",src,REG_IPC_FIFO_CR);
-			while(i < 4)
-			{
-				REG_IPC_FIFO_TX = *src;
-				src++;
-				i++;
-			}
-		}
-		else
-		{
-			if(src == (u32*)0x3F00BEEF)
-			{
-				cheatsCheckKeys();
-				VblankHandler();
-			}
-			if(src == (u32*)0x4100BEEF)
-			{
-				frameasyncsync();
-			}
-			if(src == (u32*)0x4200BEEF)
-			{
-				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
-				CPUWriteBatteryFile(savePath);
-				REG_IPC_FIFO_TX = 0;
-			}
-		}
-		//if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))arm7dmareqandcheat();
-	}
-
- }
-#endif
 void arm7dmareq()
 {
 #ifdef advanced_irq_check
@@ -370,7 +250,7 @@ void arm7dmareqandcheat()
 			{
 				if(savePath[0] == 0)sprintf(savePath,"%s.sav",szFile);
 				CPUWriteBatteryFile(savePath);
-				REG_IPC_FIFO_TX = 0;
+				//REG_IPC_FIFO_TX = 0;
 			}
 		}
 		//if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))arm7dmareqandcheat();

@@ -1544,8 +1544,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	  iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TX = (address | 0x80000000);
-	  REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 	  value &= soundvalbitmask[address>>1];
 	  UPDATE_REG(address,value);
@@ -1590,8 +1590,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
     
 	DM1SAD_L = value;
@@ -1602,8 +1602,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
     DM1SAD_H = value & 0x0FFF;
@@ -1614,8 +1614,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
 	DM1DAD_L = value;
@@ -1626,8 +1626,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
     DM1DAD_H = value & 0x07FF;
@@ -1638,8 +1638,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
 	DM1CNT_L = value & 0x3FFF;
@@ -1650,8 +1650,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 	  {
       bool start = ((DM1CNT_H ^ value) & 0x8000) ? true : false;
@@ -1672,8 +1672,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
 	DM2SAD_L = value;
@@ -1684,8 +1684,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
 	DM2SAD_H = value & 0x0FFF;
@@ -1696,8 +1696,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
 	DM2DAD_L = value;
@@ -1708,8 +1708,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
 	DM2DAD_H = value & 0x07FF;
@@ -1721,8 +1721,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
 	DM2CNT_L = value & 0x3FFF;
@@ -1734,8 +1734,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
 	  {
@@ -1796,8 +1796,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 	*(u16 *)(0x4000100) = timer1Reload << 1;
 	UPDATE_REG(0x100, value);
@@ -1811,8 +1811,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 	//*(u16 *)(0x4000100) = timer1Reload << 1;
 	*(u16 *)(0x4000102) = value;
@@ -1823,8 +1823,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 	*(u16 *)(0x4000104) = timer1Reload << 1;
 	UPDATE_REG(0x104, value);
@@ -1834,8 +1834,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	REG_IPC_FIFO_TX = (address | 0x80000000);
-	REG_IPC_FIFO_TX = value; //faster in case we send a 0
+	  REG_IPC_FIFO_TX = (address | 0x80000000 | (value << 12));
+	  //REG_IPC_FIFO_TX = value; //faster in case we send a 0
 #endif
 
     timer1Value = value;

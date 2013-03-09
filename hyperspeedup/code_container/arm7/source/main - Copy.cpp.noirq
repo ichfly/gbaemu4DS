@@ -1,11 +1,3 @@
-		//sound alloc
-		//0-3 matching gba
-		//4-5 FIFO
-		//ledBlink(1);
-		//swiWaitForVBlank();
-
-
-
 #include <nds.h>
 #include <nds/arm7/audio.h>
 
@@ -97,8 +89,7 @@ u16 SOUND3CNT_L = 0;
 u16 SOUND3CNT_X = 0;
 
 
-//u8 WAVE_RAM[0x10*3*2];
-u8* WAVE_RAM;
+u8 WAVE_RAM[0x10*3*2];
 
 //more or less debug stuff
 
@@ -121,28 +112,10 @@ void senddebug32(u32 val)
 #endif
 }
 
-bool ykeypp =false;
 //---------------------------------------------------------------------------------
 void VblankHandler(void) {
 //---------------------------------------------------------------------------------
 	Wifi_Update();
-
-	if(!(REG_KEYXY & 0x2)) //can't do that by irq
-	{
-		if(!ykeypp)
-		{
-			REG_IPC_FIFO_TX = 0x4200BEEF;
-#ifdef anyarmcom
-			*amr7sendcom = *amr7sendcom + 1;
-#endif
-			ykeypp = true;
-
-		}
-	}
-	else
-	{
-		ykeypp = false;
-	}
 }
 
 //time based functions
@@ -156,8 +129,8 @@ u32 stop(u8 back)
 u32 sweepspeed = 0;
 u32 sweep(u8 back)
 {
-	if(SOUND1CNT_L & 0x8)sweepspeed = sweepspeed - sweepspeed/(1<<(SOUND1CNT_L & 0x7));
-	else sweepspeed = sweepspeed + sweepspeed/(1<<(SOUND1CNT_L & 0x7));
+	if(SOUND1CNT_L & 0x8)sweepspeed = sweepspeed - sweepspeed/2^((SOUND1CNT_L & 0x7));
+	else sweepspeed = sweepspeed + sweepspeed/2^((SOUND1CNT_L & 0x7));
 	SCHANNEL_TIMER(8) = -(33513982/2)/(sweepspeed);
 	return TIMER_FREQ(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1));
 }
@@ -299,12 +272,12 @@ void newvalwrite16(u32 addr,u32 val)
 			break;
 			case 0x64:
 				SOUND1CNT_X = val;
-				SCHANNEL_TIMER(8) = -(33513982/2)/(131072*8/(2048-(val&0x7FF)));
+				SCHANNEL_TIMER(8) = -(33513982/2)/(131072*8/(2048-(val&0xFFF)));
 				if(val &0x8000) //reinit
 				{
 					SCHANNEL_CR(8) &= ~0x80000000;
 					SCHANNEL_CR(8) |= 0x80000000;
-					sweepspeed = 131072*8/(2048-(val&0x7FF));
+					sweepspeed = 131072*8/(2048-(val&0xFFF));
 					if((SOUND1CNT_L & 0x7) != 0)timerotheradd(0,TIMER_FREQ(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1)),stop);
 					else timerotheradd(0,0,stop);
 					if((SOUND1CNT_H & 0x700) != 0)
@@ -345,7 +318,7 @@ void newvalwrite16(u32 addr,u32 val)
 				break;
 			case 0x6C:
 				SOUND2CNT_X = val;
-				SCHANNEL_TIMER(9) = -(33513982/2)/(131072*8/(2048-(val&0x7FF)));
+				SCHANNEL_TIMER(9) = -(33513982/2)/(131072*8/(2048-(val&0xFFF)));
 				if(val &0x8000) //reinit
 				{
 					SCHANNEL_CR(9) &= ~0x80000000;
@@ -373,7 +346,7 @@ void newvalwrite16(u32 addr,u32 val)
 				int r = val & 0x7 << 1;
 				int s = (val &0xF0) >> 4;
 				if(r = 0)r = 1;
-				SCHANNEL_TIMER(3) = -(33513982/2)/(524288 * 2 / r / (1<<(s+1)));
+				SCHANNEL_TIMER(3) = -(33513982/2)/(524288 * 2 / r / (2^(s+1)));
 				if(val&0x8)
 				{
 					SCHANNEL_SOURCE(3) = pointer_7Bitpoly;
@@ -440,7 +413,7 @@ void newvalwrite16(u32 addr,u32 val)
 				break;
 			case 0x74:
 				SOUND3CNT_X = val;
-				SCHANNEL_TIMER(2) = -(33513982/2)/(2097152/(2048-(val&0x7FF)));
+				SCHANNEL_TIMER(2) = -(33513982/2)/(2097152/(2048-(val&0xFFF)));
 				if(val &0x4000)
 				{
 					timerlenadd(2,TIMER_FREQ(256/(0x40-(SOUND3CNT_H&0x3F))),stop);
@@ -681,7 +654,6 @@ void newvalwrite16(u32 addr,u32 val)
 				SCHANNEL_SOURCE(4) = (u32)soundbuffA;
 				soundbuffB = (u8*)(dmabuffer + 0x50);
 				SCHANNEL_SOURCE(5) = (u32)soundbuffB;
-				WAVE_RAM = (u8*)(dmabuffer + 0x100);
 
 			break;
 			case WaitforVblancarmcmd: //wait
@@ -713,9 +685,7 @@ void newvalwrite16(u32 addr,u32 val)
 				}
 				break;*/
 			case set_callline: //set callline
-				irqSet(IRQ_VCOUNT, sendVcount);
-				//callline = val;
-				SetYtrigger(val);
+				callline = val;
 				break;
 			default:
 #ifdef anyarmcom
@@ -730,66 +700,6 @@ void newvalwrite16(u32 addr,u32 val)
 }
 
 
-
-void sendVcount()
-{
-	REG_IPC_FIFO_TX = 0x3F00BEEF; //send cmd 0x3F00BEEF
-#ifdef anyarmcom
-	*amr7sendcom = *amr7sendcom + 1;
-#endif
-}
-void closelib()
-{
-	u32 ie_save = REG_IE;
-	// Turn the speaker down.
-	if (REG_POWERCNT & 1) swiChangeSoundBias(0,0x400);
-	// Save current power state.
-	u32 power = readPowerManagement(PM_CONTROL_REG);
-	// Set sleep LED.
-	writePowerManagement(PM_CONTROL_REG, (int)PM_LED_CONTROL(1));
-	// Register for the lid interrupt.
-	REG_IE = IRQ_LID;
-	// Power down till we get our interrupt.
-	swiSleep(); //waits for PM (lid open) interrupt
-	//100ms
-	swiDelay(838000);
-	// Restore the interrupt state.
-	REG_IE = ie_save;
-	// Restore power state.
-	writePowerManagement(PM_CONTROL_REG, (int)power);
-	// Turn the speaker up.
-	if (REG_POWERCNT & 1) swiChangeSoundBias(1,0x400);
-	// update clock tracking
-	resyncClock(); 
-}
-void FIFOhand()
-{
-
-		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))
-		{
-			u32 addr = (REG_IPC_FIFO_RX/*todo*/); //addr + flags //flags 2 most upperen Bits unknown = 0 u8 = 1 u16 = 2 u32 = 3
-			if((addr& 0xC0000000) == 0x80000000)
-			{
-				newvalwrite16(addr & ~0xFFFFF000,(addr & ~0xF0000000) >> 12);
-			}
-			else if((addr& 0xC0000000) == 0x40000000)
-			{
-				newvalwrite8(addr & ~0xFFFFF000,(addr & ~0xF0000000) >> 12);
-			}
-			else if((addr& 0xC0000000) == 0xC0000000)
-			{
-				while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
-				u32 val = REG_IPC_FIFO_RX; //Value skip add for speedup
-				newvalwrite16(addr & ~0xC0000000,val);
-			}
-#ifdef anyarmcom
-			*amr7directrec = *amr7directrec + 1;
-			if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))*amr7indirectrec = *amr7indirectrec + 1;
-#endif
-		}
-
-}
-
 //---------------------------------------------------------------------------------
 int main() {
 //---------------------------------------------------------------------------------
@@ -802,19 +712,19 @@ int main() {
 
 	enableSound();
 
-	irqSet(IRQ_FIFO_NOT_EMPTY, FIFOhand);
 	irqSet(IRQ_VBLANK, VblankHandler);
-	irqSet(IRQ_LID, closelib);
 
-	irqEnable( IRQ_VBLANK | IRQ_VCOUNT | IRQ_KEYS | IRQ_LID | IRQ_FIFO_NOT_EMPTY | IRQ_NETWORK);
+	irqEnable( IRQ_VBLANK | IRQ_NETWORK);
 
 	initimer();
 
 	REG_IPC_SYNC = 0;
 	REG_IPC_FIFO_CR = IPC_FIFO_ENABLE;
-	REG_IPC_FIFO_CR = IPC_FIFO_SEND_CLEAR | IPC_FIFO_RECV_IRQ | IPC_FIFO_ENABLE | IPC_FIFO_ERROR;
+	REG_IPC_FIFO_CR = IPC_FIFO_SEND_CLEAR | IPC_FIFO_ENABLE | IPC_FIFO_ERROR;
 
 
+	//soundbuffA = malloc(32);
+	//soundbuffB = malloc(32);
 
 	SCHANNEL_REPEAT_POINT(4) = 0;
 	SCHANNEL_LENGTH(4) = 8;
@@ -822,9 +732,92 @@ int main() {
 	SCHANNEL_REPEAT_POINT(5) = 0;
 	SCHANNEL_LENGTH(5) = 8;
 
+	bool ykeypp = false;
+	bool isincallline = false;
 	while (true) {
-		swiWaitForVBlank();
+		//sound alloc
+		//0-3 matching gba
+		//4-5 FIFO
+		//ledBlink(1);
+		//swiWaitForVBlank();
+		if((REG_VCOUNT == callline) && (REG_KEYXY & 0x1)) //X not pressed && (REG_IPC_FIFO_CR & IPC_FIFO_SEND_EMPTY)
+		{
+			if(!isincallline)
+			{
+				REG_IPC_FIFO_TX = 0x3F00BEEF; //send cmd 0x3F00BEEF
+#ifdef anyarmcom
+	*amr7sendcom = *amr7sendcom + 1;
+#endif
+			}
+			isincallline = true;
+			//while(REG_VCOUNT == callline); //don't send 2 or more
+		}
+		else
+		{
+			isincallline = false;
+		}
+		if(!(REG_KEYXY & 0x2))
+		{
+			if(!ykeypp)
+			{
+				REG_IPC_FIFO_TX = 0x4200BEEF;
+#ifdef anyarmcom
+	*amr7sendcom = *amr7sendcom + 1;
+#endif
+				//while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
+				//int val2 = REG_IPC_FIFO_RX; //Value skip
+				ykeypp = true;
 
+			}
+		}
+		else
+		{
+			ykeypp = false;
+		}
+		if(*(u16*)0x04000136 & 0x80) //close nds
+		{
+			u32 ie_save = REG_IE;
+			// Turn the speaker down.
+			if (REG_POWERCNT & 1) swiChangeSoundBias(0,0x400);
+			// Save current power state.
+			u32 power = readPowerManagement(PM_CONTROL_REG);
+			// Set sleep LED.
+			writePowerManagement(PM_CONTROL_REG, (int)PM_LED_CONTROL(1));
+			// Register for the lid interrupt.
+			REG_IE = IRQ_LID;
+			// Power down till we get our interrupt.
+			swiSleep(); //waits for PM (lid open) interrupt
+			//100ms
+			swiDelay(838000);
+			// Restore the interrupt state.
+			REG_IE = ie_save;
+			// Restore power state.
+			writePowerManagement(PM_CONTROL_REG, (int)power);
+			// Turn the speaker up.
+			if (REG_POWERCNT & 1) swiChangeSoundBias(1,0x400);
+			// update clock tracking
+			resyncClock(); 
+		}
+
+		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))
+		{
+			u32 addr = (REG_IPC_FIFO_RX/*todo*/); //addr + flags //flags 2 most upperen Bits dma = 0 u8 = 1 u16 = 2 u32 = 3 only 1 or 2 allowed
+			while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
+			u32 val = REG_IPC_FIFO_RX; //Value skip add for speedup
+			if((addr& 0xC0000000) == 0x80000000)
+			{
+
+				newvalwrite16(addr & ~0xC0000000,val);
+			}
+			else
+			{
+				newvalwrite8(addr & ~0xC0000000,val);
+			}
+#ifdef anyarmcom
+			*amr7directrec = *amr7directrec + 1;
+			if(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))*amr7indirectrec = *amr7indirectrec + 1;
+#endif
+		}
 	}
 	return 0;
 }
