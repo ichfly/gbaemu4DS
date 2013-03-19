@@ -31,6 +31,18 @@ SOFTWARE.
 
 #include "spinlock.h" // .h file with code for spinlocking in it.
 
+
+
+
+
+
+
+extern void senddebug32(u32 val);
+
+
+
+
+
 volatile Wifi_MainStruct * WifiData = 0;
 WifiSyncHandler synchandler = 0;
 int keepalive_time = 0;
@@ -1743,6 +1755,7 @@ void installWifiFIFO() {
 */
 void installWifiFIFO()
 {
+
 	irqSet(IRQ_WIFI, Wifi_Interrupt); // set up wifi interrupt
 	netinter->importfunctions((void*)irqSet,(void*)irqEnable,(void*)wifiAddressHandler,(void*)wifiValue32Handler);
 }

@@ -495,7 +495,7 @@ void BIOScall(int op,  s32 *R)
 		//while(!(REG_DISPSTAT & DISP_IN_VBLANK));
 #ifdef not_definedases
 		//send cmd
-		REG_IPC_FIFO_TX = 0xCFFFFFFB; //tell the arm7
+		REG_IPC_FIFO_TX = 0xDFFFFFFB; //tell the arm7
 		REG_IPC_FIFO_TX = 0;
 #endif
 		ichflyswiWaitForVBlank();

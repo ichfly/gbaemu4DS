@@ -178,7 +178,7 @@ u32 Envelope(u8 back)
 		break;
 	}
 	u32 Masterright = SOUNDCNT_L & 0x7;
-	u32 Masterleft =  (SOUNDCNT_L << 4) & 0x7;
+	u32 Masterleft =  (SOUNDCNT_L >> 4) & 0x7;
 	if(back == 1)
 	{
 		if(SOUND1CNT_H & 0x800)SOUND1CNT_H += 0x1000;
@@ -412,7 +412,7 @@ void newvalwrite16(u32 addr,u32 val)
 
 					u32 Vol = SOUNDCNT_H & 0x3;
 					u32 Masterright = SOUNDCNT_L & 0x7;
-					u32 Masterleft =  (SOUNDCNT_L << 4) & 0x7;
+					u32 Masterleft =  (SOUNDCNT_L >> 4) & 0x7;
 					u16 sound3dif = (SOUND3CNT_H & 0x6000) >> 14;
 					u16 sound3mul = 1;
 					if (sound3dif = 0)
@@ -578,12 +578,18 @@ void newvalwrite16(u32 addr,u32 val)
 				break;
 
 			  case 0x1FFFFFF8: //wifi startup
+				
 				installWifiFIFO();
+				senddebug32(0x10);
+				swiWaitForVBlank();
 				if(!netinter->Wifi_InitDefault(true /*WFC_CONNECT*/))
 				{
-		REG_IPC_FIFO_TX = 0x1; //send fail 1
-		break;
+					senddebug32(0x11);
+					swiWaitForVBlank();
+					break;
 				}
+				senddebug32(0x12);
+				swiWaitForVBlank();
 
 
 //start socket
@@ -610,7 +616,6 @@ void newvalwrite16(u32 addr,u32 val)
     /* Create a reliable, stream socket using TCP */
     if ((sock = netinter->socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
-		REG_IPC_FIFO_TX = 0x2; //send fail 2
 		break;
 	}
 
@@ -623,14 +628,12 @@ void newvalwrite16(u32 addr,u32 val)
     /* Establish the connection to the echo server */
     if (netinter->connect(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
 	{
-				REG_IPC_FIFO_TX = 0x3; //send fail 3
 		break;
 	}
 
     /* Send the string to the server */
     if (netinter->send(sock, echoString, echoStringLen, 0) != echoStringLen)
 	{
-				REG_IPC_FIFO_TX = 0x4; //send fail 4
 		break;
 	}
 
@@ -656,7 +659,6 @@ void newvalwrite16(u32 addr,u32 val)
 
 
 
-				REG_IPC_FIFO_TX = 0x1111; //send OK
 				 break;
 
 			  case 0x1FFFFFF9:
@@ -738,7 +740,7 @@ void sendVcount()
 	*amr7sendcom = *amr7sendcom + 1;
 #endif
 }
-void closelib()
+void closelib() //not working todo
 {
 	u32 ie_save = REG_IE;
 	// Turn the speaker down.
@@ -760,17 +762,18 @@ void closelib()
 	// Turn the speaker up.
 	if (REG_POWERCNT & 1) swiChangeSoundBias(1,0x400);
 	// update clock tracking
-	resyncClock(); 
+	resyncClock();
 }
 void FIFOhand()
 {
 
 		while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))
 		{
-			u32 addr = (REG_IPC_FIFO_RX/*todo*/); //addr + flags //flags 2 most upperen Bits unknown = 0 u8 = 1 u16 = 2 u32 = 3
+			u32 addr = (REG_IPC_FIFO_RX); //addr + flags //flags 2 most upperen Bits unknown = 0 u8 = 1 u16 = 2 u32 = 3
+			//senddebug32(addr);
 			if((addr& 0xC0000000) == 0x80000000)
 			{
-				newvalwrite16(addr & ~0xFFFFF000,(addr & ~0xF0000000) >> 12);
+				newvalwrite16(addr & 0xFFF,(addr & ~0xF0000FFF) >> 12);
 			}
 			else if((addr& 0xC0000000) == 0x40000000)
 			{
@@ -806,7 +809,7 @@ int main() {
 	irqSet(IRQ_VBLANK, VblankHandler);
 	irqSet(IRQ_LID, closelib);
 
-	irqEnable( IRQ_VBLANK | IRQ_VCOUNT | IRQ_KEYS | IRQ_LID | IRQ_FIFO_NOT_EMPTY | IRQ_NETWORK);
+	irqEnable( IRQ_VBLANK | IRQ_VCOUNT | IRQ_LID | IRQ_FIFO_NOT_EMPTY | IRQ_NETWORK);
 
 	initimer();
 
@@ -841,8 +844,8 @@ void updatevol()
 
 	//Sound_chan = (Volume_Right * enabeled + Volume_Left * enabeled) * (Soundcnt(1,2,4))*static_for_max
 	//DMA = (Soundcnt(1,2) * enabeled + Soundcnt(1,2) * enabeled) * sataic_for_max
-	SCHANNEL_CR(4) = (SCHANNEL_CR(4) & ~0xFF) | ((( 1 + ((SOUNDCNT_H & 0x4) >> 2))*((SOUNDCNT_H & BIT(8)) >> 8) + ( 1 + ((SOUNDCNT_H & 0x4) >> 2))*((SOUNDCNT_H & BIT(9)) >> 9))*127/4);     //max:127
-	SCHANNEL_CR(5) = (SCHANNEL_CR(5) & ~0xFF) | ((( 1 + ((SOUNDCNT_H & 0x8) >> 3))*((SOUNDCNT_H & BIT(12)) >> 12) + ( 1 + ((SOUNDCNT_H & 0x8) >> 3))*((SOUNDCNT_H & BIT(13)) >> 13))*127/4); //max:127
+	SCHANNEL_CR(4) = (SCHANNEL_CR(4) & ~0xFF) | ((( 1 + ((SOUNDCNT_H & 0x4) >> 2))*((SOUNDCNT_H & BIT(8)) >> 8) + ( 1 + ((SOUNDCNT_H & 0x4) >> 2))*((SOUNDCNT_H & BIT(9)) >> 9))*127/4);     
+	SCHANNEL_CR(5) = (SCHANNEL_CR(5) & ~0xFF) | ((( 1 + ((SOUNDCNT_H & 0x8) >> 3))*((SOUNDCNT_H & BIT(12)) >> 12) + ( 1 + ((SOUNDCNT_H & 0x8) >> 3))*((SOUNDCNT_H & BIT(13)) >> 13))*127/4);
 	u32 Vol = SOUNDCNT_H & 0x3;
 	switch(Vol)
 	{
@@ -858,10 +861,10 @@ void updatevol()
 		break;
 	}
 	u32 Masterright = SOUNDCNT_L & 0x7;
-	u32 Masterleft =  (SOUNDCNT_L << 4) & 0x7;
-	SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_L & 0xF000) >> 12)*127/840);  //max:127
-	SCHANNEL_CR(9) = ((SCHANNEL_CR(9) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(9)) >> 9) + Masterleft * ((SOUNDCNT_L & BIT(13)) >> 13) ) * Vol) * ((SOUND2CNT_H & 0xF000) >> 12)*127/840);  //max:127
-	SCHANNEL_CR(3) = ((SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol) * ((SOUND4CNT_L & 0xF000) >> 12)*127/840); //max:127 
+	u32 Masterleft =  (SOUNDCNT_L >> 4) & 0x7;
+	SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_L & 0xF000) >> 12)*127/840);
+	SCHANNEL_CR(9) = ((SCHANNEL_CR(9) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(9)) >> 9) + Masterleft * ((SOUNDCNT_L & BIT(13)) >> 13) ) * Vol) * ((SOUND2CNT_H & 0xF000) >> 12)*127/840);
+	SCHANNEL_CR(3) = ((SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol) * ((SOUND4CNT_L & 0xF000) >> 12)*127/840);
 
 
 	u16 sound3dif = (SOUND3CNT_H & 0x6000) >> 14;
@@ -876,7 +879,7 @@ void updatevol()
 		sound3dif = 4;
 		sound3mul = 3;
 	}
-	SCHANNEL_CR(2) = (SCHANNEL_CR(2) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(10)) >> 10) + Masterleft * ((SOUNDCNT_L & BIT(14)) >> 14) ) * Vol * 2 * sound3mul / sound3dif );//max:112
+	SCHANNEL_CR(2) = (SCHANNEL_CR(2) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(10)) >> 10) + Masterleft * ((SOUNDCNT_L & BIT(14)) >> 14) ) * Vol * 2 * sound3mul / sound3dif*127/112 );
 
 
 

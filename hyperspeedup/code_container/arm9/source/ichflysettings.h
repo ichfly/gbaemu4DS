@@ -12,6 +12,8 @@
 
 #define uppern_read_emulation
 
+#define wifidebuger
+
 //#define noichflydebugger
 
 //#define debugpatch

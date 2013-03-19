@@ -77,6 +77,8 @@ typedef struct
 
 u8 arm7exchangefild[0x500];
 
+bool wifinotinited = true;
+
 #define INT_TABLE_SECTION __attribute__((section(".dtcm")))
 
 
@@ -263,7 +265,7 @@ if (0 != argc )
 #else
 		tempPMD |= 0xC;
 #endif
-REG_IPC_FIFO_TX = 0x9FFFFFF9;
+REG_IPC_FIFO_TX = 0xDFFFFFF9;
 REG_IPC_FIFO_TX = tempPMD;
 #endif
 if(!(_io_dldi_stub.friendlyName[0] == 0x52 && _io_dldi_stub.friendlyName[5] == 0x4E) && temptest)
@@ -312,7 +314,7 @@ extern const unsigned char s15Bitpoly[];
 
 *(u32*)(arm7exchangefild + 0x50) = (u32)&s7Bitpoly[0];
 *(u32*)(arm7exchangefild + 0x54) = (u32)&s15Bitpoly[0];
-REG_IPC_FIFO_TX = 0x9FFFFFFA; //load buffer
+REG_IPC_FIFO_TX = 0xDFFFFFFA; //load buffer
 REG_IPC_FIFO_TX = arm7amr9buffer = (u32)arm7exchangefild; //buffer for arm7
 //while(1);
 #endif
@@ -329,16 +331,6 @@ REG_IPC_FIFO_TX = arm7amr9buffer = (u32)arm7exchangefild; //buffer for arm7
         iprintf("failed\n");
 		while(1);
     }
-
-#ifdef wifidebuger
-	File* patchf = fopen("fat:/wifimodul.bin", "rb");
-	fread((void*)0x02380000,1,0x80000,patchf);
-	fclose(patchf);
-	REG_IPC_FIFO_TX = 0xCFFFFFF8;//wifi startup cmd
-	REG_IPC_FIFO_TX = 0x0;//wifi startup val
-	while((REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY));
-	printf("%08X",REG_IPC_FIFO_RX)
-#endif
 
 #ifdef standalone
 	iprintf("\x1b[2J");
@@ -477,8 +469,18 @@ else if(argv[10][0] == '2')slow = 2;
 else slow = 0;
 if(argv[8][0] == '1')
 {
-	REG_IPC_FIFO_TX = 0xCFFFFFFC; //send cmd
-	REG_IPC_FIFO_TX = 0;
+#ifdef wifidebuger
+
+	FILE* patchf = fopen("fat:/wifimodul.bin", "rb");
+	int readed = fread((void*)0x02380000,1,0x80000,patchf);
+	fclose(patchf);
+	REG_IPC_FIFO_TX = 0xDFFFFFF8;//wifi startup cmd
+	REG_IPC_FIFO_TX = 0x0;//wifi startup val
+	printf("SEEDUP %X\r\n",readed);
+	while(wifinotinited);
+#endif
+	//REG_IPC_FIFO_TX = 0xDFFFFFFC; //send cmd can't work
+	//REG_IPC_FIFO_TX = 0;
 }
 #endif
 	
@@ -558,7 +560,7 @@ initspeedupfelder();
 
 
 	VblankHandler();
-	REG_IPC_FIFO_TX = 0xCFFFFFFF; //cmd
+	REG_IPC_FIFO_TX = 0xDFFFFFFF; //cmd
 	REG_IPC_FIFO_TX = syncline;
 	while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))u32 src = REG_IPC_FIFO_RX;
 	iprintf("irqinit\n");

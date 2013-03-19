@@ -113,15 +113,14 @@ else
 	endif
 endif
  
-.PHONY: bootloader bootstub BootStrap $(BUILD) clean
+.PHONY: bootloader bootstub $(BUILD) clean
 
-all:	bootloader bootstub $(BUILD) BootStrap
+all:	bootloader bootstub $(BUILD)
 	
 dist:	all
 	@rm	-fr	hbmenu
 	@mkdir hbmenu
 	@cp hbmenu.nds hbmenu/BOOT.NDS
-	@cp BootStrap/_BOOT_MP.NDS BootStrap/TTMENU.DAT BootStrap/_DS_MENU.DAT BootStrap/ez5sys.bin BootStrap/akmenu4.nds hbmenu
 	@zip -9r hbmenu-$(VERSION).zip hbmenu testfiles README.html COPYING hbmenu -x@exclude.lst
 
 #---------------------------------------------------------------------------------
@@ -135,7 +134,6 @@ clean:
 	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).nds $(TARGET).arm9 data
 	@$(MAKE) -C bootloader clean
 	@$(MAKE) -C bootstub clean
-	@$(MAKE) -C BootStrap clean
 
 data:
 	@mkdir -p data
@@ -146,8 +144,6 @@ bootloader: data
 bootstub: data
 	@$(MAKE) -C bootstub
 
-BootStrap:
-	@$(MAKE) -C BootStrap
 
 #---------------------------------------------------------------------------------
 else
