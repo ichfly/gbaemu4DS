@@ -199,6 +199,13 @@ recdel++;
 				pausemenue();
 				continue;
 			}
+			if(src == 0x4400BEEF)
+			{
+				while(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY);
+				iprintf("wififail %08X\r\n",REG_IPC_FIFO_RX);
+				continue;
+			}
+
 			iprintf("error rec %08X %08X\r\n",src,REG_IPC_FIFO_CR);
 			while(1); //stop to prevent dammage
 		}

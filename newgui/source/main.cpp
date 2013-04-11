@@ -21,6 +21,30 @@
 ------------------------------------------------------------------*/
 #include <nds.h>
 #include <stdio.h>
+#include <sys/stat.h>
+
+#include <string.h>
+#include <unistd.h>
+
+
+#include "nds_loader_arm9.h"
+
+
+
+
+//common
+
+#define MAX_PATH 512
+#define MAX_FILE 512
+
+
+
+
+#include <string>
+#include <vector>
+
+#include <nds.h>
+#include <stdio.h>
 #include <fat.h>
 #include <sys/stat.h>
 
@@ -28,7 +52,6 @@
 #include <unistd.h>
 
 #include "nds_loader_arm9.h"
-#include "file_browse.h"
 
 #include "hbmenu_banner.h"
 
@@ -122,292 +145,143 @@ char* listless = "fat:/GBA4DS/internal_list.list";
 using namespace std;
 
 
-//---------------------------------------------------------------------------------
-void stop (void) {
-//---------------------------------------------------------------------------------
+
+
+
+
+vu32 power_flag;
+
+
+u32 global_cycles_per_instruction = 1;
+//u64 frame_count_initial_timestamp = 0;
+//u64 last_frame_interval_timestamp;
+u32 psp_fps_debug = 0;
+u32 skip_next_frame_flag = 0;
+//u32 frameskip_counter = 0;
+
+u32 cpu_ticks = 0;
+u32 frame_ticks = 0;
+
+u32 execute_cycles = 960;
+s32 video_count = 960;
+//u32 ticks;
+
+//u32 arm_frame = 0;
+//u32 thumb_frame = 0;
+u32 last_frame = 0;
+
+u32 synchronize_flag = 1;
+
+//const char main_path[]="mmc:\\NDSGBA";
+char main_path[MAX_PATH];
+
+//Removing rom_path due to confusion
+//char rom_path[MAX_PATH];
+
+//vu32 quit_flag;
+
+vu32 real_frame_count = 0;
+u32 virtual_frame_count = 0;
+vu32 vblank_count = 0;
+u32 num_skipped_frames = 0;
+u32 frames;
+
+unsigned int pen = 0;
+unsigned int frame_interval = 60; // For in-memory saved states used in rewinding
+
+int date_format= 2;
+
+u32 prescale_table[] = { 0, 6, 8, 10 };
+
+char *file_ext[] = { ".gba", ".bin", ".zip", NULL };
+
+
+u32 sound_on = 0;
+char gamepak_filename[MAX_FILE];
+
+
+void quit()
+{
+
+#ifdef USE_DEBUG
+	fclose(g_dbg_file);
+#endif
 	while (1) {
 		swiWaitForVBlank();
 	}
 }
 
+extern "C" void initich(int argc, char **argv);
+extern "C" int gui_init(unsigned int);
+extern "C" void initial_gpsp_config();
+extern "C" void init_game_config();
+extern "C" void init_input();
+extern "C" u32 menu(u16 *screen, int FirstInvocation);
+
+
 //---------------------------------------------------------------------------------
-int main(int argc, char **argv) {
+void stop (void) {
 //---------------------------------------------------------------------------------
+	quit();
+}
+
+//---------------------------------------------------------------------------------
+void maino(int argc, char **argv) {
+//---------------------------------------------------------------------------------
+  initich(argc,argv);
+  char load_filename[MAX_FILE];
+
+    if(gui_init(0) < 0)
+        exit(0);
+  // Initial path information
+  initial_gpsp_config();
 
 
-	// install the default exception handler
-    defaultExceptionHandler();
-
-	biosPath[0] = 0;
-	savePath[0] = 0;
-	patchPath[0] = 0;
-	// overwrite reboot stub identifier
-	extern u64 *fake_heap_end;
-	*fake_heap_end = 0;
-
-	char filePath[MAXPATHLEN * 2];
-	int pathLen;
-	std::string filename;
-
-	videoSetMode(MODE_5_2D);
-	vramSetBankA(VRAM_A_MAIN_BG);
-
-	// Subscreen as a console
-	videoSetModeSub(MODE_0_2D);
-	vramSetBankH(VRAM_H_SUB_BG);
-	consoleInit(NULL, 0, BgType_Text4bpp, BgSize_T_256x256, 15, 0, false, true);
-
-	if (!fatInitDefault()) {
-		iprintf ("fatinitDefault failed!\n");
-		stop();
-	} 
-
-	keysSetRepeat(25,5);
-	
-	vector<string> extensionList; //ndsfile,gbafile,savefile,biospath,patfile,swaplcd,savfetype,frameskip,frameskipauto,frameline,fastpu,mb
-	//extensionList.push_back(".nds");
-	//extensionList.push_back(".argv");
-	extensionList.push_back(".gba");
-	extensionList.push_back(".agb");
-	extensionList.push_back(".bin");
-	extensionList.push_back(".mb");
-	extensionList.push_back(".sav");
-	extensionList.push_back(".pat");
-
-		vector<char*> argarray;
-		if(argc != 2)
-		{
-			// set up our bitmap background
-			bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
-			
-			decompress(hbmenu_bannerBitmap, BG_GFX,  LZ77Vram);
-
-			//filename = browseForFile(extensionList);
-			browseForFile(extensionList);
-			if(arcvsave != (char*)0) goto dataluncher;
-			argarray.push_back("a");
-			argarray.push_back(szFile);
-			argarray.push_back(savePath);
-			argarray.push_back(biosPath);
-			argarray.push_back(patchPath);
-			//stop();
-			
-			// Construct a command line
-			/*getcwd (filePath, MAXPATHLEN);
-			pathLen = strlen (filePath);
+  power_flag = 0;
 
 
-			argarray.push_back(strdup(filename.c_str()));
+#ifdef USE_DEBUG
+  g_dbg_file = fopen(DBG_FILE_NAME, "awb");
+  DBGOUT("\nStart gpSP\n");
+#endif
 
-			char *name = argarray.at(0);
-			strcpy (filePath + pathLen, name);
-			free(argarray.at(0));*/
-			
-			
-						int pressed;
-
-	iprintf("\x1b[2J");
-	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press B for lcdswap A for normal\n");
-	while(1) 
-	{
-
-		swiWaitForVBlank();
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A)
-		{
-			argarray.push_back("0");
-			break;
-		}
-		if(isdaas&KEY_B)
-		{
-			argarray.push_back("1");
-			break;
-		}
-	}
-	
-	
-				char temp1[MAXPATHLEN * 2];
-				char temp2[MAXPATHLEN * 2];
-				char temp3[MAXPATHLEN * 2];
-		int ausgewauhlt = 0;
-		while(1)
-		{
-			iprintf("\x1b[2J");
-
-			for(int i = 0; i < 7; i++)
-			{
-				if(i == ausgewauhlt) iprintf("->");
-				else iprintf("  ");
-				iprintf(savetypeschar[i]);
-				iprintf("\n");
-			}
-			do 
-			{
-				swiWaitForVBlank();
-				scanKeys();
-				pressed = keysDownRepeat();
-			} while (!pressed);
-
-			if (pressed&KEY_A)
-			{
-				sprintf(temp1,"%X",ausgewauhlt);
-				argarray.push_back(temp1);
-				break;
-			}
-			if (pressed&KEY_DOWN && ausgewauhlt != 6){ ausgewauhlt++;}
-			if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
-		}
-		int frameskip = 0;
-		while(1) 
-		{
-			iprintf("\x1b[2J");
-			iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-			iprintf("fps 60/%i\n",frameskip + 1);
-			swiWaitForVBlank();
-			scanKeys();
-			int isdaas = keysDownRepeat();
-			if (isdaas&KEY_A) break;
-			if (isdaas&KEY_UP) frameskip++;
-			if (isdaas&KEY_DOWN && frameskip != 0) frameskip--;
-		}
-				sprintf(temp2,"%X",frameskip);
-				argarray.push_back(temp2);
-
-	iprintf("\x1b[2J");
-	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press A for autovsync B for normal\n");
-	while(1) 
-	{
-
-		swiWaitForVBlank();
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A)
-		{
-			argarray.push_back("1");
-			break;
-		}
-		if(isdaas&KEY_B)
-		{
-			argarray.push_back("0");
-			break;
-		}
-	}
-
-		int syncline =159;
-		while(1) 
-		{
-			iprintf("\x1b[2J");
-			iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-			iprintf("Videosyncline %i\n",syncline);
-			swiWaitForVBlank();
-			scanKeys();
-			int isdaas = keysDownRepeat();
-			if (isdaas&KEY_A) break;
-			if (isdaas&KEY_UP) syncline++;
-			if (isdaas&KEY_DOWN && syncline != 0) syncline--;
-			if (isdaas&KEY_RIGHT) syncline+=10;
-			if (isdaas&KEY_LEFT && syncline != 0) syncline-=10;
-		}
-		sprintf(temp3,"%X",syncline);
-		argarray.push_back(temp3);
+  init_game_config();
 
 
-	iprintf("\x1b[2J");
-	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press B for slow A for normal UP for speedhack\n");
-	while(1) 
-	{
 
-		swiWaitForVBlank();
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A)
-		{
-			argarray.push_back("0");
-			break;
-		}
-		if(isdaas&KEY_B)
-		{
-			argarray.push_back("1");
-			break;
-		}
-		if (isdaas&KEY_UP)
-		{
-			argarray.push_back("2");
-			break;
-		}
 
-	}
-		iprintf("\x1b[2J");
-	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press B for mb A for normal\n");
-	while(1) 
-	{
+  init_input();
 
-		swiWaitForVBlank();
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A)
-		{
-			argarray.push_back("0");
-			break;
-		}
-		if(isdaas&KEY_B)
-		{
-			argarray.push_back("1");
-			break;
-		}
-	}
 
-			ausgewauhlt = 0;
-			while(1)
-			{
-				iprintf("\x1b[2J");
-				for(int i = 0; i < nummerVersions; i++)
-				{
-					if(i == ausgewauhlt) iprintf("->");
-					else iprintf("  ");
-					iprintf(readabelnameversionsschar[inputtoVersion[i]]);
-					iprintf("\n");
-				}
-				do 
-				{
-					swiWaitForVBlank();
-					scanKeys();
-					pressed = keysDownRepeat();
-				} while (!pressed);
+  // ROM
+  gamepak_filename[0] = 0;
 
-				if (pressed&KEY_A)
-				{
-					argarray.at(0) = pathversionschar[inputtoVersion[ausgewauhlt]];
-					break;
-				}
-				if (pressed&KEY_DOWN && ausgewauhlt < nummerVersions){ ausgewauhlt++;}
-				if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
-			}
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-		}
-		else
-		{
-			arcvsave = argv[1];
-dataluncher:
+  // BIOS
+  //char bios_filename[MAX_FILE];
+  //sprintf(bios_filename, "%s/%s", main_path, "gba_bios.bin");
+
+
+
+
+    /*u16 screen_copy[GBA_SCREEN_BUFF_SIZE];
+    memset((char*)screen_copy, 0, sizeof(screen_copy));*/
+    menu(NULL, 1 /* first invocation: yes */);
+
+
+
+
+
+
+
+
+//ichfly
+
+#define arcvsave gamepak_filename
+		char filePath[MAXPATHLEN * 2];
+
+
+			vector<char*> argarray;
+
 			argarray.push_back("a");
 			strcpy(filePath,arcvsave);
 
@@ -422,10 +296,9 @@ dataluncher:
 			if(pFile3==NULL)patchPath[0] = 0;
 			fclose(pFile3);
 
-
+			
 			argarray.push_back(filePath);
 			argarray.push_back(savePath);
-			//argarray.push_back("fat:/GBA4DS/bios.bin");
 			argarray.push_back("\0");
 			
 			FILE *gbafile = fopen(arcvsave, "r");
@@ -513,25 +386,18 @@ dataluncher:
 			else argarray.push_back("0");
 			
 			argarray.at(0) = pathversionschar[entries[matching].loadertype];
-			
-		}
+		
 			//argarray.at(0) = filePath;
 			//iprintf ("Running %s with %d parameters\n", argarray[0], argarray.size());
 			//while(1);
 			int err = runNdsFile (argarray[0], argarray.size(), (const char **)&argarray[0]);
 			iprintf ("Start failed. Error %i\n", err);
 
-		while(argarray.size() !=0 ) {
-			free(argarray.at(0));
-			argarray.erase(argarray.begin());
-		}
 
-		for(int i = 0;i < 60;i++)swiWaitForVBlank();
-		while (1) {
-			swiWaitForVBlank();
-			scanKeys();
-			if (!(keysHeld() & KEY_A)) break;
-		}
 
-	return 0;
+
+
+
+
+  return;
 }

@@ -6,6 +6,8 @@
 
 
 
+int sock = 0;                        /* Socket descriptor */
+
 #include <nds.h>
 #include <nds/arm7/audio.h>
 
@@ -121,12 +123,20 @@ void senddebug32(u32 val)
 #endif
 }
 
+void sendwififail32(u32 val)
+{
+	REG_IPC_FIFO_TX = 0x4400BEEF;
+	REG_IPC_FIFO_TX = val;
+#ifdef anyarmcom
+	*amr7sendcom = *amr7sendcom + 2;
+#endif
+}
+
 bool ykeypp =false;
 //---------------------------------------------------------------------------------
 void VblankHandler(void) {
 //---------------------------------------------------------------------------------
 	Wifi_Update();
-
 	if(!(REG_KEYXY & 0x2)) //can't do that by irq
 	{
 		if(!ykeypp)
@@ -142,6 +152,10 @@ void VblankHandler(void) {
 	else
 	{
 		ykeypp = false;
+	}
+	if(*(u16*)0x04000136 & 0x80) //close nds
+	{
+		closelib();
 	}
 }
 
@@ -277,24 +291,29 @@ void newvalwrite16(u32 addr,u32 val)
 
 			switch(addr)
 			{
+			case 0x60:
+				SOUND1CNT_L = val;
+				break;
 			case 0x62:
 				{
+					SCHANNEL_CR(8) &= ~0x80000000;
 					SOUND1CNT_H = val;
 					switch(val & 0xC0)
 					{
 					case 0:
-						SCHANNEL_CR(8) |= 0x60000200 | SOUND_REPEAT; //start div by 4 and PSG (12,5% up)
+						SCHANNEL_CR(8) = (SCHANNEL_CR(8) & ~0x07000000) | 0x60000200; //start div by 4 and PSG (12,5% up)
 						break;
 					case 0x40:
-						SCHANNEL_CR(8) |= 0x61000200 | SOUND_REPEAT; //start div by 4 and PSG (25% up)
+						SCHANNEL_CR(8) = (SCHANNEL_CR(8) & ~0x07000000) | 0x61000200; //start div by 4 and PSG (25% up)
 						break;
 					case 0x80:
-						SCHANNEL_CR(8) |= 0x63000200 | SOUND_REPEAT; //start div by 4 and PSG (50% up)
+						SCHANNEL_CR(8) = (SCHANNEL_CR(8) & ~0x07000000) | 0x63000200; //start div by 4 and PSG (50% up)
 						break;
 					case 0xC0:
-						SCHANNEL_CR(8) |= 0x65000200 | SOUND_REPEAT; //start div by 4 and PSG (75% up)
+						SCHANNEL_CR(8) = (SCHANNEL_CR(8) & ~0x07000000) | 0x65000200; //start div by 4 and PSG (75% up)
 						break;
 					}
+					SCHANNEL_CR(8) |= 0x80000000;
 				}
 			break;
 			case 0x64:
@@ -303,7 +322,6 @@ void newvalwrite16(u32 addr,u32 val)
 				if(val &0x8000) //reinit
 				{
 					SCHANNEL_CR(8) &= ~0x80000000;
-					SCHANNEL_CR(8) |= 0x80000000;
 					sweepspeed = 131072*8/(2048-(val&0x7FF));
 					if((SOUND1CNT_L & 0x7) != 0)timerotheradd(0,TIMER_FREQ(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1)),stop);
 					else timerotheradd(0,0,stop);
@@ -316,6 +334,7 @@ void newvalwrite16(u32 addr,u32 val)
 						timerotheradd(1,0,Envelope);
 					}
 					updatevol(); //todo do it better
+					SCHANNEL_CR(8) |= 0x80000000;
 
 				}
 				if(val &0x4000)
@@ -325,22 +344,24 @@ void newvalwrite16(u32 addr,u32 val)
 				break;
 			case 0x68:
 				{
+					SCHANNEL_CR(9) &= ~0x80000000;
 					SOUND2CNT_H = val;
 					switch(val & 0xC0)
 					{
 					case 0:
-						SCHANNEL_CR(9) |= 0x60000200 | SOUND_REPEAT; //start div by 4 and PSG (12,5% up)
+						SCHANNEL_CR(9) = (SCHANNEL_CR(9) & ~0x07000000) | 0x60000200; //start div by 4 and PSG (12,5% up)
 						break;
 					case 0x40:
-						SCHANNEL_CR(9) |= 0x61000200 | SOUND_REPEAT; //start div by 4 and PSG (25% up)
+						SCHANNEL_CR(9) = (SCHANNEL_CR(9) & ~0x07000000) | 0x61000200; //start div by 4 and PSG (25% up)
 						break;
 					case 0x80:
-						SCHANNEL_CR(9) |= 0x63000200 | SOUND_REPEAT; //start div by 4 and PSG (50% up)
+						SCHANNEL_CR(9) = (SCHANNEL_CR(9) & ~0x07000000) | 0x63000200; //start div by 4 and PSG (50% up)
 						break;
 					case 0xC0:
-						SCHANNEL_CR(9) |= 0x65000200 | SOUND_REPEAT; //start div by 4 and PSG (75% up)
+						SCHANNEL_CR(9) = (SCHANNEL_CR(9) & ~0x07000000) | 0x65000200; //start div by 4 and PSG (75% up)
 						break;
 					}
+					SCHANNEL_CR(9) |= 0x80000000;
 				}
 				break;
 			case 0x6C:
@@ -580,45 +601,37 @@ void newvalwrite16(u32 addr,u32 val)
 			  case 0x1FFFFFF8: //wifi startup
 				
 				installWifiFIFO();
-				senddebug32(0x10);
-				swiWaitForVBlank();
+				REG_IPC_FIFO_TX = 0x100;
 				if(!netinter->Wifi_InitDefault(true /*WFC_CONNECT*/))
 				{
-					senddebug32(0x11);
-					swiWaitForVBlank();
+					REG_IPC_FIFO_TX = 0x201;
 					break;
 				}
-				senddebug32(0x12);
-				swiWaitForVBlank();
-
+				REG_IPC_FIFO_TX = 0x101;
 
 //start socket
-#define RCVBUFSIZE 0x100
 
 
-				int sock;                        /* Socket descriptor */
+
 				struct sockaddr_in echoServAddr; /* Echo server address */
 				unsigned short echoServPort;     /* Echo server port */
 				char *servIP;                    /* Server IP address (dotted quad) */
 				char *echoString;                /* String to send to echo server */
-				char echoBuffer[RCVBUFSIZE];     /* Buffer for echo string */
 				unsigned int echoStringLen;      /* Length of string to echo */
-				int bytesRcvd, totalBytesRcvd;   /* Bytes read in single recv() 
-                                        and total bytes read */
 
 
-    servIP = "192.168.178.92";             /* First arg: server IP address (dotted quad) */
-    echoString = "testerstr";         /* Second arg: string to echo */
-	echoStringLen = 10;          /* Determine input length */
+    servIP = "192.168.168.35";             /* First arg: server IP address (dotted quad) */
+    echoString = "handshake";         /* Second arg: string to echo */
+	echoStringLen = 10;          /* 
+								 Determine input length */
 
     echoServPort = 9876; /*port*/
-
     /* Create a reliable, stream socket using TCP */
     if ((sock = netinter->socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
+		REG_IPC_FIFO_TX = 0x202;
 		break;
 	}
-
     /* Construct the server address structure */
     //memset(&echoServAddr, 0, sizeof(echoServAddr));     /* Zero out structure */
     echoServAddr.sin_family      = AF_INET;             /* Internet address family */
@@ -628,38 +641,19 @@ void newvalwrite16(u32 addr,u32 val)
     /* Establish the connection to the echo server */
     if (netinter->connect(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
 	{
+		REG_IPC_FIFO_TX = 0x203;
 		break;
 	}
 
     /* Send the string to the server */
     if (netinter->send(sock, echoString, echoStringLen, 0) != echoStringLen)
 	{
+		REG_IPC_FIFO_TX = 0x204;
 		break;
 	}
 
-    /* Receive the same string back from the server */
-    /*totalBytesRcvd = 0;
-    printf("Received: ");                /* Setup to print the echoed string *//*
-    while (totalBytesRcvd < echoStringLen)
-    {
-        /* Receive up to the buffer size (minus 1 to leave space for
-           a null terminator) bytes from the sender *//*
-        if ((bytesRcvd = netinter->recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0)
-            DieWithError("recv() failed or connection closed prematurely");
-        totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes *//*
-        echoBuffer[bytesRcvd] = '\0';  /* Terminate the string! *//*
-        printf("%s", echoBuffer);      /* Print the echo buffer *//*
-    }
-
-    printf("\n");    /* Print a final linefeed */
-
-    //netinter->close(sock);
-
-
-
-
-
-				 break;
+	REG_IPC_FIFO_TX = 0x1;
+	 break;
 
 			  case 0x1FFFFFF9:
 				writePowerManagement(0,(int)val);
@@ -740,7 +734,7 @@ void sendVcount()
 	*amr7sendcom = *amr7sendcom + 1;
 #endif
 }
-void closelib() //not working todo
+void closelib()
 {
 	u32 ie_save = REG_IE;
 	// Turn the speaker down.
@@ -807,9 +801,9 @@ int main() {
 
 	irqSet(IRQ_FIFO_NOT_EMPTY, FIFOhand);
 	irqSet(IRQ_VBLANK, VblankHandler);
-	irqSet(IRQ_LID, closelib);
+	//irqSet(IRQ_LID, closelib);
 
-	irqEnable( IRQ_VBLANK | IRQ_VCOUNT | IRQ_LID | IRQ_FIFO_NOT_EMPTY | IRQ_NETWORK);
+	irqEnable( IRQ_VBLANK | IRQ_VCOUNT | IRQ_FIFO_NOT_EMPTY | IRQ_NETWORK);
 
 	initimer();
 
@@ -827,11 +821,57 @@ int main() {
 
 	while (true) {
 		swiWaitForVBlank();
+		//wifi debug
+	    /* Receive*/
+
+
+
+		if(sock != 0)
+		{
+
+			unsigned int echoStringLen = 4 + 4 + 4;      /* Length of cmd*/
+			char echoBuffer[echoStringLen];     /* Buffer for echo string */
+			int bytesRcvd, totalBytesRcvd = 0;   /* Bytes read in single recv() 
+												and total bytes read */
+			while (totalBytesRcvd < echoStringLen)
+			{
+				if ((bytesRcvd = netinter->recv(sock, &echoBuffer[totalBytesRcvd], echoStringLen, 0)) <= 0)
+				{
+					sendwififail32(0x3);
+				}
+				totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes */
+			}
+			//cmd 0 = keepalive
+			if(echoBuffer[0] == 1) //cmd read
+			{
+				u32 buff1 = *(u32*)(&echoBuffer[4]);
+				u32 buff2 = *(u32*)(&echoBuffer[8]);
+				if (netinter->send(sock, (void*)(buff1),buff2 , 0) != buff2)
+				{
+					sendwififail32(0x2);
+				}
+			}
+			else if(echoBuffer[0] == 2) //cmd write
+			{
+				u32 buff1 = *(u32*)(&echoBuffer[4]);
+				u32 buff2 = *(u32*)(&echoBuffer[8]);
+
+				bytesRcvd, totalBytesRcvd = 0;
+				unsigned int echoStringLen = buff2;
+				while (totalBytesRcvd < echoStringLen)
+				{
+					if ((bytesRcvd = netinter->recv(sock, (void*)(buff1 + totalBytesRcvd), 0x100, 0)) <= 0)
+					{
+						sendwififail32(0x1);
+					}
+					totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes */
+				}	
+			}
+		}
 
 	}
 	return 0;
 }
-
 //global update stuff
 
 void updatevol()
@@ -862,7 +902,7 @@ void updatevol()
 	}
 	u32 Masterright = SOUNDCNT_L & 0x7;
 	u32 Masterleft =  (SOUNDCNT_L >> 4) & 0x7;
-	SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_L & 0xF000) >> 12)*127/840);
+	SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_X & 0xF000) >> 12)*127/840);
 	SCHANNEL_CR(9) = ((SCHANNEL_CR(9) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(9)) >> 9) + Masterleft * ((SOUNDCNT_L & BIT(13)) >> 13) ) * Vol) * ((SOUND2CNT_H & 0xF000) >> 12)*127/840);
 	SCHANNEL_CR(3) = ((SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol) * ((SOUND4CNT_L & 0xF000) >> 12)*127/840);
 
