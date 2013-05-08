@@ -52,12 +52,19 @@ inter_Reset:
 inter_res:
 inter_fast:
 inter_res2:
-	str sp,[pc, #0x10]
-	str lr,[pc, #0x10]
-	ldr sp, =failcpphandler
-	ldr lr, =exHandler
-	str sp,[lr]
-	b dointerwtf
+
+	@ change the PU to nds mode
+	ldr	SP,=0x36333333	@ see cpumg.cpp for meanings protections
+	mcr	p15, 0, SP, c5, c0, 2
+	
+	@ jump into the personal handler
+	ldr	r1, =failcpphandler
+	ldr	r1, [r1]
+	
+	
+	ldr	sp, =__sp_undef	@ use the new stack
+	
+	blx	r1 @error no return
 	
 
 

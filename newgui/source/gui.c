@@ -5526,7 +5526,7 @@ int gui_init(u32 lang_id)
 
 	HighFrequencyCPU(); // Crank it up. When the menu starts, -> 0.
 
-    //Find the "GBA4DS" system directory
+    //Find the "GBADS" system directory
     DIR *current_dir;
 
     if(CheckLoad_Arg()){
@@ -5537,19 +5537,19 @@ int gui_init(u32 lang_id)
       char *endStr = strrchr(main_path, '/');
       *endStr = '\0';
 
-      //do a check to make sure the folder is a valid GBA4DS folder
+      //do a check to make sure the folder is a valid GBADS folder
       char tempPath[MAX_PATH];
       strcpy(tempPath, main_path);
       strcat(tempPath, "/system/gui");
       DIR *testDir = opendir(tempPath);
       if(!testDir)
-        //not a valid GBA4DS install
-        strcpy(main_path, "fat:/GBA4DS");
+        //not a valid GBADS install
+        strcpy(main_path, "fat:/GBADS");
       else//test was successful, do nothing
         closedir(testDir);
     }
     else
-      strcpy(main_path, "fat:/GBA4DS");
+      strcpy(main_path, "fat:/GBADS");
 
 
 
@@ -5558,20 +5558,20 @@ int gui_init(u32 lang_id)
         closedir(current_dir);
     else
     {
-        strcpy(main_path, "fat:/GBA4DS");
+        strcpy(main_path, "fat:/GBADS");
         current_dir = opendir(main_path);
         if(current_dir)
             closedir(current_dir);
         else
         {
             strcpy(main_path, "fat:");
-            if(search_dir("GBA4DS", main_path) == 0)
+            if(search_dir("GBADS", main_path) == 0)
             {
-                printf("Found GBA4DS directory\nDossier GBA4DS trouve\n\n%s\n", main_path);
+                printf("Found GBADS directory\nDossier GBADS trouve\n\n%s\n", main_path);
             }
             else
             {
-				err_msg(DOWN_SCREEN, "/GBA4DS: Directory missing\nPress any key to return to\nthe menu\n\n/GBA4DS: Dossier manquant\nAppuyer sur une touche pour\nretourner au menu");
+				err_msg(DOWN_SCREEN, "/GBADS: Directory missing\nPress any key to return to\nthe menu\n\n/GBADS: Dossier manquant\nAppuyer sur une touche pour\nretourner au menu");
                 goto gui_init_err;
             }
         }

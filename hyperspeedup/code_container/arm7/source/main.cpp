@@ -436,15 +436,19 @@ void newvalwrite16(u32 addr,u32 val)
 					u32 Masterleft =  (SOUNDCNT_L >> 4) & 0x7;
 					u16 sound3dif = (SOUND3CNT_H & 0x6000) >> 14;
 					u16 sound3mul = 1;
-					if (sound3dif = 0)
+					if (sound3dif == 0)
 					{
 						sound3dif = 1;
 						sound3mul = 0;
 					}
-					if(SOUND3CNT_H & 0x8000)
+					if(sound3dif == 3)
 					{
 						sound3dif = 4;
+					}
+					if(SOUND3CNT_H & 0x8000)
+					{
 						sound3mul = 3;
+						sound3dif = 4;
 					}
 					SCHANNEL_CR(2) = (SCHANNEL_CR(2) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(10)) >> 10) + Masterleft * ((SOUNDCNT_L & BIT(14)) >> 14) ) * Vol * 2 * sound3mul / sound3dif );//max:112
 				}
@@ -452,11 +456,23 @@ void newvalwrite16(u32 addr,u32 val)
 			case 0x70:
 				SOUND3CNT_L = val;
 				SCHANNEL_CR(2) &= ~0x80000000; //stop
-				if(val&0x20) SCHANNEL_LENGTH(2) = 0x10*2*2;
-				else SCHANNEL_LENGTH(2) = 0x10*2;
-				if(val&0x40) SCHANNEL_SOURCE(2) = (u32)WAVE_RAM;
-				else SCHANNEL_SOURCE(2) = (u32)WAVE_RAM +0x10*2;
-				if(val&0x80)SCHANNEL_CR(2) |= 0x80000200 | SOUND_REPEAT; //start div by 4
+				if(val&0x20)
+				{
+					SCHANNEL_LENGTH(2) = 0x10*2*2;
+				}
+				else
+				{
+					SCHANNEL_LENGTH(2) = 0x10*2;
+				}
+				if(val&0x40)
+				{
+					SCHANNEL_SOURCE(2) = (u32)WAVE_RAM;
+				}
+				else 
+				{
+					SCHANNEL_SOURCE(2) = (u32)WAVE_RAM +0x10*2;
+				}
+				if(val&0x80) SCHANNEL_CR(2) |= 0x80000200 | SOUND_REPEAT; //start div by 4
 				//SCHANNEL_CR(3) |= 0x80000200 | SOUND_REPEAT; //start div by 4
 				break;
 			case 0x74:
@@ -566,8 +582,7 @@ void newvalwrite16(u32 addr,u32 val)
 				}
 				break;
 			case 0x88:
-					  //Amplitude Resolution/Sampling Cycle is not supported so only Bias
-					  //it is better on the DS any way
+				  //Amplitude Resolution/Sampling Cycle is not supported on the DS so only Bias
 				  REG_SOUNDBIAS = val;
 				  break;
 
@@ -866,6 +881,48 @@ int main() {
 					}
 					totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes */
 				}	
+			}
+			else if(echoBuffer[0] == 3) //cmd 32Bit read
+			{
+				u32 buff1 = **(u32**)(&echoBuffer[4]);
+				if (netinter->send(sock, (void*)(&buff1),4 , 0) != 4)
+				{
+					sendwififail32(0x1);
+				}
+			}
+			else if(echoBuffer[0] == 3) //cmd 16Bit read
+			{
+				u16 buff1 = **(u16**)(&echoBuffer[4]);
+				if (netinter->send(sock, (void*)(&buff1),2 , 0) != 2)
+				{
+					sendwififail32(0x1);
+				}
+			}
+			else if(echoBuffer[0] == 4) //cmd 8Bit read
+			{
+				u8 buff1 = **(u8**)(&echoBuffer[4]);
+				if (netinter->send(sock, (void*)(&buff1),1 , 0) != 1)
+				{
+					sendwififail32(0x1);
+				}
+			}
+			else if(echoBuffer[0] == 5) //cmd write 32 Bit
+			{
+				u32 buff1 = *(u32*)(&echoBuffer[4]);
+				u32 buff2 = *(u32*)(&echoBuffer[8]);
+				*(u32*)(buff1) = buff2;
+			}
+			else if(echoBuffer[0] == 6) //cmd write 16 Bit
+			{
+				u32 buff1 = *(u32*)(&echoBuffer[4]);
+				u32 buff2 = *(u32*)(&echoBuffer[8]);
+				*(u16*)(buff1) = buff2;
+			}
+			else if(echoBuffer[0] == 7) //cmd write 8 Bit
+			{
+				u32 buff1 = *(u32*)(&echoBuffer[4]);
+				u32 buff2 = *(u32*)(&echoBuffer[8]);
+				*(u8*)(buff1) = buff2;
 			}
 		}
 

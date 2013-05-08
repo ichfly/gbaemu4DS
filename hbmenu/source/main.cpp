@@ -101,10 +101,10 @@ char* readabelnameversionsschar[18] =
 	"oldirqsc","newirqsc","advirqsc","HblancDMAsc","forceHblancsc"};
 
 char* pathversionschar[18] =
-	{"fat:/GBA4DS/oldirq.loader","fat:/GBA4DS/newirq.loader","fat:/GBA4DS/advirq.loader","fat:/GBA4DS/HblancDMA.loader","fat:/GBA4DS/forceHblanc.loader",
-	"fat:/GBA4DS/newirqsound.loader","fat:/GBA4DS/advirqsound.loader","fat:/GBA4DS/HblancDMAsound.loader","fat:/GBA4DS/forceHblancsound.loader",
-	"fat:/GBA4DS/newirqsoundsc.loader","fat:/GBA4DS/advirqsoundsc.loader","fat:/GBA4DS/HblancDMAsoundsc.loader","fat:/GBA4DS/forceHblancsoundsc.loader",
-	"fat:/GBA4DS/oldirqsc.loader","fat:/GBA4DS/newirqsc.loader","fat:/GBA4DS/advirqsc.loader","fat:/GBA4DS/HblancDMAsc.loader","fat:/GBA4DS/forceHblancsc.loader"};
+	{"fat:/GBADS/oldirq.loader","fat:/GBADS/newirq.loader","fat:/GBADS/advirq.loader","fat:/GBADS/HblancDMA.loader","fat:/GBADS/forceHblanc.loader",
+	"fat:/GBADS/newirqsound.loader","fat:/GBADS/advirqsound.loader","fat:/GBADS/HblancDMAsound.loader","fat:/GBADS/forceHblancsound.loader",
+	"fat:/GBADS/newirqsoundsc.loader","fat:/GBADS/advirqsoundsc.loader","fat:/GBADS/HblancDMAsoundsc.loader","fat:/GBADS/forceHblancsoundsc.loader",
+	"fat:/GBADS/oldirqsc.loader","fat:/GBADS/newirqsc.loader","fat:/GBADS/advirqsc.loader","fat:/GBADS/HblancDMAsc.loader","fat:/GBADS/forceHblancsc.loader"};
 
 u8 inputtoVersion[18] = 
 	{
@@ -117,7 +117,7 @@ u8 inputtoVersion[18] =
 char* savetypeschar[7] =
 	{"SaveTypeAutomatic","SaveTypeEeprom","SaveTypeSram","SaveTypeFlash64KB","SaveTypeEepromSensor","SaveTypeNone","SaveTypeFlash128KB"};
 
-char* listless = "fat:/GBA4DS/internal_list.list";
+char* listless = "fat:/GBADS/internal_list.list";
 
 using namespace std;
 
@@ -425,7 +425,7 @@ dataluncher:
 
 			argarray.push_back(filePath);
 			argarray.push_back(savePath);
-			//argarray.push_back("fat:/GBA4DS/bios.bin");
+			//argarray.push_back("fat:/GBADS/bios.bin");
 			argarray.push_back("\0");
 			
 			FILE *gbafile = fopen(arcvsave, "r");

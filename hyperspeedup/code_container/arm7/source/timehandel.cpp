@@ -12,7 +12,7 @@ Functiondec lenfunctions[8];
 u32 nexttimelen = 0xFFFF;
 u32 nexttimelendurchlauf = 0xFFFF;
 
-
+#define timeron
 #ifdef timeron
 void initimer()
 {
@@ -20,7 +20,7 @@ void initimer()
 	while(i < 8)
 	{
 		soundLentimefild[i] = 0;
-		soundothertimefild[i] = 0;
+		//soundothertimefild[i] = 0;
 		i++;
 	}
 	timerStart(2, ClockDivider_1,0x10000-0xFFFF, timerlen); //512 Hz

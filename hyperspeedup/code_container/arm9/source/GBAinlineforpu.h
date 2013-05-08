@@ -809,7 +809,7 @@ static inline void CPUWriteBytepu(u32 address, u8 b)
 		  iprintf("b %02x to %08x\r\n",b,address);
 #endif
 	  #ifdef arm9advsound
-		  REG_IPC_FIFO_TX = ((address & 0x3FF) | 0x40000000 | (b << 12));
+		  REG_IPC_FIFO_TXs((address & 0x3FF) | 0x40000000 | (b << 12));
 		  //REG_IPC_FIFO_TX = b;
 		#endif
 	break;

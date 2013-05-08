@@ -4,7 +4,7 @@ hwreg 0x301 in CPUWriteByte
 fix cpu pc rel reads/writes
 usermode reads firq and mode sw
 not alined ichfly_readdma_rom
-fix reads (dma) from unreadable mem (homebrews use this for sets)
+todo only save regs if needed in ex_s.s
 
 sound:
 send soundstat back

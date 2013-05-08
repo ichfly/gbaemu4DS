@@ -198,8 +198,10 @@ void update_backup_force() //todo
 {
 }
 u32 reg[64]; //todo
+char ichgamefileplpath[MAX_FILE];
 s32 load_gamepak(char *file_path) //todo
 {
+	strcpy(ichgamefileplpath, file_path);
 	return 0;
 }
 

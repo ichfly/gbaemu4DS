@@ -124,10 +124,10 @@ char* readabelnameversionsschar[18] =
 	"oldirqsc","newirqsc","advirqsc","HblancDMAsc","forceHblancsc"};
 
 char* pathversionschar[18] =
-	{"fat:/GBA4DS/oldirq.loader","fat:/GBA4DS/newirq.loader","fat:/GBA4DS/advirq.loader","fat:/GBA4DS/HblancDMA.loader","fat:/GBA4DS/forceHblanc.loader",
-	"fat:/GBA4DS/newirqsound.loader","fat:/GBA4DS/advirqsound.loader","fat:/GBA4DS/HblancDMAsound.loader","fat:/GBA4DS/forceHblancsound.loader",
-	"fat:/GBA4DS/newirqsoundsc.loader","fat:/GBA4DS/advirqsoundsc.loader","fat:/GBA4DS/HblancDMAsoundsc.loader","fat:/GBA4DS/forceHblancsoundsc.loader",
-	"fat:/GBA4DS/oldirqsc.loader","fat:/GBA4DS/newirqsc.loader","fat:/GBA4DS/advirqsc.loader","fat:/GBA4DS/HblancDMAsc.loader","fat:/GBA4DS/forceHblancsc.loader"};
+	{"fat:/GBADS/oldirq.loader","fat:/GBADS/newirq.loader","fat:/GBADS/advirq.loader","fat:/GBADS/HblancDMA.loader","fat:/GBADS/forceHblanc.loader",
+	"fat:/GBADS/newirqsound.loader","fat:/GBADS/advirqsound.loader","fat:/GBADS/HblancDMAsound.loader","fat:/GBADS/forceHblancsound.loader",
+	"fat:/GBADS/newirqsoundsc.loader","fat:/GBADS/advirqsoundsc.loader","fat:/GBADS/HblancDMAsoundsc.loader","fat:/GBADS/forceHblancsoundsc.loader",
+	"fat:/GBADS/oldirqsc.loader","fat:/GBADS/newirqsc.loader","fat:/GBADS/advirqsc.loader","fat:/GBADS/HblancDMAsc.loader","fat:/GBADS/forceHblancsc.loader"};
 
 u8 inputtoVersion[18] = 
 	{
@@ -140,7 +140,7 @@ u8 inputtoVersion[18] =
 char* savetypeschar[7] =
 	{"SaveTypeAutomatic","SaveTypeEeprom","SaveTypeSram","SaveTypeFlash64KB","SaveTypeEepromSensor","SaveTypeNone","SaveTypeFlash128KB"};
 
-char* listless = "fat:/GBA4DS/internal_list.list";
+char* listless = "fat:/GBADS/internal_list.list";
 
 using namespace std;
 
@@ -260,12 +260,14 @@ void maino(int argc, char **argv) {
   //char bios_filename[MAX_FILE];
   //sprintf(bios_filename, "%s/%s", main_path, "gba_bios.bin");
 
+#define GBA_SCREEN_WIDTH 240
+#define GBA_SCREEN_HEIGHT 160
+#define GBA_SCREEN_BUFF_SIZE GBA_SCREEN_WIDTH*GBA_SCREEN_HEIGHT
 
 
-
-    /*u16 screen_copy[GBA_SCREEN_BUFF_SIZE];
-    memset((char*)screen_copy, 0, sizeof(screen_copy));*/
-    menu(NULL, 1 /* first invocation: yes */);
+    u16 screen_copy[GBA_SCREEN_BUFF_SIZE];
+    memset((char*)screen_copy, 0, sizeof(screen_copy));
+    menu(screen_copy, 1 /* first invocation: yes */);
 
 
 
@@ -275,8 +277,8 @@ void maino(int argc, char **argv) {
 
 
 //ichfly
-
-#define arcvsave gamepak_filename
+extern char ichgamefileplpath[MAX_FILE];
+#define arcvsave     ichgamefileplpath
 		char filePath[MAXPATHLEN * 2];
 
 

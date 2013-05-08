@@ -261,11 +261,11 @@ DC_FlushAll();
 
 extern "C" void failcpphandler()
 {
-	iprintf("something failed\r\n");
 	REG_IME = IME_DISABLE;
+	iprintf("something failed last dump\r\n");
 	debugDump();
-	Log("SSP %08x SLR %08x\n",savedsp,savedlr);
-		while(1);
+	//Log("SSP %08x SLR %08x\n",savedsp,savedlr);
+	while(1);
 }
 
 void exInitundifinedsystem(void (*customundifinedHdl)())
@@ -293,15 +293,15 @@ void emuInstrTHUMB(u16 instr, s32 *regs);
 void undifinedresolver()
 {
 	u32 tempforwtf = *(u32*)(exRegs[15] - 4);
-	if((tempforwtf &0x0F200090) == 0x00200090) //wtf why dos this tigger an exeption it is strh r1,[r0]+2! ≤‡‡ 0xB2 10 E0 E0 on gba 0xE0E010B2 so think all strh rx,[ry]+z! do that
+	if((tempforwtf &0x0F200090) == 0x00200090) //rx,[ry]+z! is not a valid OP but it worked on the gba
 	{
 		*(u32*)(exRegs[15] - 4) = tempforwtf & ~0x200000;//ther is just a wrong bit so don't worry patch it to strh r1,[r0]+2
 	}
 	else
 	{
+		REG_IME = IME_DISABLE;
 		printf("unknown OP\r\n");
 		debugDump();
-		REG_IME = IME_DISABLE;
 		while(1);
 	}
 }

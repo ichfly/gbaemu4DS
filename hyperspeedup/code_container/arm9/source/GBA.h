@@ -105,6 +105,12 @@ extern u8 VCountdstogba[263]; //(LY)      (0..262)
 extern u8 VCountdoit[263]; //jump in or out
 #endif
 
+#define REG_IPC_FIFO_TXs(REG_IPC_FIFO_TXval)\
+  {\
+		while(REG_IPC_FIFO_CR & IPC_FIFO_SEND_FULL);\
+    	REG_IPC_FIFO_TX = REG_IPC_FIFO_TXval;\
+  }\
+
 extern bool CPUReadGSASnapshot(const char *);
 extern bool CPUWriteGSASnapshot(const char *, const char *, const char *, const char *);
 extern bool CPUWriteBatteryFile(const char *);
