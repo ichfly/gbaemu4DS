@@ -361,31 +361,31 @@ copyMode_5: @r0 = src r1 =tar
 loop:
 
 	LDMIA r0!, {r4-r12,r14}
-	and	r4, r4, r2
-	and	r5, r5, r2
-	and	r6, r6, r2
-	and	r7, r7, r2
-	and	r8, r8, r2
-	and	r9, r9, r2
-	and	r10, r10, r2
-	and	r11, r11, r2
-	and	r12, r12, r2
-	and	r14, r14, r2	
+	orr	r4, r4, r2
+	orr	r5, r5, r2
+	orr	r6, r6, r2
+	orr	r7, r7, r2
+	orr	r8, r8, r2
+	orr	r9, r9, r2
+	orr	r10, r10, r2
+	orr	r11, r11, r2
+	orr	r12, r12, r2
+	orr	r14, r14, r2	
 	STMIA r1!, {r4-r12,r14}
 	
 	subs r3, #1
 	BEQ loop
 	
 	LDMIA r0!, {r4-r12} @end with one missing
-	and	r4, r4, r2
-	and	r5, r5, r2
-	and	r6, r6, r2
-	and	r7, r7, r2
-	and	r8, r8, r2
-	and	r9, r9, r2
-	and	r10, r10, r2
-	and	r11, r11, r2
-	and	r12, r12, r2	
+	orr	r4, r4, r2
+	orr	r5, r5, r2
+	orr	r6, r6, r2
+	orr	r7, r7, r2
+	orr	r8, r8, r2
+	orr	r9, r9, r2
+	orr	r10, r10, r2
+	orr	r11, r11, r2
+	orr	r12, r12, r2	
 	STMIA r1!, {r4-r12}
 	
 	pop {r4-r11,r14}
@@ -406,25 +406,25 @@ copyMode_3: @r0 = src r1 =tar
 loop2:
 
 	LDMIA r0!, {r4-r12,r14}
-	and	r4, r4, r2
-	and	r5, r5, r2
-	and	r6, r6, r2
-	and	r7, r7, r2
-	and	r8, r8, r2
-	and	r9, r9, r2
-	and	r10, r10, r2
-	and	r11, r11, r2
-	and	r12, r12, r2
-	and	r14, r14, r2	
+	orr	r4, r4, r2
+	orr	r5, r5, r2
+	orr	r6, r6, r2
+	orr	r7, r7, r2
+	orr	r8, r8, r2
+	orr	r9, r9, r2
+	orr	r10, r10, r2
+	orr	r11, r11, r2
+	orr	r12, r12, r2
+	orr	r14, r14, r2	
 	STMIA r1!, {r4-r12,r14}
 	
 	subs r3, #1
 	BEQ loop2
 	
 	LDMIA r0!, {r4-r6} @end with one missing
-	and	r4, r4, r2
-	and	r5, r5, r2
-	and	r6, r6, r2
+	orr	r4, r4, r2
+	orr	r5, r5, r2
+	orr	r6, r6, r2
 	STMIA r1!, {r4-r6}
 	
 	pop {r4-r11,r14}

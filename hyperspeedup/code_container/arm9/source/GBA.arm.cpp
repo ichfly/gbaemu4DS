@@ -806,7 +806,7 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 #ifdef ownfilebuffer
 					//iprintf("4 %08X %08X %08X %08X ",s,d,c,*(u32 *)d);
 					ichfly_readdma_rom((u32)(s&0x1FFFFFF),(u8 *)d,c,4);
-					cpuDmaLast = *(u32*)(c*4 + d);  //ichfly hack
+					cpuDmaLast = *(u32*)((c - 1)*4 + d);  //ichfly hack
 					//iprintf("exit%08X ",*(u32 *)d);
 					//while(1);
 #else
@@ -822,7 +822,7 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 #ifdef ownfilebuffer
 					//iprintf("2 %08X %08X %08X %04X ",s,d,c,*(u16 *)d);
 					ichfly_readdma_rom((u32)(s&0x1FFFFFF),(u8 *)d,c,2);
-					cpuDmaLast = *(u16*)(c*2 + d);  //ichfly hack
+					cpuDmaLast = *(u16*)((c - 1)*2 + d);  //ichfly hack
 					//iprintf("exit%04X ",*(u16 *)d);
 					//while(1);
 #else
@@ -858,11 +858,11 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 		//iprintf("%x,%x,%x",s,d,tmpzahl);
 		if(transfer32) //ichfly hack
 		{
-			cpuDmaLast = *(u32*)(c*4 + d);
+			cpuDmaLast = *(u32*)((c - 1)*4 + d);
 		}
 		else
 		{
-			cpuDmaLast = *(u16*)(c*2 + d);
+			cpuDmaLast = *(u16*)((c - 1)*2 + d);
 		}
 	}
 

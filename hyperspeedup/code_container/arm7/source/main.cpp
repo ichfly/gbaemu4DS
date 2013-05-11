@@ -261,8 +261,8 @@ void newvalwrite8(u32 addr,u8 val)
 			  case 0x9e:
 			  case 0x9f:
 				{
-					  u16 valtostr =  ((u8)((((val &0xF0) << 0) + ((val &0xF0) >> 4)) - 0x80) << 0);
-					  valtostr |=  ((u8)((((val &0xF) << 0) + ((val &0xF) << 4)) - 0x80) << 8);
+					  u16 valtostr =  ((u8)((((val &0xF0) << 0) + ((val &0xF0) >> 4)) - 0x80) << 8);
+					  valtostr |=  ((u8)((((val &0xF) << 0) + ((val &0xF) << 4)) - 0x80) << 0);
 					  if(val&0x40)
 					  {
 							*(u16*)&WAVE_RAM[(addr - 0x90)*2] = valtostr;
@@ -334,7 +334,7 @@ void newvalwrite16(u32 addr,u32 val)
 						timerotheradd(1,0,Envelope);
 					}
 					updatevol(); //todo do it better
-					SCHANNEL_CR(8) |= 0x80000000;
+					SCHANNEL_CR(8) |= 0x80000200;
 
 				}
 				if(val &0x4000)
@@ -361,7 +361,7 @@ void newvalwrite16(u32 addr,u32 val)
 						SCHANNEL_CR(9) = (SCHANNEL_CR(9) & ~0x07000000) | 0x65000200; //start div by 4 and PSG (75% up)
 						break;
 					}
-					SCHANNEL_CR(9) |= 0x80000000;
+					SCHANNEL_CR(9) |= 0x80000200;
 				}
 				break;
 			case 0x6C:
@@ -379,7 +379,7 @@ void newvalwrite16(u32 addr,u32 val)
 						timerotheradd(2,0,Envelope);
 					}
 					updatevol(); //todo do it better
-					SCHANNEL_CR(9) |= 0x80000000;
+					SCHANNEL_CR(9) |= 0x80000200;
 				}
 				if(val &0x4000)
 				{
@@ -407,7 +407,7 @@ void newvalwrite16(u32 addr,u32 val)
 				}
 				if(val &0x8000) //reinit
 				{
-					SCHANNEL_CR(3) &= ~0x80000200;
+					SCHANNEL_CR(3) &= ~0x80000000;
 					SCHANNEL_CR(3) |= 0x80000200;
 					if((SOUND4CNT_L & 0x700) != 0)
 					{
@@ -450,7 +450,7 @@ void newvalwrite16(u32 addr,u32 val)
 						sound3mul = 3;
 						sound3dif = 4;
 					}
-					SCHANNEL_CR(2) = (SCHANNEL_CR(2) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(10)) >> 10) + Masterleft * ((SOUNDCNT_L & BIT(14)) >> 14) ) * Vol * 2 * sound3mul / sound3dif );//max:112
+					SCHANNEL_CR(2) = (SCHANNEL_CR(2) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(10)) >> 10) + Masterleft * ((SOUNDCNT_L & BIT(14)) >> 14) ) * Vol * sound3mul  * 127/(56*sound3dif) );
 				}
 				break;
 			case 0x70:
@@ -597,10 +597,10 @@ void newvalwrite16(u32 addr,u32 val)
 			  case 0x9c:
 			  case 0x9e:
 				  {
-					  u32 valtostr =  ((u8)((((val &0xF0) << 0) + ((val &0xF0) >> 4)) - 0x80) << 0);
-					  valtostr |=  ((u8)((((val &0xF) << 0) + ((val &0xF) << 4)) - 0x80) << 8);
-					  valtostr |=  ((u8)((((val &0xF000) >> 8) + ((val &0xF000) >> 0xC)) - 0x80) << 0x10);
-					  valtostr |=  ((u8)((((val &0xF00) << 4) + ((val &0xF00) << 8)) - 0x80) << 0x18);
+				   u32 valtostr =  ((u8)((((val &0xF0) << 0)    + ((val &0xF0) >> 4)) - 0x80)     << 0x18);
+					  valtostr |=  ((u8)((((val &0xF) << 0)     + ((val &0xF) << 4)) - 0x80)      << 0x10);
+					  valtostr |=  ((u8)((((val &0xF000) >> 8)  + ((val &0xF000) >> 0xC)) - 0x80) << 0x8);
+					  valtostr |=  ((u8)((((val &0xF00) << 4)   + ((val &0xF00) << 8)) - 0x80)    << 0x0);
 					  if(val&0x40)
 					  {
 							*(u32*)&WAVE_RAM[(addr - 0x90)*2] = valtostr;
@@ -966,17 +966,21 @@ void updatevol()
 
 	u16 sound3dif = (SOUND3CNT_H & 0x6000) >> 14;
 	u16 sound3mul = 1;
-	if (sound3dif = 0)
+	if (sound3dif == 0)
 	{
 		sound3dif = 1;
 		sound3mul = 0;
+	}
+	if(sound3dif == 3)
+	{
+		sound3dif = 4;
 	}
 	if(SOUND3CNT_H & 0x8000)
 	{
 		sound3dif = 4;
 		sound3mul = 3;
 	}
-	SCHANNEL_CR(2) = (SCHANNEL_CR(2) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(10)) >> 10) + Masterleft * ((SOUNDCNT_L & BIT(14)) >> 14) ) * Vol * 2 * sound3mul / sound3dif*127/112 );
+	SCHANNEL_CR(2) = (SCHANNEL_CR(2) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(10)) >> 10) + Masterleft * ((SOUNDCNT_L & BIT(14)) >> 14) ) * Vol * sound3mul  * 127/(56*sound3dif) );
 
 
 
@@ -994,7 +998,7 @@ void updatevol()
 	if(SOUNDCNT_H & BIT(12) && SOUNDCNT_H & BIT(13)) SCHANNEL_CR(5) = (SCHANNEL_CR(5) & ~0xFF0000) | 0x400000; //same on both
 
 	u32 right = SOUNDCNT_L & 7;
-	u32 left = (SOUNDCNT_L << 4) & 7;
+	u32 left = (SOUNDCNT_L >> 4) & 7;
 	u32 tempmixedvol1_4 = 0;
 	if((left + right) != 0) //don't work
 	{
