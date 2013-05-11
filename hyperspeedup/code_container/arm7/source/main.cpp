@@ -434,7 +434,7 @@ void newvalwrite16(u32 addr,u32 val)
 					u32 Vol = SOUNDCNT_H & 0x3;
 					u32 Masterright = SOUNDCNT_L & 0x7;
 					u32 Masterleft =  (SOUNDCNT_L >> 4) & 0x7;
-					u16 sound3dif = (SOUND3CNT_H & 0x6000) >> 14;
+					u16 sound3dif = (SOUND3CNT_H & 0x6000) >> 13;
 					u16 sound3mul = 1;
 					if (sound3dif == 0)
 					{
@@ -964,7 +964,7 @@ void updatevol()
 	SCHANNEL_CR(3) = ((SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol) * ((SOUND4CNT_L & 0xF000) >> 12)*127/840);
 
 
-	u16 sound3dif = (SOUND3CNT_H & 0x6000) >> 14;
+	u16 sound3dif = (SOUND3CNT_H & 0x6000) >> 13;
 	u16 sound3mul = 1;
 	if (sound3dif == 0)
 	{
@@ -980,6 +980,8 @@ void updatevol()
 		sound3dif = 4;
 		sound3mul = 3;
 	}
+
+
 	SCHANNEL_CR(2) = (SCHANNEL_CR(2) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(10)) >> 10) + Masterleft * ((SOUNDCNT_L & BIT(14)) >> 14) ) * Vol * sound3mul  * 127/(56*sound3dif) );
 
 

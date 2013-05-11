@@ -143,7 +143,7 @@ static inline u32 CPUReadMemoryreal(u32 address) //ichfly not inline is faster b
   
   u32 value;
   switch(address >> 24) {
-  case 0:
+  /*case 0:
     if(reg[15].I >> 24) {
       if(address < 0x4000) {
 #ifdef DEV_VERSION
@@ -158,7 +158,7 @@ static inline u32 CPUReadMemoryreal(u32 address) //ichfly not inline is faster b
       else goto unreadable;
     } else
       value = READ32LE(((u32 *)&bios[address & 0x3FFC]));
-    break;
+    break;*/
   case 2:
 #ifdef checkclearaddrrw
 	if(address >0x023FFFFF)goto unreadable;

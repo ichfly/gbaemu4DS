@@ -352,12 +352,12 @@ resettostartup:
 @---------------------------------------------------------------------------------
 copyMode_5: @r0 = src r1 =tar
 @---------------------------------------------------------------------------------
-	push {r4-r11,r14}
+	push {r4-r11,lr}
 	
 	mov r2 , #0x80000000
 	add r2 ,r2, #0x8000
 
-	mov r3 , #0x8 @8 times
+	mov r3 , #0x8 @8 times 8*4*9
 loop:
 
 	LDMIA r0!, {r4-r12,r14}
@@ -374,9 +374,9 @@ loop:
 	STMIA r1!, {r4-r12,r14}
 	
 	subs r3, #1
-	BEQ loop
+	BNE loop
 	
-	LDMIA r0!, {r4-r12} @end with one missing
+	LDMIA r0!, {r4-r12} @end with one missing times 8*4
 	orr	r4, r4, r2
 	orr	r5, r5, r2
 	orr	r6, r6, r2
@@ -388,7 +388,7 @@ loop:
 	orr	r12, r12, r2	
 	STMIA r1!, {r4-r12}
 	
-	pop {r4-r11,r14}
+	pop {r4-r11,pc}
 	
 	
 @---------------------------------------------------------------------------------
@@ -397,7 +397,7 @@ loop:
 @---------------------------------------------------------------------------------
 copyMode_3: @r0 = src r1 =tar
 @---------------------------------------------------------------------------------
-	push {r4-r11,r14}
+	push {r4-r11,lr}
 	
 	mov r2 , #0x80000000
 	add r2 ,r2, #0x8000
@@ -419,7 +419,7 @@ loop2:
 	STMIA r1!, {r4-r12,r14}
 	
 	subs r3, #1
-	BEQ loop2
+	BNE loop2
 	
 	LDMIA r0!, {r4-r6} @end with one missing
 	orr	r4, r4, r2
@@ -427,4 +427,4 @@ loop2:
 	orr	r6, r6, r2
 	STMIA r1!, {r4-r6}
 	
-	pop {r4-r11,r14}
+	pop {r4-r11,pc}

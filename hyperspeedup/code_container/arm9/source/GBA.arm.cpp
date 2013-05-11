@@ -740,7 +740,7 @@ void  __attribute__ ((hot)) doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int
 	cpuDmaCount = c;
   if(transfer32) {
     s &= 0xFFFFFFFC;
-    if(s < 0x02000000 && (reg[15].I >> 24)) {
+    if(s < 0x02000000) {
       while(c != 0) {
         CPUWriteMemory(d, 0);
         d += di;
@@ -759,7 +759,7 @@ void  __attribute__ ((hot)) doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int
     s &= 0xFFFFFFFE;
     si = (int)si >> 1;
     di = (int)di >> 1;
-    if(s < 0x02000000 && (reg[15].I >> 24)) {
+    if(s < 0x02000000) {
       while(c != 0) {
         CPUWriteHalfWord(d, 0);
         d += di;
@@ -806,7 +806,7 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 #ifdef ownfilebuffer
 					//iprintf("4 %08X %08X %08X %08X ",s,d,c,*(u32 *)d);
 					ichfly_readdma_rom((u32)(s&0x1FFFFFF),(u8 *)d,c,4);
-					cpuDmaLast = *(u32*)((c - 1)*4 + d);  //ichfly hack
+					//cpuDmaLast = *(u32*)((c - 1)*4 + d);  //ichfly hack
 					//iprintf("exit%08X ",*(u32 *)d);
 					//while(1);
 #else
@@ -822,7 +822,7 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 #ifdef ownfilebuffer
 					//iprintf("2 %08X %08X %08X %04X ",s,d,c,*(u16 *)d);
 					ichfly_readdma_rom((u32)(s&0x1FFFFFF),(u8 *)d,c,2);
-					cpuDmaLast = *(u16*)((c - 1)*2 + d);  //ichfly hack
+					//cpuDmaLast = *(u16*)((c - 1)*2 + d);  //ichfly hack
 					//iprintf("exit%04X ",*(u16 *)d);
 					//while(1);
 #else
@@ -856,14 +856,14 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 		if(si == -4) tmpzahl |= DMA_SRC_DEC;
 		DMA3_CR = tmpzahl;
 		//iprintf("%x,%x,%x",s,d,tmpzahl);
-		if(transfer32) //ichfly hack
+		/*if(transfer32) //ichfly hack
 		{
 			cpuDmaLast = *(u32*)((c - 1)*4 + d);
 		}
 		else
 		{
 			cpuDmaLast = *(u16*)((c - 1)*2 + d);
-		}
+		}*/
 	}
 
 }

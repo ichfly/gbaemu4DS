@@ -105,34 +105,34 @@
 	.word	.interrorme
 	.word	.interrorme
 	.word	.interrorme
-	.word	.L5487
-	.word	.L5488
+	.word	.PUSHRlist
+	.word	.interrorme @.L5488 @no need there as there is no use about this
 	.word	.interrorme
 	.word	.interrorme
 	.word	.interrorme
 	.word	.interrorme
 	.word	.interrorme
 	.word	.interrorme
-	.word	.L5489
-	.word	.L5490
+	.word	.interrorme @.L5489 @no need there as there is no use about this
+	.word	.interrorme @.L5490 @no need there as there is no use about this
 	.word	.interrorme
 	.word	.interrorme
-	.word	.L5491
-	.word	.L5491
-	.word	.L5491
-	.word	.L5491
-	.word	.L5491
-	.word	.L5491
-	.word	.L5491
-	.word	.L5491
-	.word	.L5492
-	.word	.L5492
-	.word	.L5492
-	.word	.L5492
-	.word	.L5492
-	.word	.L5492
-	.word	.L5492
-	.word	.L5492
+	.word	.interrorme @.L5491 @no need there as there is no use about this
+	.word	.interrorme @.L5491 @no need there as there is no use about this
+	.word	.interrorme @.L5491 @no need there as there is no use about this
+	.word	.interrorme @.L5491 @no need there as there is no use about this
+	.word	.interrorme @.L5491
+	.word	.interrorme @.L5491
+	.word	.interrorme @.L5491
+	.word	.interrorme @.L5491
+	.word	.interrorme @.L5492 @no need there as there is no use about this
+	.word	.interrorme @.L5492
+	.word	.interrorme @.L5492
+	.word	.interrorme @.L5492
+	.word	.interrorme @.L5492
+	.word	.interrorme @.L5492
+	.word	.interrorme @.L5492
+	.word	.interrorme @.L5492
 
 	
 	
@@ -343,11 +343,102 @@
 	
 	
 	
+.PUSHRlist:
+
+	ldr	r2, .L5756
+	and	r3, r8, #255
+	ldrb	r3, [r2, r3]	@ zero_extendqisi2
+	ldr	r7, [r1, #52]
+	
+	tst	r8, #1
+	
+	sub	r7, r7, r3, asl #2
+
+	bic	r6, r7, #3
+
+	bne	.L5748
+.backjmp1:
+	tst	r4, #2
+	bne	.L5749
+.backjmp2:
+	tst	r4, #4
+	bne	.L5750
+.backjmp3:
+	tst	r4, #8
+	bne	.L5751
+.backjmp4:
+	tst	r4, #16
+	bne	.L5752
+.backjmp5:
+	tst	r4, #32
+	bne	.L5753
+.backjmp6:
+	tst	r4, #64
+	bne	.L5754
+.backjmp7:
+	tst	r4, #128
+	beq	.PUSHRlistexit
+	mov	r2, r7
+	ldr	r3, [r5, #0x1C]
+	bl	_ZL16CPUWriteMemorypujj
+
+.PUSHRlistexit:
+	str	r7, [r5, #52]
+	mov pc,lr
+
+	
+
+.L5748:
+	mov	r2, r6
+	ldr	r3, [r1, #0]
+	bl	_ZL16CPUWriteMemorypujj
+	add	r6, r6, #4
+	b	.backjmp1
+
+.L5749:
+	mov	r2, r6
+	ldr	r3, [r1, #4]
+	bl	_ZL16CPUWriteMemorypujj
+	add	r6, r6, #4
+	b	.backjmp2
+.L5750:
+	mov	r2, r6
+	ldr	r3, [r1, #8]
+	bl	_ZL16CPUWriteMemorypujj
+	add	r6, r6, #4
+	b	.backjmp3
+.L5751:
+	mov	r2, r6
+	ldr	r3, [r1, #0xC]
+	bl	_ZL16CPUWriteMemorypujj
+	add	r6, r6, #4
+	b	.backjmp4
+.L5752:
+	mov	r2, r6
+	ldr	r3, [r1, #0x10]
+	bl	_ZL16CPUWriteMemorypujj
+	add	r6, r6, #4
+	b	.backjmp5
+.L5753:
+	mov	r2, r6
+	ldr	r3, [r1, #0x14]
+	bl	_ZL16CPUWriteMemorypujj
+	add	r6, r6, #4
+	b	.backjmp6
+.L5754:
+	mov	r2, r6
+	ldr	r3, [r1, #0x18]
+	bl	_ZL16CPUWriteMemorypujj
+	add	r6, r6, #4
+	b	.backjmp7
 
 
-	
-	
-	
+
+.L5756:
+	.word	cpuBitsSet
+
+
+
 	
 	
 .interrorme:
