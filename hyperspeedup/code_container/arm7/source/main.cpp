@@ -6,7 +6,7 @@
 
 
 
-int sock = 0;                        /* Socket descriptor */
+volatile int sock = 0;                        /* Socket descriptor */
 
 #include <nds.h>
 #include <nds/arm7/audio.h>
@@ -167,16 +167,17 @@ u32 stop(u8 back)
 	return 0;
 }
 
-u32 sweepspeed = 0;
+vu32 sweepspeed = 0;
 u32 sweep(u8 back)
 {
 	if(SOUND1CNT_L & 0x8)sweepspeed = sweepspeed - sweepspeed/(1<<(SOUND1CNT_L & 0x7));
 	else sweepspeed = sweepspeed + sweepspeed/(1<<(SOUND1CNT_L & 0x7));
 	SCHANNEL_TIMER(8) = -(33513982/2)/(sweepspeed);
-	return BUS_CLOCK/(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1));
+	return BUS_CLOCK/(0x80/((SOUND1CNT_L & 0x70) >> 4));
 }
 u32 Envelope(u8 back)
 {
+	back = back-4; //ichfly some offset for timerotheradd
 	u32 Vol = SOUNDCNT_H & 0x3;
 	switch(Vol)
 	{
@@ -193,23 +194,57 @@ u32 Envelope(u8 back)
 	}
 	u32 Masterright = SOUNDCNT_L & 0x7;
 	u32 Masterleft =  (SOUNDCNT_L >> 4) & 0x7;
+	bool dropout = false;
 	if(back == 1)
 	{
-		if(SOUND1CNT_H & 0x800)SOUND1CNT_H += 0x1000;
-		else SOUND1CNT_H -= 0x1000;
-		SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_L & 0xF000) >> 12)*127/840);  //max:127
+		if(SOUND1CNT_H & 0x800)
+		{
+			if(SOUND1CNT_H&0xF000 == 0xF000)return 0;
+			SOUND1CNT_H += 0x1000;
+			if(SOUND1CNT_H&0xF000 == 0xF000)dropout = true;
+		}
+		else
+		{
+			if(SOUND1CNT_H&0xF000 == 0x0000)return 0;
+			SOUND1CNT_H -= 0x1000;
+			if(SOUND1CNT_H&0xF000 == 0x0000)dropout = true;
+		}
+		SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_H & 0xF000) >> 12)*127/840);  //max:127
+		if(dropout)return 0;
 		return BUS_CLOCK/(0x40/((SOUND1CNT_H & 0x700) >> 8));
 	} else if (back == 2)
 	{
-		if(SOUND2CNT_H & 0x800)SOUND2CNT_H += 0x1000;
-		else SOUND2CNT_H -= 0x1000;
+		if(SOUND2CNT_H & 0x800)
+		{
+			if(SOUND2CNT_H&0xF000 == 0xF000)return 0;
+			SOUND2CNT_H += 0x1000;
+			if(SOUND2CNT_H&0xF000 == 0xF000)dropout = true;
+		}
+		else 
+		{
+			if(SOUND2CNT_H&0xF000 == 0x0000)return 0;
+			SOUND2CNT_H -= 0x1000;
+			if(SOUND2CNT_H&0xF000 == 0x0000)dropout = true;
+		}
 		SCHANNEL_CR(9) = ((SCHANNEL_CR(9) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(9)) >> 9) + Masterleft * ((SOUNDCNT_L & BIT(13)) >> 13) ) * Vol) * ((SOUND2CNT_H & 0xF000) >> 12)*127/840);  //max:127
+		if(dropout)return 0;
 		return BUS_CLOCK/(0x40/((SOUND2CNT_H & 0x700) >> 8));
 	} else if(back == 3)
 	{
-		if(SOUND4CNT_L & 0x800)SOUND4CNT_L += 0x1000;
-		else SOUND4CNT_L -= 0x1000;
+		if(SOUND4CNT_L & 0x800)
+		{
+			if(SOUND4CNT_L&0xF000 == 0xF000)return 0;
+			SOUND4CNT_L += 0x1000;
+			if(SOUND4CNT_L&0xF000 == 0x0000)dropout = true;
+		}
+		else
+		{
+			if(SOUND4CNT_L&0xF000 == 0x0000)return 0;
+			SOUND4CNT_L -= 0x1000;
+			if(SOUND4CNT_L&0xF000 == 0x0000)dropout = true;
+		}
 		SCHANNEL_CR(3) = ((SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol) * ((SOUND4CNT_L & 0xF000) >> 12)*127/840);
+		if(dropout)return 0;
 		return BUS_CLOCK/(0x40/((SOUND4CNT_L & 0x700) >> 8));
 	}
 }
@@ -296,7 +331,7 @@ void newvalwrite16(u32 addr,u32 val)
 				break;
 			case 0x62:
 				{
-					SCHANNEL_CR(8) &= ~0x80000000;
+					//SCHANNEL_CR(8) &= ~0x80000000;
 					SOUND1CNT_H = val;
 					switch(val & 0xC0)
 					{
@@ -313,17 +348,20 @@ void newvalwrite16(u32 addr,u32 val)
 						SCHANNEL_CR(8) = (SCHANNEL_CR(8) & ~0x07000000) | 0x65000200; //start div by 4 and PSG (75% up)
 						break;
 					}
-					SCHANNEL_CR(8) |= 0x80000000;
+					//SCHANNEL_CR(8) |= 0x80000000;
 				}
 			break;
 			case 0x64:
 				SOUND1CNT_X = val;
-				SCHANNEL_TIMER(8) = -(33513982/2)/(131072*8/(2048-(val&0x7FF)));
 				if(val &0x8000) //reinit
 				{
 					SCHANNEL_CR(8) &= ~0x80000000;
+					SCHANNEL_TIMER(8) = -(33513982/2)/(131072*8/(2048-(val&0x7FF)));
 					sweepspeed = 131072*8/(2048-(val&0x7FF));
-					if((SOUND1CNT_L & 0x7) != 0)timerotheradd(0,BUS_CLOCK/(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1)),stop);
+					if((SOUND1CNT_L & 0x7) != 0)
+					{
+						timerotheradd(0,BUS_CLOCK/(0x80/((SOUND1CNT_L & 0x70) >> 4)),sweep);
+					}
 					else timerotheradd(0,0,stop);
 					if((SOUND1CNT_H & 0x700) != 0)
 					{
@@ -333,22 +371,23 @@ void newvalwrite16(u32 addr,u32 val)
 					{
 						timerotheradd(1,0,Envelope);
 					}
+					if(val &0x4000)
+					{
+						timerlenadd(0,BUS_CLOCK/(256/(0x40-(SOUND1CNT_H&0x3F))),stop);
+					}
+					else
+					{
+						timerlenadd(0,0,stop);
+					}
 					updatevol(); //todo do it better
 					SCHANNEL_CR(8) |= 0x80000200;
 
 				}
-				if(val &0x4000)
-				{
-					timerlenadd(0,BUS_CLOCK/(256/(0x40-(SOUND1CNT_H&0x3F))),stop);
-				}
-				else
-				{
-					timerlenadd(0,0,stop);
-				}
+
 				break;
 			case 0x68:
 				{
-					SCHANNEL_CR(9) &= ~0x80000000;
+					//SCHANNEL_CR(9) &= ~0x80000000;
 					SOUND2CNT_H = val;
 					switch(val & 0xC0)
 					{
@@ -365,7 +404,7 @@ void newvalwrite16(u32 addr,u32 val)
 						SCHANNEL_CR(9) = (SCHANNEL_CR(9) & ~0x07000000) | 0x65000200; //start div by 4 and PSG (75% up)
 						break;
 					}
-					SCHANNEL_CR(9) |= 0x80000200;
+					//SCHANNEL_CR(9) |= 0x80000200;
 				}
 				break;
 			case 0x6C:
@@ -965,7 +1004,7 @@ void updatevol()
 	}
 	u32 Masterright = SOUNDCNT_L & 0x7;
 	u32 Masterleft =  (SOUNDCNT_L >> 4) & 0x7;
-	SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_X & 0xF000) >> 12)*127/840);
+	SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_H & 0xF000) >> 12)*127/840);
 	SCHANNEL_CR(9) = ((SCHANNEL_CR(9) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(9)) >> 9) + Masterleft * ((SOUNDCNT_L & BIT(13)) >> 13) ) * Vol) * ((SOUND2CNT_H & 0xF000) >> 12)*127/840);
 	SCHANNEL_CR(3) = ((SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol) * ((SOUND4CNT_L & 0xF000) >> 12)*127/840);
 
