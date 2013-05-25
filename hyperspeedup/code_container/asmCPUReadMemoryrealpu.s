@@ -1,255 +1,185 @@
-asmCPUWriteMemorypu: @ in r2 addr r3 data can use r9-r12
+asmReadMemoryrealpu: @ in r2 addr out r3 data can use r9-r12
 
 
-	
-	mov	r9, r2, lsr #24
-	cmp	r9, #13
-	beq	.caEEPROMa
-	cmp	r9, #14
-	beq	.othersava
-	cmp	r9, #4
-	movne pc, lr
-	
-.URa:
+_ZL19CPUReadMemoryrealpuj:
 
-	ldr	r9, .L34
-	cmp	r2, r9
-	movhi	pc, lr
-	
-	mov	r10, r3
-	
-	and	r9, r2, #0x3FC
-	mov	r3, r3, asl #16
-	mov	r0, r9
-	mov	r1, r3, lsr #16
-	bl	_Z17CPUUpdateRegisterjt
-	add	r0, r9, #2
-	mov	r1, r10, lsr #16
-	b	_Z17CPUUpdateRegisterjt
-.othersava:
-	ldr	r9, .L34+4
-	ldrb	r1, [r9, #0]	@ zero_extendqisi2
-	ldr	r9, .L34+8
-	ldrb	r10, [r9, #0]	@ zero_extendqisi2
-	ldr	r9, .L34+12
-	orr	r10, r1, r10
-	ldrb	r9, [r9, #0]	@ zero_extendqisi2
-	eor	r3, r9, #1
-	orrs	r9, r10, r9
-	moveq	pc, lr
+	mov	r3, r2, lsr #24
+	mov	r4, r0
 
-	ldr	r9, .L34+16
-	and	r1, r3, #255
-	mov r0, r2
-	ldr	r9, [r9, #0]
-	bx	r9
-.caEEPROMa:
-	ldr	r8, .L34+20
-	ldrb	r8, [r8, #0]	@ zero_extendqisi2
-	cmp	r8, #0
-	moveq	pc, lr
-
-	and	r1, r3, #0xFF @no one cares here only one bit used
-	b	_Z11eepromWritejh
-
-
-	.align	4
-.L34:
-	.word	0x40003FF
-	.word	cpuFlashEnabled
-	.word	cpuSramEnabled
-	.word	eepromInUse
-	.word	cpuSaveGameFunc
-	.word	cpuEEPROMEnabled
-
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-asmCPUReadMemoryreal: @ in r2 out r3 data can use r9-r12
-
-	mov	r9, r2, lsr #24
-	cmp	r9, #14
-	ldrls	pc, [pc, r9, asl #2]
-	b	.wordothercasea
-.L120:
-	.word	.wordothercasea
-	.word	.wordothercasea
-	.word	.wordothercasea
-	.word	.wordothercasea
-	.word	.L116
-	.word	.wordothercasea
-	.word	.wordothercasea
-	.word	.wordothercasea
+	cmp	r3, #14
+	ldrls	pc, [pc, r3, asl #2]
+	b	.fallout
+.L121:
+	.fill 4 , 4 , .fallout
 	.word	.L117
-	.word	.L117
-	.word	.L117
-	.word	.L117
-	.word	.L117
+	.word	.fallout
+	.word	.fallout
+	.word	.fallout
+	.word	.L118
+	.word	.L118
+	.word	.L118
+	.word	.L118
 	.word	.L118
 	.word	.L119
-.L117:
+	.word	.L120
+.L118:
 	.loc 1 175 0
-	ldr	r2, .L150
+	ldr	r2, .L151
 	bic	r3, r0, #-33554432
 	ldr	r2, [r2, #0]
 	bic	r3, r3, #3
 	cmp	r3, r2
-	bhi	.L148
+	bhi	.L149
 	.loc 1 194 0
-	ldr	r2, .L150+4
+	ldr	r2, .L151+4
 	ldr	r2, [r2, #0]
-.LVL103:
-.L147:
+.LVL105:
+.L148:
 	ldr	r2, [r2, r3]
-.LVL104:
-.wordothercaseaa:
-	ands	r2, r2, #3
-	movne	r2, r2, asl #3
-	movne	r3, r3, ror r2
-	mov pc ,lr
-.LVL108:
-.L119:
+.LVL106:
+.fallout:
+.LBB67:
+	ands	r3, r2, #3
+	movne	r9, r3, asl #3
+	movne	r3, r9, ror r2
+.LVL109:
+.L134:
+.LBE68:
+.LBE67:
+.LBE75:
+	mov pc,lr
+.LVL110:
+.L120:
 .LBB76:
 	.loc 1 212 0
-	ldr	r3, .L150+8
+	ldr	r3, .L151+8
 	ldrb	r1, [r3, #0]	@ zero_extendqisi2
-	ldr	r3, .L150+12
+	ldr	r3, .L151+12
 	ldrb	r3, [r3, #0]	@ zero_extendqisi2
 	orrs	r3, r1, r3
-	beq	.wordothercasea
+	beq	.fallout
 	.loc 1 214 0
 	bl	_Z9flashReadj
-.LVL109:
+.LVL111:
 	mov	r2, r0
-	b	.L133
-.LVL110:
-.L118:
+	b	.L134
+.LVL112:
+.L119:
 	.loc 1 204 0
-	ldr	r3, .L150+16
+	ldr	r3, .L151+16
 	ldrb	r3, [r3, #0]	@ zero_extendqisi2
 	cmp	r3, #0
-	beq	.wordothercasea
+	beq	.fallout
 .LBE76:
 	.loc 1 262 0
 	ldmfd	sp!, {r3, r4, r5, r6, r7, lr}
 .LBB77:
 	.loc 1 206 0
 	b	_Z10eepromReadj
-.LVL111:
-.L116:
+.LVL113:
+.L117:
 	.loc 1 138 0
 	add	r3, r0, #-67108864
 	sub	r1, r3, #256
 	cmp	r1, #16
-	bhi	.L121
+	bhi	.L122
 	.loc 1 146 0
-	ldr	r1, .L150+20
+	ldr	r1, .L151+20
 	and	r1, r0, r1
 	ldrh	ip, [r1, #0]
-	ldr	r1, .L150+24
+	ldr	r1, .L151+24
 	.loc 1 140 0
 	and	r0, r0, #1020
-.LVL112:
+.LVL114:
 	.loc 1 146 0
 	mov	ip, ip, asr #1
 	strh	ip, [r0, r1]	@ movhi
-.L121:
+.L122:
 	.loc 1 150 0
-	ldr	r1, .L150+28
+	ldr	r1, .L151+28
 	bic	r0, r4, #2
 	cmp	r0, r1
-	bne	.L122
+	bne	.L123
 	.loc 1 152 0
 	mov	r0, #67108864
 	mov	r1, #532
 	ldrh	r1, [r0, r1]
-	ldr	r0, .L150+32
+	ldr	r0, .L151+32
 	.loc 1 153 0
-	ldr	ip, .L150+24
-.LVL113:
+	ldr	ip, .L151+24
+.LVL115:
 	.loc 1 152 0
 	strh	r1, [r0, #0]	@ movhi
 	.loc 1 153 0
-	ldr	r0, .L150+36
+	ldr	r0, .L151+36
 	strh	r1, [ip, r0]	@ movhi
-.L122:
+.L123:
 	.loc 1 158 0
 	sub	r3, r3, #4
 	cmp	r3, #3
-	bls	.L149
+	bls	.L150
 	.loc 1 162 0
-	ldr	r3, .L150+40
+	ldr	r3, .L151+40
 	cmp	r4, r3
-	bhi	.wordothercasea
-	b	.L125
-.LVL114:
-.L148:
+	bhi	.fallout
+	b	.L126
+.LVfallout:
+.L149:
 	.loc 1 180 0
-	ldr	r2, .L150+44
+	ldr	r2, .L151+44
 	ldr	r2, [r2, #0]
 	cmp	r3, r2
 	.loc 1 189 0
 	movcs	r2, #0
 	.loc 1 180 0
-	bcs	.wordothercasea
-.LVwordothercasea:
+	bcs	.fallout
+.LVL117:
 .LBB69:
 .LBB70:
 	.loc 2 96 0
-	ldr	r2, .L150+48
+	ldr	r2, .L151+48
 	.loc 2 94 0
 	mov	r3, r3, lsr #9
-.LVL116:
+.LVL118:
 	.loc 2 96 0
 	ldr	r1, [r2, #0]
 	.loc 2 93 0
 	and	r5, r0, #508
-.LVL117:
+.LVL119:
 	.loc 2 96 0
 	ldr	r2, [r1, r3, asl #3]
-.LVL118:
+.LVL120:
 	add	r0, r1, r3, asl #3
-.LVL119:
+.LVL121:
 	.loc 2 98 0
 	cmp	r2, #0
-	beq	.L129
+	beq	.L130
 	ldr	r2, [r2, r5]
-.LVL120:
-	b	.wordothercasea
-.LVL121:
-.L149:
+.LVL122:
+	b	.fallout
+.LVL123:
+.L150:
 .LBE70:
 .LBE69:
 .LBB72:
 .LBB73:
 	.loc 1 96 0
-	ldr	r0, .L150+52
+	ldr	r0, .L151+52
 	.loc 1 78 0
 	mov	r1, #67108864
-.LVL122:
+.LVL124:
 	ldrh	r5, [r1, #6]
-.LVL123:
+.LVL125:
 	.loc 1 96 0
 	ldrh	r3, [r0, #0]
 	.loc 1 79 0
 	ldrh	ip, [r1, #4]
-.LVL124:
+.LVL126:
 	.loc 1 83 0
-	ldr	r1, .L150+56
+	ldr	r1, .L151+56
 	.loc 1 99 0
 	and	ip, ip, #3
-.LVL125:
+.LVL127:
 	.loc 1 83 0
 	ldrb	r1, [r1, r5]	@ zero_extendqisi2
 	.loc 1 96 0
@@ -259,10 +189,10 @@ asmCPUReadMemoryreal: @ in r2 out r3 data can use r9-r12
 	.loc 1 103 0
 	cmp	r1, r3, lsr #8
 	.loc 1 102 0
-	ldr	ip, .L150+24
+	ldr	ip, .L151+24
 	.loc 1 83 0
-	ldr	r5, .L150+60
-.LVL126:
+	ldr	r5, .L151+60
+.LVL128:
 	.loc 1 99 0
 	strh	r3, [r0, #0]	@ movhi
 	.loc 1 105 0
@@ -275,39 +205,39 @@ asmCPUReadMemoryreal: @ in r2 out r3 data can use r9-r12
 	streqh	r3, [r0, #0]	@ movhi
 	.loc 1 111 0
 	strh	r3, [ip, #4]	@ movhi
-.LVL127:
-.L125:
+.LVL129:
+.L126:
 .LBE73:
 .LBE72:
 	.loc 1 162 0 discriminator 1
-	ldr	r1, .L150+64
-.LVL128:
+	ldr	r1, .L151+64
+.LVL130:
 	and	r3, r4, #1020
 	ldrb	r0, [r1, r3]	@ zero_extendqisi2
 	cmp	r0, #0
-	beq	.wordothercasea
+	beq	.fallout
 	.loc 1 163 0
 	add	r1, r1, r3
 	ldrb	r2, [r1, #2]	@ zero_extendqisi2
 	cmp	r2, #0
 	.loc 1 164 0
-	ldr	r2, .L150+24
+	ldr	r2, .L151+24
 	.loc 1 163 0
-	bne	.L147
+	bne	.L148
 	.loc 1 166 0
 	ldrh	r2, [r3, r2]
-.LVL129:
-	b	.wordothercasea
-.LVL130:
-.L129:
+.LVL131:
+	b	.fallout
+.LVL132:
+.L130:
 .LBB74:
 .LBB71:
 	.loc 2 100 0
-	ldr	r6, .L150+68
-	ldr	ip, .L150+72
+	ldr	r6, .L151+68
+	ldr	ip, .L151+72
 	ldr	lr, [r6, #0]
 	.loc 2 103 0
-	ldr	r7, .L150+76
+	ldr	r7, .L151+76
 	.loc 2 100 0
 	ldr	lr, [ip, lr, asl #2]
 	.loc 2 103 0
@@ -316,24 +246,24 @@ asmCPUReadMemoryreal: @ in r2 out r3 data can use r9-r12
 	str	r2, [r1, lr, asl #2]
 	.loc 2 102 0
 	ldr	r2, [r6, #0]
-.LVL131:
+.LVL133:
 	mov	lr, r3, asl #1
 	.loc 2 103 0
 	add	r7, r7, r2, asl #9
-.LVL132:
+.LVL134:
 	.loc 2 102 0
 	str	lr, [ip, r2, asl #2]
 	.loc 2 104 0
 	str	r7, [r1, r3, asl #3]
 	.loc 2 106 0
-	ldr	r3, .L150+80
-.LVL133:
+	ldr	r3, .L151+80
+.LVL135:
 	mov	r2, r7
 	ldr	r3, [r3, #0]
 	ldr	r0, [r0, #4]
 	mov	r1, #1
 	blx	r3
-.LVL134:
+.LVL136:
 	.loc 2 110 0
 	ldr	r3, [r6, #0]
 	cmp	r3, #254
@@ -342,10 +272,10 @@ asmCPUReadMemoryreal: @ in r2 out r3 data can use r9-r12
 	str	r3, [r6, #0]
 	.loc 2 113 0
 	ldr	r2, [r7, r5]
-	b	.wordothercasea
-.L151:
+	b	.fallout
+.L152:
 	.align	2
-.L150:
+.L151:
 	.word	romSize
 	.word	rom
 	.word	cpuSramEnabled

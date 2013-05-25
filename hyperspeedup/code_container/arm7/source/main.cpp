@@ -173,7 +173,7 @@ u32 sweep(u8 back)
 	if(SOUND1CNT_L & 0x8)sweepspeed = sweepspeed - sweepspeed/(1<<(SOUND1CNT_L & 0x7));
 	else sweepspeed = sweepspeed + sweepspeed/(1<<(SOUND1CNT_L & 0x7));
 	SCHANNEL_TIMER(8) = -(33513982/2)/(sweepspeed);
-	return TIMER_FREQ(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1));
+	return BUS_CLOCK/(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1));
 }
 u32 Envelope(u8 back)
 {
@@ -198,19 +198,19 @@ u32 Envelope(u8 back)
 		if(SOUND1CNT_H & 0x800)SOUND1CNT_H += 0x1000;
 		else SOUND1CNT_H -= 0x1000;
 		SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_L & 0xF000) >> 12)*127/840);  //max:127
-		return TIMER_FREQ(0x40/((SOUND1CNT_H & 0x700) >> 8));
+		return BUS_CLOCK/(0x40/((SOUND1CNT_H & 0x700) >> 8));
 	} else if (back == 2)
 	{
 		if(SOUND2CNT_H & 0x800)SOUND2CNT_H += 0x1000;
 		else SOUND2CNT_H -= 0x1000;
 		SCHANNEL_CR(9) = ((SCHANNEL_CR(9) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(9)) >> 9) + Masterleft * ((SOUNDCNT_L & BIT(13)) >> 13) ) * Vol) * ((SOUND2CNT_H & 0xF000) >> 12)*127/840);  //max:127
-		return TIMER_FREQ(0x40/((SOUND2CNT_H & 0x700) >> 8));
+		return BUS_CLOCK/(0x40/((SOUND2CNT_H & 0x700) >> 8));
 	} else if(back == 3)
 	{
 		if(SOUND4CNT_L & 0x800)SOUND4CNT_L += 0x1000;
 		else SOUND4CNT_L -= 0x1000;
 		SCHANNEL_CR(3) = ((SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol) * ((SOUND4CNT_L & 0xF000) >> 12)*127/840);
-		return TIMER_FREQ(0x40/((SOUND4CNT_L & 0x700) >> 8));
+		return BUS_CLOCK/(0x40/((SOUND4CNT_L & 0x700) >> 8));
 	}
 }
 
@@ -323,11 +323,11 @@ void newvalwrite16(u32 addr,u32 val)
 				{
 					SCHANNEL_CR(8) &= ~0x80000000;
 					sweepspeed = 131072*8/(2048-(val&0x7FF));
-					if((SOUND1CNT_L & 0x7) != 0)timerotheradd(0,TIMER_FREQ(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1)),stop);
+					if((SOUND1CNT_L & 0x7) != 0)timerotheradd(0,BUS_CLOCK/(0x80/(((SOUND1CNT_L & 0x70) >> 4) + 1)),stop);
 					else timerotheradd(0,0,stop);
 					if((SOUND1CNT_H & 0x700) != 0)
 					{
-						timerotheradd(1,TIMER_FREQ(0x40/((SOUND1CNT_H & 0x700) >> 8)),Envelope);
+						timerotheradd(1,BUS_CLOCK/(0x40/((SOUND1CNT_H & 0x700) >> 8)),Envelope);
 					}
 					else
 					{
@@ -339,7 +339,11 @@ void newvalwrite16(u32 addr,u32 val)
 				}
 				if(val &0x4000)
 				{
-					timerlenadd(0,TIMER_FREQ(256/(0x40-(SOUND1CNT_H&0x3F))),stop);
+					timerlenadd(0,BUS_CLOCK/(256/(0x40-(SOUND1CNT_H&0x3F))),stop);
+				}
+				else
+				{
+					timerlenadd(0,0,stop);
 				}
 				break;
 			case 0x68:
@@ -372,7 +376,7 @@ void newvalwrite16(u32 addr,u32 val)
 					SCHANNEL_CR(9) &= ~0x80000000;
 					if((SOUND2CNT_H & 0x700) != 0)
 					{
-						timerotheradd(2,TIMER_FREQ(0x40/((SOUND2CNT_H & 0x700) >> 8)),Envelope);
+						timerotheradd(2,BUS_CLOCK/(0x40/((SOUND2CNT_H & 0x700) >> 8)),Envelope);
 					}
 					else
 					{
@@ -383,7 +387,7 @@ void newvalwrite16(u32 addr,u32 val)
 				}
 				if(val &0x4000)
 				{
-					timerlenadd(1,TIMER_FREQ(256/(0x40-(SOUND2CNT_H&0x3F))),stop);
+					timerlenadd(1,BUS_CLOCK/(256/(0x40-(SOUND2CNT_H&0x3F))),stop);
 				}
 				break;
 			case 0x78:
@@ -411,7 +415,7 @@ void newvalwrite16(u32 addr,u32 val)
 					SCHANNEL_CR(3) |= 0x80000200;
 					if((SOUND4CNT_L & 0x700) != 0)
 					{
-						timerotheradd(3,TIMER_FREQ(0x40/((SOUND4CNT_L & 0x700) >> 8)),Envelope);
+						timerotheradd(3,BUS_CLOCK/(0x40/((SOUND4CNT_L & 0x700) >> 8)),Envelope);
 					}
 					else
 					{
@@ -423,7 +427,7 @@ void newvalwrite16(u32 addr,u32 val)
 				SOUND4CNT_H = val;
 				if(val &0x4000)
 				{
-					timerlenadd(3,TIMER_FREQ(256/(0x40-(SOUND4CNT_L&0x3F))),stop);
+					timerlenadd(3,BUS_CLOCK/(256/(0x40-(SOUND4CNT_L&0x3F))),stop);
 				}
 				}
 				break;
@@ -480,7 +484,7 @@ void newvalwrite16(u32 addr,u32 val)
 				SCHANNEL_TIMER(2) = -(33513982/2)/(2097152/(2048-(val&0x7FF)));
 				if(val &0x4000)
 				{
-					timerlenadd(2,TIMER_FREQ(256/(0x40-(SOUND3CNT_H&0x3F))),stop);
+					timerlenadd(2,BUS_CLOCK/(256/(0x40-(SOUND3CNT_H&0x3F))),stop);
 				}
 				break;
 			  case 0xBC:
@@ -843,86 +847,88 @@ int main() {
 
 		if(sock != 0)
 		{
-
-			unsigned int echoStringLen = 4 + 4 + 4;      /* Length of cmd*/
-			char echoBuffer[echoStringLen];     /* Buffer for echo string */
-			int bytesRcvd, totalBytesRcvd = 0;   /* Bytes read in single recv() 
-												and total bytes read */
-			while (totalBytesRcvd < echoStringLen)
+			while(1)
 			{
-				if ((bytesRcvd = netinter->recv(sock, &echoBuffer[totalBytesRcvd], echoStringLen, 0)) <= 0)
-				{
-					sendwififail32(0x3);
-				}
-				totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes */
-			}
-			//cmd 0 = keepalive
-			if(echoBuffer[0] == 1) //cmd read
-			{
-				u32 buff1 = *(u32*)(&echoBuffer[4]);
-				u32 buff2 = *(u32*)(&echoBuffer[8]);
-				if (netinter->send(sock, (void*)(buff1),buff2 , 0) != buff2)
-				{
-					sendwififail32(0x2);
-				}
-			}
-			else if(echoBuffer[0] == 2) //cmd write
-			{
-				u32 buff1 = *(u32*)(&echoBuffer[4]);
-				u32 buff2 = *(u32*)(&echoBuffer[8]);
-
-				bytesRcvd, totalBytesRcvd = 0;
-				unsigned int echoStringLen = buff2;
+				unsigned int echoStringLen = 4 + 4 + 4;      /* Length of cmd*/
+				char echoBuffer[echoStringLen];     /* Buffer for echo string */
+				int bytesRcvd, totalBytesRcvd = 0;   /* Bytes read in single recv() 
+													and total bytes read */
 				while (totalBytesRcvd < echoStringLen)
 				{
-					if ((bytesRcvd = netinter->recv(sock, (void*)(buff1 + totalBytesRcvd), 0x100, 0)) <= 0)
+					if ((bytesRcvd = netinter->recv(sock, &echoBuffer[totalBytesRcvd], echoStringLen, 0)) <= 0)
+					{
+						sendwififail32(0x3);
+					}
+					totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes */
+				}
+				//cmd 0 = keepalive
+				if(echoBuffer[0] == 1) //cmd read
+				{
+					u32 buff1 = *(u32*)(&echoBuffer[4]);
+					u32 buff2 = *(u32*)(&echoBuffer[8]);
+					if (netinter->send(sock, (void*)(buff1),buff2 , 0) != buff2)
+					{
+						sendwififail32(0x2);
+					}
+				}
+				else if(echoBuffer[0] == 2) //cmd write
+				{
+					u32 buff1 = *(u32*)(&echoBuffer[4]);
+					u32 buff2 = *(u32*)(&echoBuffer[8]);
+
+					bytesRcvd, totalBytesRcvd = 0;
+					unsigned int echoStringLen = buff2;
+					while (totalBytesRcvd < echoStringLen)
+					{
+						if ((bytesRcvd = netinter->recv(sock, (void*)(buff1 + totalBytesRcvd), 0x100, 0)) <= 0)
+						{
+							sendwififail32(0x1);
+						}
+						totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes */
+					}	
+				}
+				else if(echoBuffer[0] == 3) //cmd 32Bit read
+				{
+					u32 buff1 = **(u32**)(&echoBuffer[4]);
+					if (netinter->send(sock, (void*)(&buff1),4 , 0) != 4)
 					{
 						sendwififail32(0x1);
 					}
-					totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes */
-				}	
-			}
-			else if(echoBuffer[0] == 3) //cmd 32Bit read
-			{
-				u32 buff1 = **(u32**)(&echoBuffer[4]);
-				if (netinter->send(sock, (void*)(&buff1),4 , 0) != 4)
-				{
-					sendwififail32(0x1);
 				}
-			}
-			else if(echoBuffer[0] == 3) //cmd 16Bit read
-			{
-				u16 buff1 = **(u16**)(&echoBuffer[4]);
-				if (netinter->send(sock, (void*)(&buff1),2 , 0) != 2)
+				else if(echoBuffer[0] == 3) //cmd 16Bit read
 				{
-					sendwififail32(0x1);
+					u16 buff1 = **(u16**)(&echoBuffer[4]);
+					if (netinter->send(sock, (void*)(&buff1),2 , 0) != 2)
+					{
+						sendwififail32(0x1);
+					}
 				}
-			}
-			else if(echoBuffer[0] == 4) //cmd 8Bit read
-			{
-				u8 buff1 = **(u8**)(&echoBuffer[4]);
-				if (netinter->send(sock, (void*)(&buff1),1 , 0) != 1)
+				else if(echoBuffer[0] == 4) //cmd 8Bit read
 				{
-					sendwififail32(0x1);
+					u8 buff1 = **(u8**)(&echoBuffer[4]);
+					if (netinter->send(sock, (void*)(&buff1),1 , 0) != 1)
+					{
+						sendwififail32(0x1);
+					}
 				}
-			}
-			else if(echoBuffer[0] == 5) //cmd write 32 Bit
-			{
-				u32 buff1 = *(u32*)(&echoBuffer[4]);
-				u32 buff2 = *(u32*)(&echoBuffer[8]);
-				*(u32*)(buff1) = buff2;
-			}
-			else if(echoBuffer[0] == 6) //cmd write 16 Bit
-			{
-				u32 buff1 = *(u32*)(&echoBuffer[4]);
-				u32 buff2 = *(u32*)(&echoBuffer[8]);
-				*(u16*)(buff1) = buff2;
-			}
-			else if(echoBuffer[0] == 7) //cmd write 8 Bit
-			{
-				u32 buff1 = *(u32*)(&echoBuffer[4]);
-				u32 buff2 = *(u32*)(&echoBuffer[8]);
-				*(u8*)(buff1) = buff2;
+				else if(echoBuffer[0] == 5) //cmd write 32 Bit
+				{
+					u32 buff1 = *(u32*)(&echoBuffer[4]);
+					u32 buff2 = *(u32*)(&echoBuffer[8]);
+					*(u32*)(buff1) = buff2;
+				}
+				else if(echoBuffer[0] == 6) //cmd write 16 Bit
+				{
+					u32 buff1 = *(u32*)(&echoBuffer[4]);
+					u32 buff2 = *(u32*)(&echoBuffer[8]);
+					*(u16*)(buff1) = buff2;
+				}
+				else if(echoBuffer[0] == 7) //cmd write 8 Bit
+				{
+					u32 buff1 = *(u32*)(&echoBuffer[4]);
+					u32 buff2 = *(u32*)(&echoBuffer[8]);
+					*(u8*)(buff1) = buff2;
+				}
 			}
 		}
 

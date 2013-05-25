@@ -5,6 +5,8 @@
 
 #include "timer20.h"
 
+extern void senddebug32(u32 val);
+
 #define minval 0x1000 //can cause delays
 
 u32 soundLentimefild[8];
@@ -47,27 +49,30 @@ void timerlen()
 			else
 			{
 				soundLentimefild[i]-= nexttimelen;
-				if(min > soundLentimefild[i])
+				if(min > soundLentimefild[i] - 1)
 				{
 					min = (soundLentimefild[i] - 1);
 				}
 			}
-			nexttimelendurchlauf = nexttimelen;
-			nexttimelen = min;
-			min = (min > minval) ? min :  minval;
-			TIMER_DATA(2) = 0x10000-min;
 		}
 		i++;
 	}
+	nexttimelendurchlauf = nexttimelen;
+	nexttimelen = min;
+	min = (min > minval) ? min :  minval;
+	TIMER_DATA(2) = (u32)(0x10000-min);
 }
 void timerlenadd(u8 chan,u32 val,Functiondec func) //val min 0x20000
 {
 	if(val != 0)
 	{
-		val =- 0x10000-TIMER_DATA(2);
-		val =+ nexttimelendurchlauf;
-		soundLentimefild[chan] =  val;
+		//val =+ 0x10000-TIMER_DATA(2);
+		//val =- nexttimelendurchlauf;
+		soundLentimefild[chan] = 0;
 		lenfunctions[chan] = func;
+		val = val + nexttimelendurchlauf-(u32)TIMER_DATA(2);
+		soundLentimefild[chan] =  val;
+
 	}
 	else
 	{

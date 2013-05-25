@@ -757,8 +757,8 @@ static inline void CPUWriteBytepu(u32 address, u8 b)
   case 4:
     if(address < 0x4000400) {
       switch(address & 0x3FF) {
-      case 0x301:
-	/*if(b == 0x80) //todo
+      /*case 0x301: //todo
+	if(b == 0x80) 
 	  stopState = true;
 	holdState = 1;
 	holdType = -1;
