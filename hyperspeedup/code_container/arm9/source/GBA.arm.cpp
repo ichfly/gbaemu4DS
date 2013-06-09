@@ -82,7 +82,7 @@ bool ichflytest = false;
 
 #define UPDATE_REG(address, value)\
   {\
-    WRITE16LE(((u16 *)&ioMem[address]),value);\
+    WRITE16LE(((u16 *)&caioMem[address + dsuncashedoffset]),value);\
   }\
 
 #define ARM_PREFETCH \
@@ -1558,6 +1558,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
 #endif
 	  value &= soundvalbitmask[address>>1];
+	  value |= (*(u16 *)&caioMem[address + dsuncashedoffset] & ~soundvalbitmask[address>>1]);
 	  UPDATE_REG(address,value);
     break;
   case 0xB0:
@@ -1883,7 +1884,9 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	//*(u16 *)(0x400010C) = timer3Reload << 1;
 	*(u16 *)(0x400010E) = value;
   break;
-  case 0x128:
+  
+#ifndef nifi 
+  case 0x128: //most parts are not working anyway
     if(value & 0x80) {
       value &= 0xff7f;
       if(value & 1 && (value & 0x4000)) {
@@ -1895,7 +1898,14 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     }
     UPDATE_REG(0x128, value);
     break;
-  case 0x130:
+#endif
+#ifdef nifi
+	case 0x120 ... 0x12A: //nifi
+	case 0x134 ... 0x15A:
+		REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
+		break;
+#endif
+	case 0x130:
     //P1 |= (value & 0x3FF); //ichfly readonly
     //UPDATE_REG(0x130, P1);
     break;
@@ -1903,6 +1913,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     UPDATE_REG(0x132, value & 0xC3FF);
 	*(u16 *)(0x4000132) = value;
     break;
+
   case 0x200:
     IE = value & 0x3FFF;
     UPDATE_REG(0x200, IE);
@@ -2082,12 +2093,12 @@ void CPUInit(const char *biosFileName, bool useBiosFile,bool extram)
   for(i = 0x304; i < 0x400; i++)
     ioReadable[i] = false;
 
-  if(romSize < 0x1fe2000) {
+  /*if(romSize < 0x1fe2000) {
     *((u16 *)&rom[0x1fe209c]) = 0xdffa; // SWI 0xFA
     *((u16 *)&rom[0x1fe209e]) = 0x4770; // BX LR
   } else {
     agbPrintEnable(false);
-  }
+  }*/ //ichfly todo
 }
 
 void CPUReset()
@@ -2306,7 +2317,7 @@ void CPUReset()
   map[2].mask = 0x3FFFF;
   map[3].address = internalRAM;
   map[3].mask = 0x7FFF;
-  map[4].address = ioMem;
+  map[4].address = caioMem + dsuncashedoffset;
   map[4].mask = 0x3FF;
   map[5].address = paletteRAM;
   map[5].mask = 0x3FF;

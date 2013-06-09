@@ -25,9 +25,11 @@
 
 #include "main.h"
 
+#include "Port.h"
+
 #define UPDATE_REG(address, value)\
   {\
-    WRITE16LE(((u16 *)&ioMem[address]),value);\
+    WRITE16LE(((u16 *)&caioMem[address + dsuncashedoffset]),value);\
   }\
 
 extern char savePath[MAXPATHLEN * 2];
@@ -471,7 +473,7 @@ void VblankHandler(void) {
 		DISPCAPCNT = 0x8030000F | (1 << 16);
 		u8 *pointertobild = (u8 *)(0x6820000);
 		for(int iy = 0; iy <160; iy++){
-			dmaCopyWords( (void*)pointertobild, (void*)0x6200000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
+			dmaCopyWords(3, (void*)pointertobild, (void*)(0x6200000/*bgGetGfxPtr(bgrouid)*/+512*(iy)), 480);
 			pointertobild+=512;
 #ifdef priosound
 					arm7dmareq();

@@ -2,17 +2,19 @@
 
 //#define standalone
 
-#define arm9advsound
+//#define arm9advsound
 
-#define nogfxsoundstruggler
+//#define nogfxsoundstruggler
 
-#define priosound
+//#define priosound
 
 //#define sounddebugeraddv
 
 #define uppern_read_emulation
 
 #define wifidebuger
+
+#define nifi
 
 //#define noichflydebugger
 
@@ -52,13 +54,13 @@
 
 
 
-#define gba_handel_IRQ_correct
+//#define gba_handel_IRQ_correct
 
 //#define HBlankdma //only if hblanc irq is on
 
 //#define forceHBlankirqs
 
-#define advanced_irq_check
+//#define advanced_irq_check
 
 
 //debug
@@ -115,3 +117,7 @@
 //#define BREAKswisupport //flag dose nothing is no more sup
 
 //#define emulate_cpu_speed // pu current is 0x020E6000 try to reach 0x020E6000
+
+
+
+

@@ -1,13 +1,11 @@
 remove nops in ex_s.s
-todo timer MSB hangs
+todo timer MSB not working
 hwreg 0x301 in CPUWriteByte
 fix cpu pc rel reads/writes
 usermode reads firq and mode sw
 not alined ichfly_readdma_rom
 todo only save regs if needed in ex_s.s
-
-sound:
-send soundstat back
+Illegal read emulation
 
 
 CHEAT_PATCH_ROM_16BIT

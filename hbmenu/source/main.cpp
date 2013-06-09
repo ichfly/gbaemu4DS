@@ -24,6 +24,8 @@
 #include <fat.h>
 #include <sys/stat.h>
 
+#include <dswifi9.h>
+
 #include <string.h>
 #include <unistd.h>
 
@@ -31,7 +33,6 @@
 #include "file_browse.h"
 
 #include "hbmenu_banner.h"
-
 
 #include <nds/arm9/dldi.h>
 extern DLDI_INTERFACE _io_dldi_stub;
@@ -100,11 +101,11 @@ char* readabelnameversionsschar[18] =
 	"newirqsoundsc","advirqsoundsc","HblancDMAsoundsc","forceHblancsoundsc",
 	"oldirqsc","newirqsc","advirqsc","HblancDMAsc","forceHblancsc"};
 
-char* pathversionschar[18] =
-	{"fat:/GBADS/oldirq.loader","fat:/GBADS/newirq.loader","fat:/GBADS/advirq.loader","fat:/GBADS/HblancDMA.loader","fat:/GBADS/forceHblanc.loader",
-	"fat:/GBADS/newirqsound.loader","fat:/GBADS/advirqsound.loader","fat:/GBADS/HblancDMAsound.loader","fat:/GBADS/forceHblancsound.loader",
-	"fat:/GBADS/newirqsoundsc.loader","fat:/GBADS/advirqsoundsc.loader","fat:/GBADS/HblancDMAsoundsc.loader","fat:/GBADS/forceHblancsoundsc.loader",
-	"fat:/GBADS/oldirqsc.loader","fat:/GBADS/newirqsc.loader","fat:/GBADS/advirqsc.loader","fat:/GBADS/HblancDMAsc.loader","fat:/GBADS/forceHblancsc.loader"};
+char* pathversionschar[18] = //O = oldirq N = newirq A = advirq H = HblancDMA F = forceHblanc *** S = sound C = Scaling ending .LUB
+	{"fat:/GBADS/O.LUB","fat:/GBADS/N.LUB","fat:/GBADS/A.LUB","fat:/GBADS/H.LUB","fat:/GBADS/F.LUB",
+	"fat:/GBADS/NS.LUB","fat:/GBADS/AS.LUB","fat:/GBADS/HS.LUB","fat:/GBADS/FS.LUB",
+	"fat:/GBADS/NSC.LUB","fat:/GBADS/ASC.LUB","fat:/GBADS/HSC.LUB","fat:/GBADS/FSC.LUB",
+	"fat:/GBADS/OC.LUB","fat:/GBADS/NC.LUB","fat:/GBADS/AC.LUB","fat:/GBADS/HC.LUB","fat:/GBADS/FC.LUB"};
 
 u8 inputtoVersion[18] = 
 	{
@@ -117,10 +118,81 @@ u8 inputtoVersion[18] =
 char* savetypeschar[7] =
 	{"SaveTypeAutomatic","SaveTypeEeprom","SaveTypeSram","SaveTypeFlash64KB","SaveTypeEepromSensor","SaveTypeNone","SaveTypeFlash128KB"};
 
-char* listless = "fat:/GBADS/internal_list.list";
+char* listless = "fat:/GBADS/LIST.LST";
 
 using namespace std;
 
+volatile u8 emmac[6];
+volatile bool shoeemmac = false;
+					u32 resgbanum = 0;
+					u32 resspeed = 0x7;
+					u32 resChannel = 1;
+
+// Handler - this receives all the wifi msgs & handles them
+void Handler(int packetID, int readlength)
+{
+	static char data[4096];
+	static int bytesRead;
+
+// Wifi_RxRawReadPacket:  Allows user code to read a packet from within the WifiPacketHandler function
+//  long packetID:		a non-unique identifier which locates the packet specified in the internal buffer
+//  long readlength:		number of bytes to read (actually reads (number+1)&~1 bytes)
+//  unsigned short * data:	location for the data to be read into
+	bytesRead = Wifi_RxRawReadPacket(packetID, readlength, (unsigned short *)data);
+
+	// Lazy test to see if this is our packet (does it start with SGBA ?).
+	if (data[32] == 'S' && data[33] == 'G' && data[34] == 'B' && data[35] == 'A')
+	{// i.e. it is MGBA 
+		memcpy((void*)emmac,(void*)(data+36),6);
+		shoeemmac = true;
+	}
+}
+void Handlerzwei(int packetID, int readlength)
+{
+	static char data[4096];
+	static int bytesRead;
+
+// Wifi_RxRawReadPacket:  Allows user code to read a packet from within the WifiPacketHandler function
+//  long packetID:		a non-unique identifier which locates the packet specified in the internal buffer
+//  long readlength:		number of bytes to read (actually reads (number+1)&~1 bytes)
+//  unsigned short * data:	location for the data to be read into
+	bytesRead = Wifi_RxRawReadPacket(packetID, readlength, (unsigned short *)data);
+
+	// Lazy test to see if this is our packet (does it start with SGBA ?).
+	if (data[32] == 'M' && data[33] == 'G' && data[34] == 'B' && data[35] == 'A')
+	{// i.e. it is MGBA 
+		memcpy((void*)emmac,(void*)(data+36),6);
+		shoeemmac = true;
+	}
+}
+
+int wifisender(u8* data, u32 datalen)
+{
+	
+	u16 frame[12 + 4 + datalen];
+
+	int hdrlen = 12;
+	//u16 framehdr[12 + 2];
+
+	frame[0]=0x0208;
+	frame[1]=0;
+	// MACs.
+	memset(frame + 2, 0xFF, 0x12); //to 11
+
+	frame[11] = 0; // SC
+
+
+	// add LLC header
+	frame[12]=0xAAAA;
+	frame[13]=0x0003;
+	frame[14]=0x0000;
+	unsigned short protocol = 0x08FE;
+	frame[15] = ((protocol >> 8) & 0xFF) | ((protocol << 8) & 0xFF00);
+	memcpy(frame + 16,data,datalen);
+
+	return Wifi_RawTxFrame(12 + 4 + datalen,0x7,frame);//slow
+
+}
 
 //---------------------------------------------------------------------------------
 void stop (void) {
@@ -277,7 +349,8 @@ int main(int argc, char **argv) {
 
 	iprintf("\x1b[2J");
 	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press A for autovsync B for normal\n");
+	iprintf("press A for normal B for wifi\n");
+	bool wifi_an = false;
 	while(1) 
 	{
 
@@ -286,12 +359,13 @@ int main(int argc, char **argv) {
 		int isdaas = keysDownRepeat();
 		if (isdaas&KEY_A)
 		{
-			argarray.push_back("1");
+			argarray.push_back("0");
 			break;
 		}
 		if(isdaas&KEY_B)
 		{
-			argarray.push_back("0");
+			wifi_an = true;
+			argarray.push_back("1");
 			break;
 		}
 	}
@@ -383,14 +457,240 @@ int main(int argc, char **argv) {
 				if (pressed&KEY_A)
 				{
 					argarray.at(0) = pathversionschar[inputtoVersion[ausgewauhlt]];
+
+					FILE *testfile = fopen(pathversionschar[inputtoVersion[ausgewauhlt]], "r");
+					if(testfile==NULL)
+					{
+						iprintf("incorrect setup");
+						stop();
+					}
+					fclose(testfile);
 					break;
 				}
 				if (pressed&KEY_DOWN && ausgewauhlt < nummerVersions){ ausgewauhlt++;}
 				if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
 			}
-			
-			
-			
+			if(wifi_an)
+			{
+				bool nifi = false;
+				iprintf("\x1b[2J");
+				iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+				iprintf("press B for nifi A for APDEBUG\n");
+				while(1)
+				{
+
+					swiWaitForVBlank();
+					scanKeys();
+					int isdaas = keysDownRepeat();
+					if (isdaas&KEY_A)
+					{
+						argarray.push_back("0");
+						break;
+					}
+					if(isdaas&KEY_B)
+					{
+						nifi = true;
+						argarray.push_back("1");
+						break;
+					}
+				}
+				if(nifi)
+				{
+
+
+					iprintf("\x1b[2J");
+					iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+					iprintf("press B for 2MBits A for 1MBits\n");
+					while(1) 
+					{
+
+						swiWaitForVBlank();
+						scanKeys();
+						int isdaas = keysDownRepeat();
+						if (isdaas&KEY_A)
+						{
+							resspeed = 0x7;
+							break;
+						}
+						if(isdaas&KEY_B)
+						{
+							resspeed = 0x14;
+							break;
+						}
+					}
+					while(1) 
+					{
+						iprintf("\x1b[2J");
+						iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+						iprintf("gbanum %i (0 = master)\n",resgbanum);
+						swiWaitForVBlank();
+						scanKeys();
+						int isdaas = keysDownRepeat();
+						if (isdaas&KEY_A) break;
+						if (isdaas&KEY_UP && resgbanum < 4) resgbanum++;
+						if (isdaas&KEY_DOWN && resgbanum > 0) resgbanum--;
+					}
+					if(resgbanum != 0)
+					{
+						iprintf("wifi initiating\n");
+						Wifi_InitDefault(false);
+
+						// Wifi_SetPromiscuousMode: Allows the DS to enter or leave a "promsicuous" mode, in which 
+						//   all data that can be received is forwarded to the arm9 for user processing.
+						//   Best used with Wifi_RawSetPacketHandler, to allow user code to use the data
+						//   (well, the lib won't use 'em, so they're just wasting CPU otherwise.)
+						//  int enable:  0 to disable promiscuous mode, nonzero to engage
+						Wifi_SetPromiscuousMode(1);
+
+						// Wifi_EnableWifi: Instructs the ARM7 to go into a basic "active" mode, not actually
+						//   associated to an AP, but actively receiving and potentially transmitting
+						Wifi_EnableWifi();
+
+						// Wifi_RawSetPacketHandler: Set a handler to process all raw incoming packets
+						//  WifiPacketHandler wphfunc:  Pointer to packet handler (see WifiPacketHandler definition for more info)
+						Wifi_RawSetPacketHandler(Handlerzwei);
+						bool connected = false;
+						while(!connected)
+						{
+							for(int k = 1;k < 13;k++)
+							{
+								iprintf("\x1b[2J");
+								iprintf("scan Channel %i\n",k);
+								Wifi_SetChannel(k);
+								if(shoeemmac)
+								{
+									shoeemmac = false;
+									iprintf("conected %02X:%02X:%02X:%02X:%02X:%02X\n",emmac[0],emmac[1],emmac[2],emmac[3],emmac[4],emmac[5]);
+									for(int k2 = 0;k2 < 10;k2++)
+									{
+										u8 data[4 + 6];
+										data[0] = 'S';
+										data[1] = 'G';
+										data[2] = 'B';
+										data[3] = 'A';
+										u8 macAddress[6];
+										if(Wifi_GetData(WIFIGETDATA_MACADDRESS, 6, macAddress) == -1) //my mac is here lol
+										{
+											iprintf("error collecting data\n");
+										}
+										memcpy(data + 4,macAddress,6);
+										if(wifisender(data,10) != 0)
+										{
+											iprintf("send error\n");
+										}
+										for(int i = 0;i < 10;i++)swiWaitForVBlank();
+									}
+
+									connected = true;
+								}
+								for(int i = 0;i < 120;i++)swiWaitForVBlank();
+							}
+						}
+					}
+					else
+					{
+						bool connected = false;
+						while(1)
+						{
+							iprintf("\x1b[2J");
+							iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+							iprintf("server Channel %i\n",resChannel);
+							swiWaitForVBlank();
+							scanKeys();
+							int isdaas = keysDownRepeat();
+							if (isdaas&KEY_A) break;
+							if (isdaas&KEY_UP && resChannel < 13) resChannel++;
+							if (isdaas&KEY_DOWN && resChannel > 1) resChannel--;
+						}
+						iprintf("\x1b[2J");
+						//start wifi server
+						// initialises DS for NiFi using dswifi.lib hack (change to Wifi_RawTxFrame function... see greenacorn.co.uk)
+						//
+						iprintf("wifi initiating\n");
+						Wifi_InitDefault(false);
+
+						// Wifi_SetPromiscuousMode: Allows the DS to enter or leave a "promsicuous" mode, in which 
+						//   all data that can be received is forwarded to the arm9 for user processing.
+						//   Best used with Wifi_RawSetPacketHandler, to allow user code to use the data
+						//   (well, the lib won't use 'em, so they're just wasting CPU otherwise.)
+						//  int enable:  0 to disable promiscuous mode, nonzero to engage
+						Wifi_SetPromiscuousMode(1);
+
+						// Wifi_EnableWifi: Instructs the ARM7 to go into a basic "active" mode, not actually
+						//   associated to an AP, but actively receiving and potentially transmitting
+						Wifi_EnableWifi();
+
+						// Wifi_RawSetPacketHandler: Set a handler to process all raw incoming packets
+						//  WifiPacketHandler wphfunc:  Pointer to packet handler (see WifiPacketHandler definition for more info)
+						Wifi_RawSetPacketHandler(Handler);
+
+						// Wifi_SetChannel: If the wifi system is not connected or connecting to an access point, instruct
+						//   the chipset to change channel
+						//  int channel: the channel to change to, in the range of 1-13
+						Wifi_SetChannel(resChannel);
+						iprintf("wifi initiated press A\n");
+						int i44 = 0;
+						while(1)
+						{
+							if((i44%10) == 0)
+							{
+								u8 data[4 + 6];
+								data[0] = 'M';
+								data[1] = 'G';
+								data[2] = 'B';
+								data[3] = 'A';
+								u8 macAddress[6];
+								if(Wifi_GetData(WIFIGETDATA_MACADDRESS, 6, macAddress) == -1) //my mac is here lol
+								{
+									iprintf("error collecting data\n");
+								}
+								memcpy(data + 4,macAddress,6);
+								if(wifisender(data,10) != 0)
+								{
+									iprintf("send error\n");
+								}
+							}
+							if(shoeemmac)
+							{
+								shoeemmac = false;
+								iprintf("conected %02X:%02X:%02X:%02X:%02X:%02X Press A to confirm the connections\n",emmac[0],emmac[1],emmac[2],emmac[3],emmac[4],emmac[5]);
+								connected = true;
+							}
+							swiWaitForVBlank();
+							scanKeys();
+							int isdaas = keysDownRepeat();
+							if (isdaas&KEY_A && connected) break;
+							i44++;
+						}
+					}
+
+
+
+
+					iprintf("\x1b[2J");
+					iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+					iprintf("press A to load the emulator\n");
+					while(1)
+					{
+
+						swiWaitForVBlank();
+						scanKeys();
+						int isdaas = keysDownRepeat();
+						if (isdaas&KEY_A)break;
+					}
+				}
+			}
+			for(int j = 0;j < 6;j++)
+			{
+				sprintf(temp3,"%X",emmac[j]);
+				argarray.push_back(temp3);
+			}
+			sprintf(temp3,"%X",resChannel);
+			argarray.push_back(temp3);
+			sprintf(temp3,"%X",resgbanum);
+			argarray.push_back(temp3);
+			sprintf(temp3,"%X",resspeed);
+			argarray.push_back(temp3);
 			
 			
 			
@@ -513,11 +813,30 @@ dataluncher:
 			else argarray.push_back("0");
 			
 			argarray.at(0) = pathversionschar[entries[matching].loadertype];
+			FILE *testfile = fopen(pathversionschar[entries[matching].loadertype], "r");
+			if(testfile==NULL)
+			{
+				iprintf("incorrect setup");
+				stop();
+			}
+			fclose(testfile);
 			
 		}
 			//argarray.at(0) = filePath;
 			//iprintf ("Running %s with %d parameters\n", argarray[0], argarray.size());
 			//while(1);
+#ifdef test1
+			iprintf("press B to continue.\n");
+			scanKeys();
+			u16 keys_up = 0;
+			while( 0 == (keys_up & KEY_B) )
+			{
+				scanKeys();
+				keys_up = keysUp();
+			}
+			for(int i = 0;i < 600;i++)swiWaitForVBlank();
+#endif
+
 			int err = runNdsFile (argarray[0], argarray.size(), (const char **)&argarray[0]);
 			iprintf ("Start failed. Error %i\n", err);
 
@@ -526,7 +845,7 @@ dataluncher:
 			argarray.erase(argarray.begin());
 		}
 
-		for(int i = 0;i < 60;i++)swiWaitForVBlank();
+		for(int i = 0;i < 600;i++)swiWaitForVBlank();
 		while (1) {
 			swiWaitForVBlank();
 			scanKeys();

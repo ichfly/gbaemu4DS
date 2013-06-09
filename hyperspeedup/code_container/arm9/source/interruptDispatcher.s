@@ -25,6 +25,7 @@
 
 #include "ichflysettings.h"
 
+#include "Port.h" @Port.h in a asm file lol
 
 @new stacks todo mix some stacks
 __sp_undef	=	__dtcm_top - 0x100;	@ichfly @ 1.792 Byte
@@ -72,7 +73,7 @@ no_handler:
 	ldrh r2, [r0]
 	orr r1,r1,r2
 	strh r1, [r0]
-	ldr r0, =ioMem
+	ldr r0, =ioMem+dsuncashedoffset
 	ldr r0,[r0]
 	add	r0, r0, #0x200
 	add	r0, r0, #0x2 @don't like todo

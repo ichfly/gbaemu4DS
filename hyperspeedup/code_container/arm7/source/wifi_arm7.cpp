@@ -624,7 +624,8 @@ void Wifi_Intr_CntOverflow() {
 	}
 }
 
-void Wifi_Intr_TxEnd() { 
+void Wifi_Intr_TxEnd() {
+	netinter->wifisendcallback();
 	WifiData->stats[WSTAT_DEBUG]=((WIFI_REG(0xA8)&0x8000)|(WIFI_REG(0xB6)&0x7FFF));
 	if(!Wifi_TxCheck()) {
 		return;
@@ -1058,7 +1059,7 @@ void Wifi_Stop() {
 
 void Wifi_SetChannel(int channel) {
 	int i,n,l;
-	if(channel<1 || channel>13) return;
+	if(channel<1 || channel>14) return; //ichfly why not
 	Wifi_SetBeaconChannel(channel);
 	channel-=1;
 

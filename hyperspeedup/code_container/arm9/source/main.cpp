@@ -312,6 +312,7 @@ extern const unsigned char s15Bitpoly[];
 
 *(u32*)(arm7exchangefild + 0x50) = (u32)&s7Bitpoly[0];
 *(u32*)(arm7exchangefild + 0x54) = (u32)&s15Bitpoly[0];
+*(u32*)(arm7exchangefild + 0x58) = (u32)&ioMem[0];
 REG_IPC_FIFO_TX = 0xDFFFFFFA; //load buffer
 REG_IPC_FIFO_TX = arm7amr9buffer = (u32)arm7exchangefild; //buffer for arm7
 //while(1);
@@ -442,31 +443,31 @@ REG_IPC_FIFO_TX = arm7amr9buffer = (u32)arm7exchangefild; //buffer for arm7
 
 
 #else
-strcpy(szFile,argv[1]);
-strcpy(savePath,argv[2]);
-strcpy(biosPath,argv[3]);
-strcpy(patchPath,argv[4]);
-if(argv[11][0] == '1')cpuIsMultiBoot = true;
-else cpuIsMultiBoot = false;
-int myflashsize = 0x10000;
-u32 ausgewauhlt = (u32)strtol(argv[6],NULL,16);
-if(ausgewauhlt == 6)
-{
-	myflashsize = 0x20000;
-	cpuSaveType = 3;
-}
-else
-{
-	cpuSaveType = ausgewauhlt;
-}
-frameskip = (u32)strtol(argv[7],NULL,16);
-int syncline =(u32)strtol(argv[9],NULL,16);
-bool slow;
-if(argv[10][0] == '1')slow = 1;
-else if(argv[10][0] == '2')slow = 2;
-else slow = 0;
-if(argv[8][0] == '1')
-{
+	strcpy(szFile,argv[1]);
+	strcpy(savePath,argv[2]);
+	strcpy(biosPath,argv[3]);
+	strcpy(patchPath,argv[4]);
+	if(argv[11][0] == '1')cpuIsMultiBoot = true;
+	else cpuIsMultiBoot = false;
+	int myflashsize = 0x10000;
+	u32 ausgewauhlt = (u32)strtol(argv[6],NULL,16);
+	if(ausgewauhlt == 6)
+	{
+		myflashsize = 0x20000;
+		cpuSaveType = 3;
+	}
+	else
+	{
+		cpuSaveType = ausgewauhlt;
+	}
+	frameskip = (u32)strtol(argv[7],NULL,16);
+	int syncline =(u32)strtol(argv[9],NULL,16);
+	bool slow;
+	if(argv[10][0] == '1')slow = 1;
+	else if(argv[10][0] == '2')slow = 2;
+	else slow = 0;
+	if(argv[8][0] == '1')
+	{
 #ifdef wifidebuger
 
 	FILE* patchf = fopen("fat:/wifimodul.bin", "rb");
@@ -476,33 +477,56 @@ if(argv[8][0] == '1')
 	REG_IPC_FIFO_TX = 0xDFFFFFF8;//wifi startup cmd
 	REG_IPC_FIFO_TX = 0x0;//wifi startup val
 	printf("SEEDUP %X\r\n",readed);
-	while(true)
+	//patchf = fopen("fat:/wificon.bin", "rb");
+	if(argv[12][0] == '1')//if(patchf)
 	{
-		while((REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)); //wait for cmds
-		u32 src = REG_IPC_FIFO_RX;
-		if(src == 1)
+		/*u32 trap;
+		while(readed)
 		{
-			printf("wifi init OK\r\n");
-			break;
+			readed = fread(&trap,1,1,patchf);
+			while(REG_IPC_FIFO_CR & IPC_FIFO_SEND_FULL);
+			REG_IPC_FIFO_TX = trap;
 		}
-		else
-		if(src > 0x200)
+		fclose(patchf);*/ 
+		//enmacaddr[6] Wifi_SetChannel gbanum nifispeed
+		u32 k = 0;
+		while(k < 9)
 		{
-			printf("wifi init failed %08X\r\n",src);
-			while(true); //hang
+			while(REG_IPC_FIFO_CR & IPC_FIFO_SEND_FULL);
+			REG_IPC_FIFO_TX = (u32)strtol(argv[12 + k],NULL,16);;
+			k++;
 		}
-		else
-		if(src < 0x200)
-		{
-			printf("wifi msg %08X\r\n",src);
-		}
-		else
-		{
-			printf("msg error %08X\r\n",src);
-			while(true); //hang
-		}
-		
 	}
+	//else
+	//{
+		while(true)
+		{
+			while((REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY)); //wait for cmds
+			u32 src = REG_IPC_FIFO_RX;
+			if(src == 1)
+			{
+				printf("wifi init OK\r\n");
+				break;
+			}
+			else
+			if(src > 0x200)
+			{
+				printf("wifi init failed %08X\r\n",src);
+				while(true); //hang
+			}
+			else
+			if(src < 0x200)
+			{
+				printf("wifi msg %08X\r\n",src);
+			}
+			else
+			{
+				printf("msg error %08X\r\n",src);
+				while(true); //hang
+			}
+			
+		}
+	//}
 	irqEnable(IRQ_FIFO_NOT_EMPTY);
 #endif
 	//REG_IPC_FIFO_TX = 0xDFFFFFFC; //send cmd can't work
@@ -539,7 +563,7 @@ initspeedupfelder();
 	  iprintf("OK\n");
 	  	//iprintf("Hello World2!");
 		iprintf("CPUInit\n");
-		CPUInit(biosPath, useBios,extraram);
+		CPUInit(biosPath, false,false);//CPUInit(biosPath, useBios,extraram); //todo
 
 	  iprintf("CPUReset\n");
       CPUReset();

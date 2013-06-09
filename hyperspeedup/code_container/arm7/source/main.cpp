@@ -5,7 +5,6 @@
 		//swiWaitForVBlank();
 
 
-
 volatile int sock = 0;                        /* Socket descriptor */
 
 #include <nds.h>
@@ -46,6 +45,9 @@ bool __dsimode = false;
 
 
 //internal vals
+
+volatile bool nifion = false;
+u8 arm9iomem;
 
 u16 callline = 0xFFFF;
 
@@ -162,6 +164,7 @@ void VblankHandler(void) {
 //time based functions
 u32 stop(u8 back)
 {
+	*(u16*)((u8)arm9iomem + 0x84) &= ~(BIT(0) << back); //send back
 	if(back < 2)SCHANNEL_CR(back + 8) &= ~0x80000000;
 	else SCHANNEL_CR(back) &= ~0x80000000;
 	return 0;
@@ -326,6 +329,12 @@ void newvalwrite16(u32 addr,u32 val)
 
 			switch(addr)
 			{
+			case 0x120 ... 0x12A:
+			case 0x134 ... 0x15A:
+				if(nifion)netinter->codehadl(val,addr);
+				break;
+
+
 			case 0x60:
 				SOUND1CNT_L = val;
 				break;
@@ -355,6 +364,7 @@ void newvalwrite16(u32 addr,u32 val)
 				SOUND1CNT_X = val;
 				if(val &0x8000) //reinit
 				{
+					*(u16*)((u8)arm9iomem + 0x84) |= BIT(0); //send back
 					SCHANNEL_CR(8) &= ~0x80000000;
 					SCHANNEL_TIMER(8) = -(33513982/2)/(131072*8/(2048-(val&0x7FF)));
 					sweepspeed = 131072*8/(2048-(val&0x7FF));
@@ -412,6 +422,7 @@ void newvalwrite16(u32 addr,u32 val)
 				SCHANNEL_TIMER(9) = -(33513982/2)/(131072*8/(2048-(val&0x7FF)));
 				if(val &0x8000) //reinit
 				{
+					*(u16*)((u8)arm9iomem + 0x84) |= BIT(1); //send back
 					SCHANNEL_CR(9) &= ~0x80000000;
 					if((SOUND2CNT_H & 0x700) != 0)
 					{
@@ -423,10 +434,10 @@ void newvalwrite16(u32 addr,u32 val)
 					}
 					updatevol(); //todo do it better
 					SCHANNEL_CR(9) |= 0x80000200;
-				}
-				if(val &0x4000)
-				{
-					timerlenadd(1,BUS_CLOCK/(256/(0x40-(SOUND2CNT_H&0x3F))),stop);
+					if(val &0x4000)
+					{
+						timerlenadd(1,BUS_CLOCK/(256/(0x40-(SOUND2CNT_H&0x3F))),stop);
+					}
 				}
 				break;
 			case 0x78:
@@ -450,6 +461,7 @@ void newvalwrite16(u32 addr,u32 val)
 				}
 				if(val &0x8000) //reinit
 				{
+					*(u16*)((u8)arm9iomem + 0x84) |= BIT(3); //send back
 					SCHANNEL_CR(3) &= ~0x80000000;
 					SCHANNEL_CR(3) |= 0x80000200;
 					if((SOUND4CNT_L & 0x700) != 0)
@@ -461,13 +473,14 @@ void newvalwrite16(u32 addr,u32 val)
 						timerotheradd(3,0,Envelope);
 					}
 					updatevol(); //todo do it better
+					if(val &0x4000)
+					{
+						timerlenadd(3,BUS_CLOCK/(256/(0x40-(SOUND4CNT_L&0x3F))),stop);
+					}
 				}
 				//SCHANNEL_CR(3) |= 0x80000200 | SOUND_REPEAT; //start div by 4
 				SOUND4CNT_H = val;
-				if(val &0x4000)
-				{
-					timerlenadd(3,BUS_CLOCK/(256/(0x40-(SOUND4CNT_L&0x3F))),stop);
-				}
+
 				}
 				break;
 			case 0x72:
@@ -515,7 +528,11 @@ void newvalwrite16(u32 addr,u32 val)
 				{
 					SCHANNEL_SOURCE(2) = (u32)WAVE_RAM +0x10*2;
 				}
-				if(val&0x80) SCHANNEL_CR(2) |= 0x80000200 | SOUND_REPEAT; //start div by 4
+				if(val&0x80)
+				{
+					*(u16*)((u8)arm9iomem + 0x84) |= BIT(2); //send back
+					SCHANNEL_CR(2) |= 0x80000200 | SOUND_REPEAT; //start div by 4
+				}
 				//SCHANNEL_CR(3) |= 0x80000200 | SOUND_REPEAT; //start div by 4
 				break;
 			case 0x74:
@@ -657,61 +674,75 @@ void newvalwrite16(u32 addr,u32 val)
 				break;
 
 			  case 0x1FFFFFF8: //wifi startup
-				
-				installWifiFIFO();
-				REG_IPC_FIFO_TX = 0x100;
-				if(!netinter->Wifi_InitDefault(true /*WFC_CONNECT*/))
+				if(val)
 				{
-					REG_IPC_FIFO_TX = 0x201;
-					break;
+					installWifiFIFO();
+					REG_IPC_FIFO_TX = 0x100;
+					if(!netinter->Wifi_InitDefault(0))
+					{
+						REG_IPC_FIFO_TX = 0x201;
+						break;
+					}
+					nifion = true;
+					REG_IPC_FIFO_TX = 0x1;
 				}
-				REG_IPC_FIFO_TX = 0x101;
+				else
+				{
+					installWifiFIFO();
+					REG_IPC_FIFO_TX = 0x100;
+					if(!netinter->Wifi_InitDefault(true /*WFC_CONNECT*/))
+					{
+						REG_IPC_FIFO_TX = 0x201;
+						break;
+					}
+					REG_IPC_FIFO_TX = 0x101;
 
 //start socket
 
 
 
-				struct sockaddr_in echoServAddr; /* Echo server address */
-				unsigned short echoServPort;     /* Echo server port */
-				char *servIP;                    /* Server IP address (dotted quad) */
-				char *echoString;                /* String to send to echo server */
-				unsigned int echoStringLen;      /* Length of string to echo */
+					struct sockaddr_in echoServAddr; /* Echo server address */
+					unsigned short echoServPort;     /* Echo server port */
+					char *servIP;                    /* Server IP address (dotted quad) */
+					char *echoString;                /* String to send to echo server */
+					unsigned int echoStringLen;      /* Length of string to echo */
 
 
-    servIP = "192.168.168.35";             /* First arg: server IP address (dotted quad) */
-    echoString = "handshake";         /* Second arg: string to echo */
-	echoStringLen = 10;          /* 
-								 Determine input length */
+					servIP = "192.168.168.35";             /* First arg: server IP address (dotted quad) */
+					echoString = "handshake";         /* Second arg: string to echo */
+					echoStringLen = 10;          /* 
+												 Determine input length */
 
-    echoServPort = 9876; /*port*/
-    /* Create a reliable, stream socket using TCP */
-    if ((sock = netinter->socket(AF_INET, SOCK_STREAM, 0)) < 0)
-	{
-		REG_IPC_FIFO_TX = 0x202;
-		break;
-	}
-    /* Construct the server address structure */
-    //memset(&echoServAddr, 0, sizeof(echoServAddr));     /* Zero out structure */
-    echoServAddr.sin_family      = AF_INET;             /* Internet address family */
-    echoServAddr.sin_addr.s_addr = netinter->inet_addr(servIP);   /* Server IP address */
-    echoServAddr.sin_port        = netinter->htons(echoServPort); /* Server port */
+					echoServPort = 9876; /*port*/
+					/* Create a reliable, stream socket using TCP */
+					if ((sock = netinter->socket(AF_INET, SOCK_STREAM, 0)) < 0)
+					{
+						REG_IPC_FIFO_TX = 0x202;
+						break;
+					}
+					/* Construct the server address structure */
+					//memset(&echoServAddr, 0, sizeof(echoServAddr));     /* Zero out structure */
+					echoServAddr.sin_family      = AF_INET;             /* Internet address family */
+					echoServAddr.sin_addr.s_addr = netinter->inet_addr(servIP);   /* Server IP address */
+					echoServAddr.sin_port        = netinter->htons(echoServPort); /* Server port */
 
-    /* Establish the connection to the echo server */
-    if (netinter->connect(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
-	{
-		REG_IPC_FIFO_TX = 0x203;
-		break;
-	}
+					/* Establish the connection to the echo server */
+					if (netinter->connect(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
+					{
+						REG_IPC_FIFO_TX = 0x203;
+						break;
+					}
 
-    /* Send the string to the server */
-    if (netinter->send(sock, echoString, echoStringLen, 0) != echoStringLen)
-	{
-		REG_IPC_FIFO_TX = 0x204;
-		break;
-	}
+					/* Send the string to the server */
+					if (netinter->send(sock, echoString, echoStringLen, 0) != echoStringLen)
+					{
+						REG_IPC_FIFO_TX = 0x204;
+						break;
+					}
 
-	REG_IPC_FIFO_TX = 0x1;
-	 break;
+					REG_IPC_FIFO_TX = 0x1;
+				}
+				break;
 
 			  case 0x1FFFFFF9:
 				writePowerManagement(0,(int)val);
@@ -731,6 +762,8 @@ void newvalwrite16(u32 addr,u32 val)
 #endif
 				pointer_7Bitpoly = (u32)(*(u32*)(dmabuffer + 0x50));
 				pointer_15Bitpoly = (u32)(*(u32*)(dmabuffer + 0x54));
+				arm9iomem = (u32)(*(u32*)(dmabuffer + 0x58));
+
 				soundbuffA = (u8*)(dmabuffer);
 				SCHANNEL_SOURCE(4) = (u32)soundbuffA;
 				soundbuffB = (u8*)(dmabuffer + 0x50);

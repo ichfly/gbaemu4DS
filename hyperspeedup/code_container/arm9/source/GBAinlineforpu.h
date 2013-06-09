@@ -62,7 +62,7 @@ void Logsd(const char *defaultMsg,...);
 
 #define UPDATE_REG(address, value)\
   {\
-    WRITE16LE(((u16 *)&ioMem[address]),value);\
+    WRITE16LE(((u16 *)&caioMem[address + dsuncashedoffset]),value);\
   }\
 
 /*
@@ -137,7 +137,7 @@ static inline u32 CPUReadMemoryrealpu(u32 address)
   
 	if(address > 0x40000FF && address < 0x4000111)
 	{
-		if(ioMem[address & 0x3FC] & 0x8000)
+		if(caioMem[(address & 0x3FC) + dsuncashedoffset] & 0x8000)
 		{
 			UPDATE_REG(address& 0x3FC, ((*(u16 *)(address& 0x40003FC)) >> 1) | 0x8000);
 		}
@@ -161,9 +161,9 @@ static inline u32 CPUReadMemoryrealpu(u32 address)
 	}
     if((address < 0x4000400) && ioReadable[address & 0x3fc]) {
       if(ioReadable[(address & 0x3fc) + 2])
-        value = READ32LE(((u32 *)&ioMem[address & 0x3fC]));
+        value = READ32LE(((u32 *)&caioMem[(address & 0x3fc) + dsuncashedoffset]));
       else
-        value = READ16LE(((u16 *)&ioMem[address & 0x3fc]));
+        value = READ16LE(((u16 *)&caioMem[(address & 0x3fc) + dsuncashedoffset]));
     } else goto unreadable;
     break;
   case 8:
@@ -287,7 +287,7 @@ static inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is fast
 		
 		if((address&0x2) == 0)
 		{
-			if(ioMem[address & 0x3fe] & 0x8000)
+			if(caioMem[(address & 0x3fc) + dsuncashedoffset] & 0x8000)
 			{
 				value = ((*(u16 *)(address)) >> 1) | 0x8000;
 			}
@@ -314,7 +314,7 @@ static inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is fast
 	
     if((address < 0x4000400) && ioReadable[address & 0x3fe])
     {
-		value =  READ16LE(((u16 *)&ioMem[address & 0x3fe]));
+		value =  READ16LE(((u16 *)&caioMem[(address & 0x3fc) + dsuncashedoffset]));
     }
     else goto unreadable;
     break;
@@ -408,7 +408,7 @@ iprintf("r8 %02x\n",address);
   
 	if(address > 0x40000FF && address < 0x4000111)
 	{
-		if(ioMem[address & 0x3FC] & 0x8000)
+		if(caioMem[(address & 0x3fc) + dsuncashedoffset] & 0x8000)
 		{
 			UPDATE_REG(address& 0x3FC, ((*(u16 *)(address& 0x40003FC)) >> 1) | 0x8000);
 		}
@@ -430,7 +430,7 @@ iprintf("r8 %02x\n",address);
 	}
 #endif
     if((address < 0x4000400) && ioReadable[address & 0x3ff])
-      return ioMem[address & 0x3ff];
+      return ioMem[(address & 0x3ff) + dsuncashedoffset];
     else goto unreadable;
   case 8:
   case 9:
@@ -822,14 +822,14 @@ static inline void CPUWriteBytepu(u32 address, u8 b)
 	if(address & 1)
 	{
 	  CPUUpdateRegister(address & 0x3fe,
-			    ((READ16LE(((u16 *)&ioMem[address & 0x3fe])))
+			    ((READ16LE(((u16 *)&ioMem[(address & 0x3fe) + dsuncashedoffset])))
 			     & 0x00FF) |
 			    b<<8);
 
 	}
 	else
 	  CPUUpdateRegister(address & 0x3fe,
-			    ((READ16LE(((u16 *)&ioMem[address & 0x3fe])) & 0xFF00) | b));
+			    ((READ16LE(((u16 *)&ioMem[(address & 0x3fe) + dsuncashedoffset])) & 0xFF00) | b));
       }
       break;
     } else goto unwritable;

@@ -42,11 +42,6 @@
 
 #include "main.h"
 
-#define UPDATE_REG(address, value)\
-  {\
-    WRITE16LE(((u16 *)&ioMem[address]),value);\
-  }\
-
 extern char savePath[MAXPATHLEN * 2];
 
 extern char szFile[MAXPATHLEN * 2];

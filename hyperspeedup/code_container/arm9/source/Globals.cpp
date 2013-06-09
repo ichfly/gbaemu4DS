@@ -73,7 +73,7 @@ static u8 *workRAM = (u8*)0x02000000;
 static u8 *paletteRAM = (u8*)0x05000000;
 static u8 *vram = (u8*)0x06000000;
 static u8 *oam = (u8*)0x07000000;*/
-u8 ioMem[0x400];
+u8 caioMem[0x400];
 
 u16 DISPSTAT = 0x0000;
 u16 VCOUNT   = 0x0000;

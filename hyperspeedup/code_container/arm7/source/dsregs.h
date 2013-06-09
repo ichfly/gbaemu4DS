@@ -44,6 +44,8 @@ typedef int (* FN_closesocket)(int socket) ;
 typedef bool (* FN_Wifi_InitDefault)(bool useFirmwareSettings) ;
 typedef void (* FN_wifiValue32Handlerarm9)(u32 value) ;
 typedef unsigned long (* FN_inet_addr)(const char *cp);
+typedef void (* FN_wifisendcallback)() ;
+typedef void (* FN_codehadl)(u16 value,u32 addr) ;
 
 struct NET_INTERFACE_STRUCT {
 	unsigned int			name ;
@@ -59,6 +61,8 @@ struct NET_INTERFACE_STRUCT {
 	FN_Wifi_InitDefault Wifi_InitDefault;
 	FN_wifiValue32Handlerarm9 wifiValue32Handlerarm9;
 	FN_inet_addr inet_addr;
+	FN_wifisendcallback wifisendcallback;
+	FN_codehadl codehadl;
 } ;
 
 extern const NET_INTERFACE_STRUCT* netinter;

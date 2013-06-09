@@ -27,6 +27,9 @@
 
 #include "load_bin.h"
 
+
+#define _NO_BOOTSTUB_
+
 #ifndef _NO_BOOTSTUB_
 #include "bootstub_bin.h"
 #endif
@@ -340,6 +343,19 @@ int runNds (const void* loader, u32 loaderSize, u32 cluster, bool initDisc, bool
 	*((vu32*)0x02FFFE04) = (u32)0xE59FF018;
 	*((vu32*)0x02FFFE24) = (u32)0x02FFFE04;
 
+
+#ifdef test1
+			iprintf("press B to continue.\n");
+			scanKeys();
+			u16 keys_up = 0;
+			while( 0 == (keys_up & KEY_B) )
+			{
+				scanKeys();
+				keys_up = keysUp();
+			}
+			int i1 = 0;
+#endif
+
 	resetARM7(0x06000000);
 
 	swiSoftReset(); 
@@ -356,6 +372,18 @@ int runNdsFile (const char* filename, int argc, const char** argv)  {
 	if (stat (filename, &st) < 0) {
 		return 1;
 	}
+#ifdef test1
+			iprintf("press B to continue. %08X\n",st);
+			scanKeys();
+			u16 keys_up = 0;
+			while( 0 == (keys_up & KEY_B) )
+			{
+				scanKeys();
+				keys_up = keysUp();
+			}
+			int i2 = 0;
+			while(i2 < 60){swiWaitForVBlank(); i2++;}
+#endif
 
 	if (argc <= 0 || !argv) {
 		// Construct a command line if we weren't supplied with one
@@ -373,6 +401,19 @@ int runNdsFile (const char* filename, int argc, const char** argv)  {
 	if(argv[0][0]=='s' && argv[0][1]=='d') havedsiSD = true;
 	
 	installBootStub(havedsiSD);
+
+#ifdef test1
+			iprintf("press B to continue.\n",st);
+			scanKeys();
+			keys_up = 0;
+			while( 0 == (keys_up & KEY_B) )
+			{
+				scanKeys();
+				keys_up = keysUp();
+			}
+			int i3 = 0;
+			while(i3 < 60){swiWaitForVBlank(); i3++;}
+#endif
 
 	return runNds (load_bin, load_bin_size, st.st_ino, true, true, argc, argv);
 }
