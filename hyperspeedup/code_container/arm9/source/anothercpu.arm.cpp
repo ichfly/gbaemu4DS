@@ -27,7 +27,7 @@ void CPUWriteHalfWordpu(u32 addr, u16 value);
 void CPUWriteBytepu (u32 addr, u8  value);
 
 u32 CPUReadMemoryrealpu(u32 addr);
-u16 CPUReadHalfWordrealpuSigned(u32 addr);
+s32 CPUReadHalfWordrealpuSigned(u32 addr);
 u8  CPUReadByterealpu (u32 addr);
 
 
@@ -3785,7 +3785,7 @@ if(cond_res) {*/
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I;
       int offset = myregs[opcode & 0x0F].I;
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
       if(dest != base) {
         address -= offset;
         myregs[base].I = address;
@@ -3810,7 +3810,7 @@ if(cond_res) {*/
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I;
       int offset = (opcode & 0x0F) | ((opcode >> 4) & 0xF0);
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
       if(dest != base) {
         address -= offset;
         myregs[base].I = address;
@@ -3835,7 +3835,7 @@ if(cond_res) {*/
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I;
       int offset = myregs[opcode & 0x0F].I;
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
       if(dest != base) {
         address += offset;
         myregs[base].I = address;
@@ -3860,7 +3860,7 @@ if(cond_res) {*/
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I;
       int offset = (opcode & 0x0F) | ((opcode >> 4) & 0xF0);
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
       if(dest != base) {
         address += offset;
         myregs[base].I = address;
@@ -3883,7 +3883,7 @@ if(cond_res) {*/
       int base = (opcode >> 16) & 0x0F;
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I - myregs[opcode & 0x0F].I;
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
        
       if(dest == 15) {
         myregs[15].I &= 0xFFFFFFFC;
@@ -3902,7 +3902,7 @@ if(cond_res) {*/
       int base = (opcode >> 16) & 0x0F;
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I - myregs[opcode & 0x0F].I;
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
       if(dest != base)
         myregs[base].I = address;
        
@@ -3923,7 +3923,7 @@ if(cond_res) {*/
       int base = (opcode >> 16) & 0x0F;
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I - ((opcode & 0x0F)|((opcode>>4)&0xF0));
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
        
       if(dest == 15) {
         myregs[15].I &= 0xFFFFFFFC;
@@ -3942,7 +3942,7 @@ if(cond_res) {*/
       int base = (opcode >> 16) & 0x0F;
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I - ((opcode & 0x0F)|((opcode>>4)&0xF0));
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
       if(dest != base)
         myregs[base].I = address;
        
@@ -3963,7 +3963,7 @@ if(cond_res) {*/
       int base = (opcode >> 16) & 0x0F;
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I + myregs[opcode & 0x0F].I;
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
        
       if(dest == 15) {
         myregs[15].I &= 0xFFFFFFFC;
@@ -3982,7 +3982,7 @@ if(cond_res) {*/
       int base = (opcode >> 16) & 0x0F;
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I + myregs[opcode & 0x0F].I;
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
       if(dest != base)
         myregs[base].I = address;
        
@@ -4003,7 +4003,7 @@ if(cond_res) {*/
       int base = (opcode >> 16) & 0x0F;
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I + ((opcode & 0x0F)|((opcode>>4)&0xF0));
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
        
       if(dest == 15) {
         myregs[15].I &= 0xFFFFFFFC;
@@ -4022,7 +4022,7 @@ if(cond_res) {*/
       int base = (opcode >> 16) & 0x0F;
       int dest = (opcode >> 12) & 0x0F;
       u32 address = myregs[base].I + ((opcode & 0x0F)|((opcode>>4)&0xF0));
-      myregs[dest].I = (s16)CPUReadHalfWordrealpuSigned(address);
+      myregs[dest].I = (u32)CPUReadHalfWordrealpuSigned(address);
       if(dest != base)
         myregs[base].I = address;
        
@@ -9327,7 +9327,7 @@ case 0x28:
    // LDSH Rd, [Rs, Rn]
    {
      u32 address = myregs[(opcode>>3)&7].I + myregs[(opcode>>6)&7].I;
-     myregs[opcode&7].I = (s16)CPUReadHalfWordrealpuSigned(address);
+     myregs[opcode&7].I = (u32)CPUReadHalfWordrealpuSigned(address);
    }
    break;
  case 0x60:
@@ -9488,13 +9488,11 @@ case 0x28:
 #define PUSH_myregs(val, r) \
   if(opcode & (val)) {\
     CPUWriteMemorypu(address, myregs[(r)].I);\
-    offset = 1;\
     address += 4;\
   }
  case 0xb4:
    // PUSH {Rlist}
    {
-     int offset = 0;
      u32 temp = myregs[13].I - 4 * cpuBitsSet[opcode & 0xff];
      u32 address = temp & 0xFFFFFFFC;
      PUSH_myregs(1, 0);
@@ -9511,7 +9509,6 @@ case 0x28:
  case 0xb5:
    // PUSH {Rlist, LR}
    {
-     int offset = 0;
      u32 temp = myregs[13].I - 4 - 4 * cpuBitsSet[opcode & 0xff];
      u32 address = temp & 0xFFFFFFFC;
      PUSH_myregs(1, 0);
@@ -9529,13 +9526,11 @@ case 0x28:
 #define POP_myregs(val, r) \
   if(opcode & (val)) {\
     myregs[(r)].I = CPUReadMemoryrealpu(address);\
-    offset = 1;\
     address += 4;\
   }
  case 0xbc:
    // POP {Rlist}
    {
-     int offset = 0;
      u32 address = myregs[13].I & 0xFFFFFFFC;
      u32 temp = myregs[13].I + 4*cpuBitsSet[opcode & 0xFF];
      POP_myregs(1, 0);
@@ -9552,7 +9547,6 @@ case 0x28:
  case 0xbd:
    // POP {Rlist, PC}
    {
-     int offset = 0;
      u32 address = myregs[13].I & 0xFFFFFFFC;
      u32 temp = myregs[13].I + 4 + 4*cpuBitsSet[opcode & 0xFF];
      POP_myregs(1, 0);
@@ -9573,10 +9567,7 @@ case 0x28:
 #define THUMB_STM_myregs(val,r,b) \
   if(opcode & (val)) {\
     CPUWriteMemorypu(address, myregs[(r)].I);\
-    if(!offset) {\
-      myregs[(b)].I = temp;\
-    }\
-    offset = 1;\
+    myregs[(b)].I = temp;\
     address += 4;\
   }
  case 0xc0:
@@ -9588,11 +9579,12 @@ case 0x28:
  case 0xc6:
  case 0xc7:
    {
+
+
      // STM R0~7!, {Rlist}
      u8 myregsist = (opcode >> 8) & 7;
      u32 address = myregs[myregsist].I & 0xFFFFFFFC;
      u32 temp = myregs[myregsist].I + 4*cpuBitsSet[opcode & 0xff];
-     int offset = 0;
      // store
      THUMB_STM_myregs(1, 0, myregsist);
      THUMB_STM_myregs(2, 1, myregsist);
@@ -9607,7 +9599,6 @@ case 0x28:
 #define THUMB_LDM_myregs(val,r) \
   if(opcode & (val)) {\
     myregs[(r)].I = CPUReadMemoryrealpu(address);\
-    offset = 1;\
     address += 4;\
   }
  case 0xc8:
@@ -9621,11 +9612,8 @@ case 0x28:
    {
      // LDM R0~R7!, {Rlist}
      u8 myregsist = (opcode >> 8) & 7;
-	//iprintf("%x\n",myregs[myregsist].I);
-	//myregs[myregsist].I -= 4; //ichfly - 4 by me // idont think also ds need that
      u32 address = myregs[myregsist].I & 0xFFFFFFFC;
      u32 temp = myregs[myregsist].I + 4*cpuBitsSet[opcode & 0xFF]; 
-     int offset = 0;
      // load
      THUMB_LDM_myregs(1, 0);
      THUMB_LDM_myregs(2, 1);
@@ -9637,7 +9625,6 @@ case 0x28:
      THUMB_LDM_myregs(128, 7);
      if(!(opcode & (1<<myregsist)))
        myregs[myregsist].I = temp;
-	   //iprintf("%x\n",myregs[myregsist].I);
    }
    break;
 /* case 0xd0:

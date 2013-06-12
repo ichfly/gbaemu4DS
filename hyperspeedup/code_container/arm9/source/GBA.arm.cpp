@@ -2326,13 +2326,13 @@ void CPUReset()
   map[7].address = emultoroam;
   map[7].mask = 0x3FF;
   map[8].address = rom;
-  map[8].mask = 0x1FFFFFF;
+  map[8].mask = 0x400000; //hack 4 MByte not correct
   map[9].address = rom;
-  map[9].mask = 0x1FFFFFF;  
+  map[9].mask = 0x400000; //hack 4 MByte not correct 
   map[10].address = rom;
-  map[10].mask = 0x1FFFFFF;
+  map[10].mask = 0x400000; //hack 4 MByte not correct
   map[12].address = rom;
-  map[12].mask = 0x1FFFFFF;
+  map[12].mask = 0x400000; //hack 4 MByte not correct
   map[14].address = flashSaveMemory;
   map[14].mask = 0xFFFF;
 

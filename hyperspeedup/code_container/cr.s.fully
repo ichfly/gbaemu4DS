@@ -379,7 +379,7 @@
 	tst	r4, #128
 	beq	.PUSHRlistexit
 	mov	r2, r7
-	ldr	r3, [r5, #0x1C]
+	ldr	r3, [r4, #0x1C]
 	bl	_ZL16CPUWriteMemorypujj
 
 .PUSHRlistexit:
@@ -390,44 +390,44 @@
 
 .L5748:
 	mov	r2, r6
-	ldr	r3, [r1, #0]
+	ldr	r3, [r4, #0]
 	bl	_ZL16CPUWriteMemorypujj
 	add	r6, r6, #4
 	b	.backjmp1
 
 .L5749:
 	mov	r2, r6
-	ldr	r3, [r1, #4]
+	ldr	r3, [r4, #4]
 	bl	_ZL16CPUWriteMemorypujj
 	add	r6, r6, #4
 	b	.backjmp2
 .L5750:
 	mov	r2, r6
-	ldr	r3, [r1, #8]
+	ldr	r3, [r4, #8]
 	bl	_ZL16CPUWriteMemorypujj
 	add	r6, r6, #4
 	b	.backjmp3
 .L5751:
 	mov	r2, r6
-	ldr	r3, [r1, #0xC]
+	ldr	r3, [r4, #0xC]
 	bl	_ZL16CPUWriteMemorypujj
 	add	r6, r6, #4
 	b	.backjmp4
 .L5752:
 	mov	r2, r6
-	ldr	r3, [r1, #0x10]
+	ldr	r3, [r4, #0x10]
 	bl	_ZL16CPUWriteMemorypujj
 	add	r6, r6, #4
 	b	.backjmp5
 .L5753:
 	mov	r2, r6
-	ldr	r3, [r1, #0x14]
+	ldr	r3, [r4, #0x14]
 	bl	_ZL16CPUWriteMemorypujj
 	add	r6, r6, #4
 	b	.backjmp6
 .L5754:
 	mov	r2, r6
-	ldr	r3, [r1, #0x18]
+	ldr	r3, [r4, #0x18]
 	bl	_ZL16CPUWriteMemorypujj
 	add	r6, r6, #4
 	b	.backjmp7

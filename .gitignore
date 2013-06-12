@@ -167,3 +167,4 @@ pip-log.txt
 .DS_Store
 hbmenu/a.bat
 wifidebugstuff
+*.LUB

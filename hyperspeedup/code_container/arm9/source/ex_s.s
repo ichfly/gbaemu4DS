@@ -315,7 +315,7 @@ ldmia	lr, {r0-r12}
 
 ldr	lr, [lr, #(15 * 4)]
 
-subs pc, lr, #0 @ichfly this is not working
+subs pc, lr, #0
 
 
 
@@ -324,8 +324,8 @@ subs pc, lr, #0 @ichfly this is not working
 
 inter_fetch: @ break function todo
 
-	subs    lr, lr, #0x8000000
 	ldr		sp,=rom
+	subs    lr, lr, #0x8000000
 	ldr		sp,[sp]
 	@thisi4:	
 	@ldr r2, [pc,#(rom - thisi4 -8)]
@@ -428,23 +428,51 @@ inter_data:
 #endif
 	
 	@ldr r1,=exRegs
-	sub r1,SP,#13 * 4
 	
+#ifdef noasmTHUMB
+	sub r1,SP,#13 * 4
+#else
+	sub r4,SP,#13 * 4
+#endif
 	lsls r2,r5, #0x1A
 	BMI itisTHUMB
 	
 itisARM:
+
+
 
 	ldr r0, [LR, #-0x8]
 	ldr	sp, =__sp_undef	@ use the new stack
 	BL _Z11emuInstrARMjPi @ is emuInstrARM(u32 opcode, s32 *R)
 	B exitdirectcpu
 itisTHUMB:
+#ifdef noasmTHUMB
 	ldrh r0, [LR,#-0x8]
 	sub LR, #0x2
 	str LR, [r1, #15*4]
 	ldr	sp, =__sp_undef	@ use the new stack
 	BL _Z13emuInstrTHUMBtPi @ is emuInstrTHUMB(u16 opcode, s32 *R)
+
+
+
+
+
+
+
+
+#else
+	ldrh r8, [LR,#-0x8]
+	sub LR, #0x2
+	str LR, [r4, #15*4]
+	ldr	sp, =__sp_undef	@ use the new stack
+
+
+#include "cr.s"
+#endif
+
+
+
+
 exitdirectcpu:
 #else
 

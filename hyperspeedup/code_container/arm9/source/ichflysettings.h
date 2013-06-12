@@ -1,12 +1,14 @@
 //functions
 
+#define dsuncashedoffset 0x40000 //also in Port.h
+
 //#define standalone
 
-//#define arm9advsound
+#define arm9advsound
 
-//#define nogfxsoundstruggler
+#define nogfxsoundstruggler
 
-//#define priosound
+#define priosound
 
 //#define sounddebugeraddv
 
@@ -54,13 +56,13 @@
 
 
 
-//#define gba_handel_IRQ_correct
+#define gba_handel_IRQ_correct
 
 //#define HBlankdma //only if hblanc irq is on
 
 //#define forceHBlankirqs
 
-//#define advanced_irq_check
+#define advanced_irq_check
 
 
 //debug

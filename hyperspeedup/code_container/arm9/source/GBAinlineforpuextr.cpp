@@ -16,9 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software Foundation,
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-#ifndef VBA_GBAinline_H
-#define VBA_GBAinline_H
-
 
 #include "fatfileextract.h"
 #include "agbprint.h"
@@ -35,7 +32,6 @@
 const u32  objTilesAddress [3] = {0x010000, 0x014000, 0x014000};
 
 extern u32  __attribute__((section(".dtcm"))) exRegs[]; //automatisierung
-
 
 extern bool cpuSramEnabled;
 extern bool cpuFlashEnabled;
@@ -73,18 +69,19 @@ u16 CPUReadHalfWordQuick(u32 addr);
 u32 CPUReadMemoryQuick(u32 addr);
 */
 
-#define CPUReadByteQuick(addr) \
+
+#define asmCPUReadByteQuick(addr) \
   map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]
 
-#define CPUReadHalfWordQuick(addr) \
+#define asmCPUReadHalfWordQuick(addr) \
   READ16LE(((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
 
-#define CPUReadMemoryQuick(addr) \
+#define asmCPUReadMemoryQuick(addr) \
   READ32LE(((u32*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
 
 
 
-static inline void updateVCsub()
+  void updateVCsub()
 {
 		u32 temp = REG_VCOUNT;
 		u32 temp2 = REG_DISPSTAT;
@@ -125,7 +122,7 @@ static inline void updateVCsub()
 }
 
 
-static inline u32 CPUReadMemoryrealpu(u32 address)
+  u32 asmCPUReadMemoryrealpu(u32 address)
 {
 
 	//iprintf("%08X",REG_IME);
@@ -236,10 +233,10 @@ static inline u32 CPUReadMemoryrealpu(u32 address)
 #endif
 
       if(exRegs[15] & 0x1) {
-        value = CPUReadHalfWordQuick(((exRegs[15] & ~0x1) - 2)) |
-          CPUReadHalfWordQuick(((exRegs[15] & ~0x1) - 2)) << 16;
+        value = asmCPUReadHalfWordQuick(((exRegs[15] & ~0x1) - 2)) |
+          asmCPUReadHalfWordQuick(((exRegs[15] & ~0x1) - 2)) << 16;
       } else {
-        value = CPUReadMemoryQuick(exRegs[15]);
+        value = asmCPUReadMemoryQuick(exRegs[15]);
       }
 	  break;
   }
@@ -270,7 +267,7 @@ static inline u32 CPUReadMemoryrealpu(u32 address)
 
 extern u32 myROM[];
 
-static inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is faster because it is smaler
+  u32 asmCPUReadHalfWordrealpu(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
 	iprintf("r16 %08x (%08X)\n",address,cpu_GetMemPrem());
@@ -386,9 +383,9 @@ static inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is fast
 #endif
 
       if(exRegs[15] & 0x1) {
-        value = CPUReadHalfWordQuick(((exRegs[15] & ~0x1) - 2) + (address & 2));
+        value = asmCPUReadHalfWordQuick(((exRegs[15] & ~0x1) - 2) + (address & 2));
       } else {
-        value = CPUReadHalfWordQuick(exRegs[15]);
+        value = asmCPUReadHalfWordQuick(exRegs[15]);
       }
     break;
   }
@@ -400,7 +397,7 @@ static inline u32 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is fast
   return value;
 }
 
-static inline u8 CPUReadByterealpu(u32 address) //ichfly not inline is faster because it is smaler
+  u8 asmCPUReadByterealpu(u32 address) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
 iprintf("r8 %02x\n",address);
@@ -502,16 +499,16 @@ iprintf("r8 %02x\n",address);
 #endif
 
       if(exRegs[15] & 0x1) {
-        return CPUReadByteQuick(((exRegs[15] & ~0x1) - 2)+(address & 3));
+        return asmCPUReadByteQuick(((exRegs[15] & ~0x1) - 2)+(address & 3));
       } else {
-        return CPUReadByteQuick(exRegs[15]+(address & 1));
+        return asmCPUReadByteQuick(exRegs[15]+(address & 1));
       }
     break;
   }
 }
 
 #ifndef asmspeedup
-static inline void CPUWriteMemorypu(u32 address, u32 value) //ichfly not inline is faster because it is smaler
+  void asmCPUWriteMemorypu(u32 address, u32 value) //ichfly not inline is faster because it is smaler
 {
 #ifdef printreads
     iprintf("w32 %08x to %08x\n",value,address);
@@ -611,9 +608,9 @@ static inline void CPUWriteMemorypu(u32 address, u32 value) //ichfly not inline 
   }
 }
 #else
-extern "C" void CPUWriteMemorypu(u32 address, u32 value);
+extern "C" void asmCPUWriteMemorypu(u32 address, u32 value);
 #endif
-static inline void CPUWriteHalfWordpu(u32 address, u16 value)
+  void asmCPUWriteHalfWordpu(u32 address, u16 value)
 {
 #ifdef printreads
 iprintf("w16 %04x to %08x\r\n",value,address);
@@ -712,7 +709,7 @@ iprintf("w16 %04x to %08x\r\n",value,address);
   }
 }
 
-static inline void CPUWriteBytepu(u32 address, u8 b)
+  void asmCPUWriteBytepu(u32 address, u8 b)
 {
 #ifdef printreads
 	iprintf("w8 %02x to %08x\r\n",b,address);
@@ -867,16 +864,11 @@ static inline void CPUWriteBytepu(u32 address, u8 b)
 }
 
 
-static inline s32 CPUReadHalfWordrealpuSigned(u32 address)
+
+s32 asmCPUReadHalfWordrealpuSigned(u32 address)
 {
-  s32 value = (s16)CPUReadHalfWordrealpu(address);
+  s32 value = (s16)asmCPUReadHalfWordrealpu(address);
   if((address & 1))
     value = (s8)value;
   return value;
 }
-
-
-
-
-
-#endif //VBA_GBAinline_H

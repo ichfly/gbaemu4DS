@@ -5,7 +5,8 @@ fix cpu pc rel reads/writes
 usermode reads firq and mode sw
 not alined ichfly_readdma_rom
 todo only save regs if needed in ex_s.s
-Illegal read emulation
+Illegal read/DMA emulation VBA-M
+test arm code signed 16 Bit read from VBA-M
 
 
 CHEAT_PATCH_ROM_16BIT

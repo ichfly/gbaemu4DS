@@ -20,7 +20,7 @@
 #ifndef VBA_PORT_H
 #define VBA_PORT_H
 
-#define dsuncashedoffset 0x40000
+#define dsuncashedoffset 0x40000 //also in ichflysettings.h
 
 // swaps a 16-bit value
 static inline u16 swap16(u16 v)
