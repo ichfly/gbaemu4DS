@@ -5,9 +5,7 @@
 ---------------------------------------------------------------------------------*/
 #include <nds.h>
 #include <stdio.h>
-
 #include "../../gloabal/cpuglobal.h"
-
 #include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
@@ -16,33 +14,64 @@
 #include "System.h"
 #include <fat.h>
 #include <dirent.h>
-
 #include "cpumg.h"
 #include "GBAinline.h"
 #include "bios.h"
-
 #include "mydebuger.h"
-
 #include "file_browse.h"
-
-#define MAXPATHLEN 256 
-
-#include <nds.h>
-
 #include "arm7sound.h"
-
 #include "main.h"
+#include <stdlib.h>
+#include <nds/memory.h>//#include <memory.h> ichfly
+#include <nds/ndstypes.h>
+#include <nds/memory.h>
+#include <nds/bios.h>
+#include <nds/system.h>
+#include <nds/arm9/math.h>
+#include <nds/arm9/video.h>
+#include <nds/arm9/videoGL.h>
+#include <nds/arm9/trig_lut.h>
+#include <nds/arm9/sassert.h>
+#include <stdarg.h>
+#include <string.h>
+#include <nds/disc_io.h>
+#include <nds/arm9/dldi.h>
 
-
-char biosPath[MAXPATHLEN * 2];
-
-char patchPath[MAXPATHLEN * 2];
-
-char savePath[MAXPATHLEN * 2];
-
-char szFile[MAXPATHLEN * 2];
+extern int frameskip;
 
 void initspeedupfelder();
+
+void emulateedbiosstart();
+
+extern volatile u16 DISPCNT;
+
+extern void HblankHandler(void);
+
+void downgreadcpu();
+
+extern "C" void IntrMain();
+
+extern "C" void testasm(u32* feld);
+extern "C" void cpu_SetCP15Cnt(u32 v);
+extern "C" u32 cpu_GetCP15Cnt();
+extern "C" u32 pu_Enable();
+
+extern const unsigned char s7Bitpoly[];
+extern const unsigned char s15Bitpoly[];
+
+// The only built in driver
+extern DLDI_INTERFACE _io_dldi_stub;
+
+#define INT_TABLE_SECTION __attribute__((section(".dtcm")))
+
+extern struct IntTable irqTable[MAX_INTERRUPTS] INT_TABLE_SECTION;
+
+extern "C" void __irqSet(u32 mask, IntFn handler, struct IntTable irqTable[] );
+
+
+#define GBA_EWRAM ((void*)(0x02000000))
+
+
 
 typedef struct
 {
@@ -60,58 +89,18 @@ typedef struct
 	u16 checksum;
 } __attribute__ ((__packed__)) gbaHeader_t;
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <nds/memory.h>//#include <memory.h> ichfly
-#include <nds/ndstypes.h>
-#include <nds/memory.h>
-#include <nds/bios.h>
-#include <nds/system.h>
-#include <nds/arm9/math.h>
-#include <nds/arm9/video.h>
-#include <nds/arm9/videoGL.h>
-#include <nds/arm9/trig_lut.h>
-#include <nds/arm9/sassert.h>
-#include <stdarg.h>
-#include <string.h>
+
+
+
+char biosPath[MAXPATHLEN * 2];
+
+char patchPath[MAXPATHLEN * 2];
+
+char savePath[MAXPATHLEN * 2];
+
+char szFile[MAXPATHLEN * 2];
 
 u8 arm7exchangefild[0x500];
-
-#define INT_TABLE_SECTION __attribute__((section(".dtcm")))
-
-
-extern struct IntTable irqTable[MAX_INTERRUPTS] INT_TABLE_SECTION;
-
-extern "C" void __irqSet(u32 mask, IntFn handler, struct IntTable irqTable[] );
-
-
-#include <nds/arm9/dldi.h>
-
-// The only built in driver
-extern DLDI_INTERFACE _io_dldi_stub;
-
-
-
-
-void emulateedbiosstart();
-
-extern volatile u16 DISPCNT;
-
-extern void HblankHandler(void);
-
-
-void downgreadcpu();
-
-
-
-
-#define GBA_EWRAM ((void*)(0x02000000))
-
-#include <nds/disc_io.h>
-#include <dirent.h>
-
-
-
 
 
 char* savetypeschar[7] =
@@ -119,23 +108,6 @@ char* savetypeschar[7] =
 
 char* memoryWaitrealram[8] =
   { "10 and 6","8 and 6","6 and 6","18 and 6","10 and 4","8 and 4","6 and 4","18 and 4" };
-
-
-
-
-
-extern "C" void IntrMain();
-
-
-extern "C" void testasm(u32* feld);
-extern "C" void cpu_SetCP15Cnt(u32 v);
-extern "C" u32 cpu_GetCP15Cnt();
-extern "C" u32 pu_Enable();
-
-
-
-
-extern int frameskip;
 
 
 u32 arm7amr9buffer = 0;
@@ -190,7 +162,6 @@ int main( int argc, char **argv) {
 
 
 	iprintf("gbaemu4DS for r4i gold (3DS) (r4ids.cn) by ichfly\nBuild " __DATE__ "\n" );
-	//iprintf("test1");
 
 
 #ifdef advanced_irq_check
@@ -201,27 +172,17 @@ int main( int argc, char **argv) {
 #endif
 	__irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareq,irqTable); //todo async
 	irqEnable(IRQ_FIFO_NOT_EMPTY);
-	//iprintf("test2");
-	//while(1);
 
 
-	//bg = bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
 
 	REG_POWERCNT &= ~((POWER_3D_CORE | POWER_MATRIX) & 0xFFFF);//powerOff(POWER_3D_CORE | POWER_MATRIX); //3D use power so that is not needed
 
-	//consoleDemoInitsubsc();
-	//consoleDemoInit();
-	//soundEnable(); //sound finaly
-	//fifoSetDatamsgHandler(FIFO_USER_02, arm7debugMsgHandler, 0);
 
 
 
 
 	DISPCNT  = 0x0080;
 
-//rootenabelde[2] = fatMountSimple  ("sd", &__io_dsisd); //DSi//sems to be inited by fatInitDefault
- //fatInitDefault();
- //nitroFSInit();
 bool temptest = true;
 #ifdef standalone
 if (0 != argc )
@@ -306,9 +267,6 @@ else
 *(u32*)(arm7exchangefild + 20) = (u32)&amr7indirectrec;
 *(u32*)(arm7exchangefild + 24) = (u32)&amr7fehlerfeld[0];
 #endif
-
-extern const unsigned char s7Bitpoly[];
-extern const unsigned char s15Bitpoly[];
 
 *(u32*)(arm7exchangefild + 0x50) = (u32)&s7Bitpoly[0];
 *(u32*)(arm7exchangefild + 0x54) = (u32)&s15Bitpoly[0];
@@ -589,10 +547,6 @@ initspeedupfelder();
 		  }
 	  }
 	if(cpuSaveType == 3)flashSetSize(myflashsize);
-	gbaHeader_t *gbaGame;
-
-	
-	gbaGame = (gbaHeader_t*)rom;
 
 	iprintf("BIOS_RegisterRamReset\n");
 
