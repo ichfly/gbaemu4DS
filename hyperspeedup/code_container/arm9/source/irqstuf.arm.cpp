@@ -1,6 +1,5 @@
 #include <nds.h>
 #include <stdio.h>
-
 #include "../../gloabal/cpuglobal.h"
 #include <filesystem.h>
 #include "GBA.h"
@@ -10,33 +9,14 @@
 #include "System.h"
 #include <fat.h>
 #include <dirent.h>
-
 #include "cpumg.h"
 #include "GBAinline.h"
 #include "bios.h"
-
 #include "mydebuger.h"
-
 #include "ichflysettings.h"
-
-#include <nds.h>
-
 #include "arm7sound.h"
-
 #include "main.h"
-
 #include "Port.h"
-
-#define UPDATE_REG(address, value)\
-  {\
-    WRITE16LE(((u16 *)&caioMem[address + dsuncashedoffset]),value);\
-  }\
-
-extern char savePath[MAXPATHLEN * 2];
-
-extern char szFile[MAXPATHLEN * 2];
-
-#include <stdio.h>
 #include <stdlib.h>
 #include <nds/memory.h>//#include <memory.h> ichfly
 #include <nds/ndstypes.h>
@@ -51,7 +31,34 @@ extern char szFile[MAXPATHLEN * 2];
 #include <stdarg.h>
 #include <string.h>
 
+#define public
 
+#define UPDATE_REG(address, value)\
+  {\
+    WRITE16LE(((u16 *)&caioMem[address + dsuncashedoffset]),value);\
+  }\
+
+extern char savePath[MAXPATHLEN * 2];
+
+extern char szFile[MAXPATHLEN * 2];
+
+extern "C" void resettostartup();
+
+extern "C" void IntrMain();
+
+
+extern "C" void testasm(u32* feld);
+extern "C" void cpu_SetCP15Cnt(u32 v);
+extern "C" u32 cpu_GetCP15Cnt();
+extern "C" u32 pu_Enable();
+
+extern "C" void copyMode_5(u32* src,u32* tar);
+extern "C" void copyMode_3(void* src ,void* tar );
+
+extern "C" int SPtoload;
+extern "C" int SPtemp;
+
+int main( int argc, char **argv);
 
 //#define loaddirect
 
@@ -66,17 +73,6 @@ void downgreadcpu();
 
 
 int framenummer;
-
-
-#define GBA_EWRAM ((void*)(0x02000000))
-
-#include <nds/disc_io.h>
-#include <dirent.h>
-
-   #define DEFAULT_CACHE_PAGES 16
-   #define DEFAULT_SECTORS_PAGE 8
-
-#define public
 
 char* rootdirnames [3] = {"nitro:/","fat:/","sd:/"};
 bool rootenabelde[3];
@@ -94,34 +90,7 @@ u32* dirfeldsizes;
 
 int bg = 0;
 
-
-
-extern "C" void resettostartup();
-
-extern "C" void IntrMain();
-
-
-extern "C" void testasm(u32* feld);
-extern "C" void cpu_SetCP15Cnt(u32 v);
-extern "C" u32 cpu_GetCP15Cnt();
-extern "C" u32 pu_Enable();
-
-extern "C" void copyMode_5(u32* src,u32* tar);
-extern "C" void copyMode_3(void* src ,void* tar );
-
-
-int main( int argc, char **argv);
-
-
 int ignorenextY = 0;
-
-
-
-
-
-
-#define READ16LE(x) \
-  swap16(*((u16 *)(x)))
 
 
 /*
@@ -252,9 +221,6 @@ u8 VCountgbatods[0x100]; //(LY)      (0..227) + check overflow
 u8 VCountdstogba[263]; //(LY)      (0..262)
 u8 VCountdoit[263]; //jump in or out
 #endif
-
-extern "C" int SPtoload;
-extern "C" int SPtemp;
 
 #ifdef skipper
 u8 skipval = 0;

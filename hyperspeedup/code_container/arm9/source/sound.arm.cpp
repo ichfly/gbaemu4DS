@@ -3,22 +3,6 @@
 #include "ichflysettings.h"
 #include "main.h"
 #include "../../gloabal/cpuglobal.h"
-
-
-
-
-
-
-
-
-
-
-
-
-#include <nds.h>
-#include <stdio.h>
-
-
 #include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
@@ -27,26 +11,12 @@
 #include "System.h"
 #include <fat.h>
 #include <dirent.h>
-
 #include "cpumg.h"
 #include "GBAinline.h"
 #include "bios.h"
-
 #include "mydebuger.h"
-
 #include "ichflysettings.h"
-
-#include <nds.h>
-
 #include "arm7sound.h"
-
-#include "main.h"
-
-extern char savePath[MAXPATHLEN * 2];
-
-extern char szFile[MAXPATHLEN * 2];
-
-#include <stdio.h>
 #include <stdlib.h>
 #include <nds/memory.h>//#include <memory.h> ichfly
 #include <nds/ndstypes.h>
@@ -60,29 +30,13 @@ extern char szFile[MAXPATHLEN * 2];
 #include <nds/arm9/sassert.h>
 #include <stdarg.h>
 #include <string.h>
+#include "Cheats.h"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+extern "C" int SPtoload;
+extern "C" int SPtemp;
+extern char savePath[MAXPATHLEN * 2];
+extern char szFile[MAXPATHLEN * 2];
+extern u32 arm7amr9buffer;
 
 #ifdef anyarmcom
 u32 recDMA1 = 0;
@@ -92,19 +46,11 @@ u32 recdel = 0;
 #endif
 
 
-
-#include "Cheats.h"
-
-extern "C" int SPtoload;
-extern "C" int SPtemp;
-
 int cheatsCheckKeys();
 
 int counttrans = 0;
 
 int dasistnurzumtesten = 0;
-
-extern u32 arm7amr9buffer;
 
 
 void arm7dmareq()

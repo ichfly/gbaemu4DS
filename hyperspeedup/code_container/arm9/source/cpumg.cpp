@@ -1,12 +1,10 @@
 #include <nds.h>
 #include <stdio.h> 
-
 #include <filesystem.h>
 #include "getopt.h"
 #include "System.h"
 #include <fat.h>
 #include <dirent.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <nds/memory.h>//#include <memory.h> ichfly
@@ -20,14 +18,6 @@
 #include <nds/arm9/trig_lut.h>
 #include <nds/arm9/sassert.h>
 #include <stdarg.h>
-
-void VblankHandler();
-
-void BIOScall(int op,  s32 *R);
-
-extern "C" void cpu_SetCP15Cnt(u32 v);
-extern "C" u32 cpu_GetCP15Cnt();
-
 #include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
@@ -36,51 +26,11 @@ extern "C" u32 cpu_GetCP15Cnt();
 #include "System.h"
 #include <fat.h>
 #include <dirent.h>
-
 #include "cpumg.h"
 #include "GBAinline.h"
-
-
 #include "main.h"
-
 #include "armdis.h"
-
-
-	FILE * pFile;
-
-
-#include "main.h"
-
-#ifndef directcpu
-#include "anothercpu.h"
-#endif
-
-
-#define debugandhalt()\
-  {\
-					REG_IME = IME_DISABLE;\
-    			debugDump();\
-		while(1);\
-  }\
-
-extern "C" void swiHalt(void);
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <nds/memory.h>//#include <memory.h> ichfly
-#include <nds/ndstypes.h>
-#include <nds/memory.h>
-#include <nds/bios.h>
-#include <nds/system.h>
-#include <nds/arm9/math.h>
-#include <nds/arm9/video.h>
-#include <nds/arm9/videoGL.h>
-#include <nds/arm9/trig_lut.h>
-#include <nds/arm9/sassert.h>
-#include <stdarg.h>
 #include <string.h>
-
-#include "GBA.h"
 #include "GBAinline.h"
 #include "Globals.h"
 #include "EEprom.h"
@@ -94,7 +44,29 @@ extern "C" void swiHalt(void);
 #include "Util.h"
 #include "Port.h"
 #include "agbprint.h"
+#include "main.h"
+#include "cpumg.h"
+#ifndef directcpu
+#include "anothercpu.h"
+#endif
 
+
+//#define DEV_VERSION
+
+void VblankHandler();
+
+void BIOScall(int op,  s32 *R);
+
+extern "C" void swiHalt(void);
+extern "C" void cpu_SetCP15Cnt(u32 v);
+extern "C" u32 cpu_GetCP15Cnt();
+
+#define debugandhalt()\
+  {\
+					REG_IME = IME_DISABLE;\
+    			debugDump();\
+		while(1);\
+  }\
 
 void CPUWriteMemory(u32 addr, u32 value);
 void CPUWriteHalfWord(u32 addr, u16 value);
@@ -104,35 +76,33 @@ u32 CPUReadMemory(u32 addr);
 u16 CPUReadHalfWordSigned(u32 addr);
 u8  CPUReadByte (u32 addr);
 
-
-
-
 extern "C" u32 savedsp;
 extern "C" u32 savedlr;
 
-//#define DEV_VERSION
-
-
 extern bool disableMessage;
 
-
-
 void gbaExceptionHdl();
-
 
 extern "C" int SPtoload;
 extern "C" int SPtemp;
 
+// extern void puSetMemPerm(u32 perm);
+extern "C" void pu_Enable();
+// extern void puSetGbaIWRAM();
+extern "C" void pu_SetRegion(u32 region, u32 value);
 
+extern "C" void pu_SetDataPermissions(u32 v);
+extern "C" void pu_SetCodePermissions(u32 v);
+extern "C" void  pu_SetDataCachability(u32 v);
+extern "C" void  pu_SetCodeCachability(u32 v);
+extern "C" void pu_GetWriteBufferability(u32 v);
 
+extern void __attribute__((section(".dtcm"))) (*exHandler)();
+extern void __attribute__((section(".dtcm"))) (*exHandlerswi)();
+extern void __attribute__((section(".dtcm"))) (*exHandlerundifined)();
+extern s32  __attribute__((section(".dtcm"))) exRegs[];
+extern s32  __attribute__((section(".dtcm"))) BIOSDBG_SPSR;
 
-
-
-
-
-
-#include "main.h"
-#include "cpumg.h"
 
 #define PU_PAGE_4K		(0x0B << 1)
 #define PU_PAGE_8K		(0x0C << 1)
@@ -156,22 +126,12 @@ extern "C" int SPtemp;
 #define PU_PAGE_2G		(0x1E << 1)
 #define PU_PAGE_4G		(0x1F << 1)
 
-// extern void puSetMemPerm(u32 perm);
-extern "C" void pu_Enable();
-// extern void puSetGbaIWRAM();
-extern "C" void pu_SetRegion(u32 region, u32 value);
-
-extern "C" void pu_SetDataPermissions(u32 v);
-extern "C" void pu_SetCodePermissions(u32 v);
-extern "C" void  pu_SetDataCachability(u32 v);
-extern "C" void  pu_SetCodeCachability(u32 v);
-extern "C" void pu_GetWriteBufferability(u32 v);
 
 u16 gbaIME = 0;
 u16 gbaDISPCNT = 0;
 u16 gbaBGxCNT[4] = {0, 0, 0, 0};
 
-
+FILE * pFile;
 char disbuffer[0x2000];
 
 #ifdef lastdebug
@@ -180,13 +140,9 @@ int lastdebugcurrent = 0;
 int lastdebugsize = 6;
 #endif
 
-//extern "C" void exMain(); 
+int durchlauf = 0;
 
-extern void __attribute__((section(".dtcm"))) (*exHandler)();
-extern void __attribute__((section(".dtcm"))) (*exHandlerswi)();
-extern void __attribute__((section(".dtcm"))) (*exHandlerundifined)();
-extern s32  __attribute__((section(".dtcm"))) exRegs[];
-extern s32  __attribute__((section(".dtcm"))) BIOSDBG_SPSR;
+
 
 //#define BIOSDBG_CP15 *((volatile u32*)0x027FFD8C)
 //#define BIOSDBG_SPSR *((volatile u32*)0x027FFD90)
@@ -195,7 +151,7 @@ extern s32  __attribute__((section(".dtcm"))) BIOSDBG_SPSR;
 
 
 
-int durchlauf = 0;
+
 void debugDump()
 {
 #ifdef ichflyDebugdumpon
@@ -278,11 +234,11 @@ void exInitswisystem(void (*customswiHdl)())
 	exHandlerswi = customswiHdl;
 }
 
-void exInit(void (*customHdl)())
+/*void exInit(void (*customHdl)())
 {
 	//EXCEPTION_VECTOR = exMain; //no more needed
 	exHandler = customHdl;
-}
+}*/
 
 void emuInstrARM(u32 instr, s32 *regs);
 void emuInstrTHUMB(u16 instr, s32 *regs);
@@ -352,7 +308,7 @@ void gbaInit(u8 slow)
 
 
 #ifdef releas
-	exInit(gbaExceptionHdl); //define handler
+	//exInit(gbaExceptionHdl); //define handler
 #endif
 
 
@@ -648,7 +604,7 @@ inline void puNds()
 
 
 
-
+/*
 #ifndef releas
 void ndsExceptionHdl()
 {
@@ -672,17 +628,17 @@ void ndsExceptionHdl()
 	Log("SAVED PC = %08X (%s)\n", exRegs[15], instrset ? "THUMB" : "ARM");
 	debugDump();
 	/*if(instrset) Log("FAILED INSTR = %04X\n", *(u16*)(exRegs[15] - (mode == 0x17 ? 4 : 2)));
-	else Log("FAILED INSTR = %08X\n", *(u32*)(exRegs[15] - (mode == 0x17 ? 8 : 4)));*/ //ichfly don't like that
+	else Log("FAILED INSTR = %08X\n", *(u32*)(exRegs[15] - (mode == 0x17 ? 8 : 4)));*//* //ichfly don't like that
 			REG_IME = IME_DISABLE;
 		while(1);
 }
 #endif
-
+*/
 inline void ndsModeinline()
 {
 	puNds();
 #ifndef releas
-	exInit(ndsExceptionHdl);
+	//exInit(ndsExceptionHdl);
 #endif
 }
 
@@ -690,11 +646,11 @@ void ndsMode()
 {
 	puNds();
 #ifndef releas
-	exInit(ndsExceptionHdl);
+	//exInit(ndsExceptionHdl);
 #endif
 }
 
-
+/*
 void gbaExceptionHdl()
 {
 
@@ -716,7 +672,7 @@ void gbaExceptionHdl()
 	for(i = 0; i <= 15; i++) {
 		Log("R%d=%X ", i, exRegs[i]);
 	} 
-	Log("\n");*/
+	Log("\n");*//*
 
 
 #ifndef unsave
@@ -731,11 +687,11 @@ void gbaExceptionHdl()
 #endif
 	{
 
-		/*if(exRegs[15] > 0x08000000)//don't know why this land herer but it dose
+		*//*if(exRegs[15] > 0x08000000)//don't know why this land herer but it dose
 		{
 			exRegs[15] = (exRegs[15] & 0x01FFFFFF) + (s32)rom;
 		}
-		else*/
+		else*//*
 		{
 			Log("gba jumped to an unknown region\n");
 			debugDump(); //test
@@ -769,7 +725,7 @@ void gbaExceptionHdl()
 	//Log("exit\n");
 }
 
-
+*/
 
 
 
@@ -777,13 +733,13 @@ void gbaExceptionHdl()
 void gbaMode()
 {
 
-	exInit(gbaExceptionHdl);
+	//exInit(gbaExceptionHdl);
 	puGba();
 	
 }
  void gbaMode2()
 {
-	exInit(gbaExceptionHdl);
+	//exInit(gbaExceptionHdl);
 	puGba();	
 }
 #endif
