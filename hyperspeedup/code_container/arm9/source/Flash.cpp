@@ -52,30 +52,6 @@ int flashDeviceID = 0x1b;
 int flashManufacturerID = 0x32;
 int flashBank = 0;
 
-static variable_desc flashSaveData[] = {
-  { &flashState, sizeof(int) },
-  { &flashReadState, sizeof(int) },
-  { &flashSaveMemory[0], 0x10000 },
-  { NULL, 0 }
-};
-
-static variable_desc flashSaveData2[] = {
-  { &flashState, sizeof(int) },
-  { &flashReadState, sizeof(int) },
-  { &flashSize, sizeof(int) },  
-  { &flashSaveMemory[0], 0x20000 },
-  { NULL, 0 }
-};
-
-static variable_desc flashSaveData3[] = {
-  { &flashState, sizeof(int) },
-  { &flashReadState, sizeof(int) },
-  { &flashSize, sizeof(int) },
-  { &flashBank, sizeof(int) },
-  { &flashSaveMemory[0], 0x20000 },
-  { NULL, 0 }
-};
-
 void flashInit()
 {
   memset(flashSaveMemory, 0xff, sizeof(flashSaveMemory));

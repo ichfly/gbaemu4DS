@@ -1,8 +1,6 @@
 #ifndef __CPU_H__
 #define __CPU_H__
 
-#include <nds/jtypes.h>
-
 // void cpu_GbaMemPerm();
 // void cpu_NdsMemPerm();
 

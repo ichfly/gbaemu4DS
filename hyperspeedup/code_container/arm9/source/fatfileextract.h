@@ -112,7 +112,7 @@ pagefehler++;
 	
 	return *(u32*)(&asd[sectoroffset]);
 }
-inline void ichfly_readdma_rom(u32 pos,u8 *ptr,u32 c,int readal) //need lockup only alined is not working 
+inline void ichfly_readdma_rom(u32 pos, u8 *ptr, int c, int readal) //need lockup only alined is not working 
 {
 
 	// Calculate the sector and byte of the current position,

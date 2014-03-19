@@ -1,11 +1,15 @@
 		//sound alloc
 		//0-3 matching gba
 		//4-5 FIFO
-		//ledBlink(1);
-		//swiWaitForVBlank();
+
+//#define checkforerror
+
+//timerStart timeval is not 100% acurate need a new idear to handel that
+//also we are 3 sampels + some overlayer back in the file fix that
 
 
-volatile int sock = 0;                        /* Socket descriptor */
+
+
 
 #include <nds.h>
 #include <nds/arm7/audio.h>
@@ -36,12 +40,11 @@ u32 currfehler = 0;
 #define maxfehler 8
 #endif
 
+
 bool __dsimode = false;
 
-//#define checkforerror
 
-//timerStart timeval sucks need a new idear to handel that
-//also we are 3 sampels + some overlayer back in the file fix that
+volatile int sock = 0;                        /* Socket descriptor */
 
 
 //internal vals
@@ -202,15 +205,15 @@ u32 Envelope(u8 back)
 	{
 		if(SOUND1CNT_H & 0x800)
 		{
-			if(SOUND1CNT_H&0xF000 == 0xF000)return 0;
+			if((SOUND1CNT_H&0xF000) == 0xF000)return 0;
 			SOUND1CNT_H += 0x1000;
-			if(SOUND1CNT_H&0xF000 == 0xF000)dropout = true;
+			if((SOUND1CNT_H&0xF000) == 0xF000)dropout = true;
 		}
 		else
 		{
-			if(SOUND1CNT_H&0xF000 == 0x0000)return 0;
+			if ((SOUND1CNT_H & 0xF000) == 0x0000)return 0;
 			SOUND1CNT_H -= 0x1000;
-			if(SOUND1CNT_H&0xF000 == 0x0000)dropout = true;
+			if ((SOUND1CNT_H & 0xF000) == 0x0000)dropout = true;
 		}
 		SCHANNEL_CR(8) = ((SCHANNEL_CR(8) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(8)) >> 8) + Masterleft * ((SOUNDCNT_L & BIT(12)) >> 12) ) * Vol) * ((SOUND1CNT_H & 0xF000) >> 12)*127/840);  //max:127
 		if(dropout)return 0;
@@ -219,15 +222,15 @@ u32 Envelope(u8 back)
 	{
 		if(SOUND2CNT_H & 0x800)
 		{
-			if(SOUND2CNT_H&0xF000 == 0xF000)return 0;
+			if((SOUND2CNT_H&0xF000) == 0xF000)return 0;
 			SOUND2CNT_H += 0x1000;
-			if(SOUND2CNT_H&0xF000 == 0xF000)dropout = true;
+			if((SOUND2CNT_H&0xF000) == 0xF000)dropout = true;
 		}
 		else 
 		{
-			if(SOUND2CNT_H&0xF000 == 0x0000)return 0;
+			if((SOUND2CNT_H&0xF000) == 0x0000)return 0;
 			SOUND2CNT_H -= 0x1000;
-			if(SOUND2CNT_H&0xF000 == 0x0000)dropout = true;
+			if ((SOUND2CNT_H & 0xF000) == 0x0000)dropout = true;
 		}
 		SCHANNEL_CR(9) = ((SCHANNEL_CR(9) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(9)) >> 9) + Masterleft * ((SOUNDCNT_L & BIT(13)) >> 13) ) * Vol) * ((SOUND2CNT_H & 0xF000) >> 12)*127/840);  //max:127
 		if(dropout)return 0;
@@ -236,20 +239,21 @@ u32 Envelope(u8 back)
 	{
 		if(SOUND4CNT_L & 0x800)
 		{
-			if(SOUND4CNT_L&0xF000 == 0xF000)return 0;
+			if ((SOUND4CNT_L & 0xF000) == 0xF000)return 0;
 			SOUND4CNT_L += 0x1000;
-			if(SOUND4CNT_L&0xF000 == 0x0000)dropout = true;
+			if ((SOUND4CNT_L & 0xF000) == 0x0000)dropout = true;
 		}
 		else
 		{
-			if(SOUND4CNT_L&0xF000 == 0x0000)return 0;
+			if ((SOUND4CNT_L & 0xF000) == 0x0000)return 0;
 			SOUND4CNT_L -= 0x1000;
-			if(SOUND4CNT_L&0xF000 == 0x0000)dropout = true;
+			if ((SOUND4CNT_L & 0xF000) == 0x0000)dropout = true;
 		}
 		SCHANNEL_CR(3) = ((SCHANNEL_CR(3) & ~0xFF) | ((Masterright * ((SOUNDCNT_L & BIT(11)) >> 11) + Masterleft * ((SOUNDCNT_L & BIT(15)) >> 15) )* Vol) * ((SOUND4CNT_L & 0xF000) >> 12)*127/840);
 		if(dropout)return 0;
 		return BUS_CLOCK/(0x40/((SOUND4CNT_L & 0x700) >> 8));
 	}
+	return 0;
 }
 
 void dmaAtimerinter()
@@ -447,7 +451,7 @@ void newvalwrite16(u32 addr,u32 val)
 				{
 				int r = val & 0x7 << 1;
 				int s = (val &0xF0) >> 4;
-				if(r = 0)r = 1;
+				if(r == 0)r = 1;
 				SCHANNEL_TIMER(3) = -(33513982/2)/(524288 * 2 / r / (1<<(s+1)));
 				if(val&0x8)
 				{
@@ -673,7 +677,7 @@ void newvalwrite16(u32 addr,u32 val)
 				  }
 				break;
 
-			  case 0x1FFFFFF8: //wifi startup
+			  case wifi_startup:
 				if(val)
 				{
 					installWifiFIFO();
@@ -705,7 +709,7 @@ void newvalwrite16(u32 addr,u32 val)
 					unsigned short echoServPort;     /* Echo server port */
 					char *servIP;                    /* Server IP address (dotted quad) */
 					char *echoString;                /* String to send to echo server */
-					unsigned int echoStringLen;      /* Length of string to echo */
+					int echoStringLen;      /* Length of string to echo */
 
 
 					servIP = "192.168.168.35";             /* First arg: server IP address (dotted quad) */
@@ -744,10 +748,10 @@ void newvalwrite16(u32 addr,u32 val)
 				}
 				break;
 
-			  case 0x1FFFFFF9:
+			  case writePowerManagementarm9:
 				writePowerManagement(0,(int)val);
 				 break;
-			  case 0x1FFFFFFA:
+			  case setdmasoundbuff:
 				//senddebug32(val);
 
 				  dmabuffer = val;
@@ -921,7 +925,7 @@ int main() {
 		{
 			while(1)
 			{
-				unsigned int echoStringLen = 4 + 4 + 4;      /* Length of cmd*/
+				int echoStringLen = 4 + 4 + 4;      /* Length of cmd*/
 				char echoBuffer[echoStringLen];     /* Buffer for echo string */
 				int bytesRcvd, totalBytesRcvd = 0;   /* Bytes read in single recv() 
 													and total bytes read */
@@ -946,10 +950,10 @@ int main() {
 				else if(echoBuffer[0] == 2) //cmd write
 				{
 					u32 buff1 = *(u32*)(&echoBuffer[4]);
-					u32 buff2 = *(u32*)(&echoBuffer[8]);
+					s32 buff2 = *(s32*)(&echoBuffer[8]);
 
 					bytesRcvd, totalBytesRcvd = 0;
-					unsigned int echoStringLen = buff2;
+					int echoStringLen = buff2;
 					while (totalBytesRcvd < echoStringLen)
 					{
 						if ((bytesRcvd = netinter->recv(sock, (void*)(buff1 + totalBytesRcvd), 0x100, 0)) <= 0)
