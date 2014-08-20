@@ -406,8 +406,8 @@ inter_data:
 
 	@ change the mode  @ on change de mode (on se mets dans le mode qui était avant l'exception)
 	mrs	r3, cpsr
-	bic	r4, r3, #0x1F
 	and	r1, r5, #0x1F
+	bic	r4, r3, #0x1F
 	
 	
 	cmp r1,#0x10 @ichfly user is system
@@ -498,8 +498,8 @@ exitdirectcpu:
 
 	@change mode to the saved mode @ on change de mode (on se mets dans le mode qui était avant l'exception)
 	mrs	r3, cpsr
-	bic	r4, r3, #0x1F
 	and	r5, r5, #0x1F
+	bic	r4, r3, #0x1F
 	
 	cmp r5,#0x10 @ichfly user is system
 	moveq r5,#0x1F	
@@ -514,12 +514,14 @@ exitdirectcpu:
 
 	
 	BIC SP,r7,#0x30000000 @ldr	SP, =0x06333333
+	
+	sub lr,r6,#13 * 4 @ldr	lr, =exRegs
+	
 	mcr	p15, 0, SP, c5, c0, 2
 
 
 
 	@restore r0-r12 easy
-	sub lr,r6,#13 * 4 @ldr	lr, =exRegs
 	ldmia	lr, {r0-r12}
 			
 	@restore PU from the handler @ restaure la protection du PU, comme voulue par l'handler perso
