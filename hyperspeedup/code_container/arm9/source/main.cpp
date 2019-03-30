@@ -455,7 +455,7 @@ int main( int argc, char **argv) {
 	videoBgDisableSub(0);
 	vramSetBankH(VRAM_H_LCD); //only sub
 	vramSetBankI(VRAM_I_LCD); //only sub
-	 int iback = bgInitSub(3, BgType_ExRotation, BgSize_B16_256x256, 0,0);
+	int iback = bgInitSub(3, BgType_ExRotation, BgSize_B16_256x256, 0,0);
 
 	//bgSetScale(3,0x111,0x133);
 	//bgSetRotateScale(iback,0,0x111,0x133);

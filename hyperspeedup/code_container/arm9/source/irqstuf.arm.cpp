@@ -559,7 +559,7 @@ void frameasyncsync(void) {
 	}
 
 //pause menu
-char* seloptions [5] = {(char*)"save save",(char*)"show mem",(char*)"Continue",(char*)"load GBA",(char*)"close GBA"};
+char* seloptions [5] = {(char*)"save save",(char*)"show mem",(char*)"Continue"};
 
 void pausemenue()
 {
@@ -568,6 +568,7 @@ void pausemenue()
 	videoBgEnableSub(0);
 	vramSetBankH(VRAM_H_SUB_BG); //only sub /*for prints to lowern screan*/ 
 	vramSetBankI(VRAM_I_SUB_BG_0x06208000); //only sub
+	consoleDemoInit();
 #endif
 	REG_IE = 0; //no irq
 	u16 tempvcount = REG_VCOUNT;
@@ -578,10 +579,10 @@ void pausemenue()
 	//irqDisable(IRQ_VBLANK);
 	//cpupausemode(); //don't need that
 	int pressed;
-	int ausgewauhlt = 2;
+	int ausgewauhlt = 1;
 	while(1)
 	{
-		int itemcount=5; 
+		int itemcount=4; 
 		iprintf("\x1b[2J");
 		iprintf("Pause\n");
 		iprintf ("--------------------------------");
@@ -630,7 +631,7 @@ void pausemenue()
 						//u32 src = REG_IPC_FIFO_RX; //get sync irqs back
 					return ; //and return
 					break;
-				case 3:
+				/*case 3:
 					resettostartup();
 					//main(0,0);
 					break;
@@ -649,7 +650,7 @@ void pausemenue()
 					runNdsFile ((const char*)"fat:/hbmenu.nds", 0, 0);
 					//init end
 					
-					break;
+					break;*/
 				}
 		}
 		if (pressed&KEY_DOWN && ausgewauhlt != itemcount){ ausgewauhlt++;}
