@@ -582,11 +582,11 @@ void pausemenue()
 	int ausgewauhlt = 1;
 	while(1)
 	{
-		int itemcount=4; 
+		int itemcount=2; 
 		iprintf("\x1b[2J");
 		iprintf("Pause\n");
 		iprintf ("--------------------------------");
-		for(int i = 0; i < itemcount; i++)
+		for(int i = 0; i <= itemcount; i++)
 		{
 			if(i == ausgewauhlt) iprintf("->");
 			else iprintf("  ");
@@ -653,7 +653,7 @@ void pausemenue()
 					break;*/
 				}
 		}
-		if (pressed&KEY_DOWN && ausgewauhlt != itemcount){ ausgewauhlt++;}
+		if (pressed&KEY_DOWN && ausgewauhlt < itemcount){ ausgewauhlt++;}
 		if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
 
 	}
