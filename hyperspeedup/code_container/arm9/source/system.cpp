@@ -17,13 +17,8 @@
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 #include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-
-
-#include <stdio.h>
 #include <stdlib.h>
-#include <nds/memory.h>//#include <memory.h> ichfly
+#include <nds/memory.h>
 #include <nds/ndstypes.h>
 #include <nds/memory.h>
 #include <nds/bios.h>
@@ -36,9 +31,10 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include "System.h"
+
 //#include <SDL.h> //ichfly realy todo
 //#include <SDL_thread.h>
-
 
 #define __DOUTBUFSIZE 256
 
@@ -88,10 +84,12 @@ inline VBA::Window * GUI()
   return VBA::Window::poGetInstance();
 }
 */
+
+int len=0;
+
 void systemMessage(int _iId, const char * _csFormat, ...)
 {
 	va_list args;
-	int len;
 
 	va_start(args, _csFormat);
 	len=vsnprintf(__outstr,__DOUTBUFSIZE,_csFormat,args);

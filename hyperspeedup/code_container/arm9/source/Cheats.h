@@ -51,5 +51,5 @@ extern void cheatsWriteByte(u32, u8);
 //extern int cheatsCheckKeys(u32,u32);
 int cheatsCheckKeys();
 extern int cheatsNumber;
-extern CheatsData cheatsList[100];
+extern struct CheatsData cheatsList[100];
 #endif // GBA_CHEATS_H

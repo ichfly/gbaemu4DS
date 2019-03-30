@@ -17,14 +17,10 @@
 // along with this program; if not, write to the Free Software Foundation,
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-#define gzFile void* //ichfly
 #define voidp void*
 
 #include <nds.h>
 #include <stdio.h>
-
-
-
 
 #ifndef VBA_UTIL_H
 #define VBA_UTIL_H
@@ -34,14 +30,14 @@ enum IMAGE_TYPE {
   IMAGE_GB      = 1
 };
 
-// save game
+#endif
 
-typedef struct {
-  void *address;
-  int size;
-} variable_desc;
 
-extern "C" void generatefilemap(int size);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void generatefilemap(int size);
 
 extern bool utilWritePNGFile(const char *, int, int, u8 *);
 extern bool utilWriteBMPFile(const char *, int, int, u8 *);
@@ -74,4 +70,31 @@ extern long utilGzMemTell(gzFile file);
 extern void utilGBAFindSave(const u8 *, const int);
 extern void utilUpdateSystemColorMaps();
 extern int anytimejmpfilter;
+extern int utilGetSize(int size);
+
+extern void UPDATE_REG(u16 address, u16 value);
+extern void WRITE32LE(u32 * x, u32 v);
+extern void WRITE16LE(u16 * x, u16 v);
+extern u32 READ32LE(u32 * x);
+extern u16 READ16LE(u16 * x);
+
+extern u8 CPUReadByteQuick(u32 addr);
+extern u16 CPUReadHalfWordQuick(u32 addr);
+extern u32 CPUReadMemoryQuick(u32 addr);
+
+extern u16 swap16(u16 v);
+extern u32 swap32(u32 v);
+
+extern int save_decider(bool overrideSaveSettings);
+extern bool useMPUFast;
+
+extern bool save_deciderByTitle(char * headerTitleSource, char * headerTitleHaystack, int SizeToCheck);
+extern bool pendingSaveFix;
+extern int  SaveSizeBeforeFix;
+extern int  SaveSizeAfterFix;
+extern char* strtoupper(char* s);
+extern char* strtolower(char* s);
+
+#ifdef __cplusplus
+}
 #endif

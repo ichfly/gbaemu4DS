@@ -17,7 +17,7 @@
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 #include <math.h>
-#include <nds/memory.h>//#include <memory.h> ichfly
+#include <nds/memory.h>
 #include <nds/ndstypes.h>
 #include <nds/memory.h>
 #include <nds/bios.h>
@@ -31,13 +31,7 @@
 
 #include "GBA.h"
 #include "bios.h"
-#include "GBAinline.h"
-#include "Globals.h"
-
-extern s32  __attribute__((section(".dtcm"))) exRegs[]; //automatisierung
-
-
-#define log(...) iprintf(__VA_ARGS__)
+#include "cpumg.h"
 
 s16 sineTable[256] = {
   (s16)0x0000, (s16)0x0192, (s16)0x0323, (s16)0x04B5, (s16)0x0645, (s16)0x07D5, (s16)0x0964, (s16)0x0AF1,
@@ -378,9 +372,13 @@ void BIOS_Diff8bitUnFilterWram()
   u32 header = CPUReadMemory(source);
   source += 4;
 
-  if(((source & 0xe000000) == 0) ||
-     ((source + ((header >> 8) & 0x1fffff) & 0xe000000) == 0))
-    return;  
+  if(	((source & 0xe000000) == 0) 
+		
+		||
+    
+		((((source + (header >> 8)) & 0x1fffff) & 0xe000000) == 0)
+    )
+	return;  
 
   int len = header >> 8;
 
@@ -1055,7 +1053,8 @@ void BIOS_SoftReset()
   u8 b = internalRAM[0x7ffa];
 
   memset(&internalRAM[0x7e00], 0, 0x200);
-
+	
+  /*
   if(b) {
     armNextPC = 0x02000000;
     exRegs[15] = 0x02000004;
@@ -1063,6 +1062,8 @@ void BIOS_SoftReset()
     armNextPC = 0x08000000;
     exRegs[15] = 0x08000004;
   }
+  */
+  cpu_ArmJumpforstackinit((u32)rom, 0);
 }
 
 void BIOS_Sqrt()

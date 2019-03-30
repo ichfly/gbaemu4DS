@@ -38,6 +38,7 @@
 #include "lock.h"
 #include "mem_allocate.h"
 #include "disc.h"
+#include "file_browse.h"
 
 static const devoptab_t dotab_fat = {
 	"fat",

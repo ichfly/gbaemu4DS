@@ -528,7 +528,12 @@ void consoleDebugInit(DebugDevice device){
 	case DebugDevice_NULL:
 		devoptab_list[STD_ERR] = &dotab_null;
 		break;
+	
+	case DebugDevice_NOCASH:
+		//no$gba port print
+		break;
 	}
+	
 	setvbuf(stderr, NULL , buffertype, 0);
 
 }

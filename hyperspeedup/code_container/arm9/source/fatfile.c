@@ -48,12 +48,8 @@
 #include "ichflysettings.h"
 
 #include "System.h"
+#include "fatmore.h"
 
-u32 *sectortabel;
-
-void * lastopen;
-
-void * lastopenlocked;
 
 bool _FAT_findEntry(const char *path, DIR_ENTRY *dirEntry) {
 	PARTITION *partition = _FAT_partition_getPartitionFromPath(path);
@@ -78,7 +74,7 @@ int	FAT_getAttr(const char *file) {
 	return dirEntry.entryData[DIR_ENTRY_attributes];
 }
 
-int FAT_setAttr(const char *file, int attr) {
+int FAT_setAttr(const char *file, uint8_t attr) {
 
 	// Defines...
 	DIR_ENTRY_POSITION entryEnd;
@@ -1217,89 +1213,4 @@ int _FAT_fsync_r (struct _reent *r, int fd) {
 	_FAT_unlock(&file->partition->lock);
 
 	return ret;
-}
-
-PARTITION* partitionlocked;
-FN_MEDIUM_READSECTORS	readSectorslocked;
-u32 current_pointer = 0;
-u32 allocedfild[buffslots];
-u8* greatownfilebuffer;
-void generatefilemap(int size)
-{
-	FILE_STRUCT* file = (FILE_STRUCT*)(lastopen);
-	lastopenlocked = lastopen; //copy
-	PARTITION* partition;
-	uint32_t cluster;
-	int clusCount;
-	partition = file->partition;
-	partitionlocked = partition;
-
-	readSectorslocked = file->partition->disc->readSectors;
-	iprintf("generating file map (size %d Byte)",((size/chucksize) + 1)*8);
-	sectortabel =(u8*)malloc(((size/chucksize) + 1)*8); //alloc for size every Sector has one u32
-	greatownfilebuffer =(u8*)malloc(chucksize * buffslots);
-
-	clusCount = size/partition->bytesPerCluster;
-	cluster = file->startCluster;
-
-
-	//setblanc
-	int i = 0;
-	while(i < (partition->bytesPerCluster/chucksize)*clusCount+1)
-	{
-		sectortabel[i*2] = 0x0;
-		i++;
-	}
-	i = 0;
-	while(i < buffslots)
-	{
-		allocedfild[i] = 0x1;
-		i++;
-	}
-
-
-	int mappoffset = 0;
-	i = 0;
-	while(i < (partition->bytesPerCluster/chucksize))
-	{
-		sectortabel[mappoffset*2 + 1] = _FAT_fat_clusterToSector(partition, cluster) + i;
-		mappoffset++;
-		i++;
-	}
-	while (clusCount > 0) {
-		clusCount--;
-		cluster = _FAT_fat_nextCluster (partition, cluster);
-
-		i = 0;
-		while(i < (partition->bytesPerCluster/chucksize))
-		{
-			sectortabel[mappoffset*2 + 1] = _FAT_fat_clusterToSector(partition, cluster) + i;
-			mappoffset++;
-			i++;
-		}
-	}
-
-}
-void getandpatchmap(offsetgba,offsetthisfile)
-{
-	FILE_STRUCT* file = (FILE_STRUCT*)(lastopen);
-	PARTITION* partition;
-	uint32_t cluster;
-	int clusCount;
-	partition = file->partition;
-
-	clusCount = offsetthisfile/partition->bytesPerCluster;
-	cluster = file->startCluster;
-
-	int offset1 = (offsetthisfile/chucksize) % partition->bytesPerCluster;
-
-	int mappoffset = offsetthisfile/chucksize;
-	while (clusCount > 0) {
-		clusCount--;
-		cluster = _FAT_fat_nextCluster (partition, cluster);
-	}
-	sectortabel[mappoffset*2 + 1] = _FAT_fat_clusterToSector(partition, cluster) + offset1;
-
-
-
 }

@@ -1,56 +1,14 @@
-#include "../../gloabal/cpuglobal.h"
-
-
 #include <nds.h>
-#include <stdio.h>
-
-#include <filesystem.h>
-#include "GBA.h"
-#include "Sound.h"
-#include "Util.h"
-#include "getopt.h"
-#include "System.h"
-#include <fat.h>
-#include <dirent.h>
-
-#include "cpumg.h"
-#include "GBAinline.h"
-#include "bios.h"
-
-#include "mydebuger.h"
-
-#include "file_browse.h"
-
-#define MAXPATHLEN 256 
-
-#include <nds.h>
-
-
-#include "main.h"
-#ifndef noichflydebugger
-
-
-typedef struct
-{
-	u32 entryPoint;
-	u8 logo[156];
-	char title[0xC];
-	char gamecode[0x4];
-	u16 makercode;
-	u8 is96h;
-	u8 unitcode;
-	u8 devicecode;
-	u8 unused[7];
-	u8 version;
-	u8 complement;
-	u16 checksum;
-} __attribute__ ((__packed__)) gbaHeader_t;
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <nds/memory.h>//#include <memory.h> ichfly
 #include <nds/ndstypes.h>
 #include <nds/memory.h>
+
+#include <stdio.h>
+#include <fat.h>
+#include <dirent.h>
+#include <filesystem.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
 #include <nds/bios.h>
 #include <nds/system.h>
 #include <nds/arm9/math.h>
@@ -58,35 +16,29 @@ typedef struct
 #include <nds/arm9/videoGL.h>
 #include <nds/arm9/trig_lut.h>
 #include <nds/arm9/sassert.h>
-#include <stdarg.h>
-#include <string.h>
 
-
-extern "C" void pu_Enable();
-extern "C" void cpu_SetCP15Cnt(u32 v);
-extern "C" u32 cpu_GetCP15Cnt();
-
-char* seloptionsshowmem [7] = {"dump ram","dump gba ram","show nds ram","show gba ram","cram dump","dispcomdebug","exit"};
+#include "GBA.h"
+#include "Sound.h"
+#include "Util.h"
+#include "getopt.h"
+#include "System.h"
+#include "cpumg.h"
+#include "bios.h"
+#include "mydebuger.h"
+#include "file_browse.h"
+#include "main.h"
+#include "ds_dma.h"
 
 #define readanom 0x100
 
-static inline void wait_press_b()
-{
-    scanKeys();
-    u16 keys_up = 0;
-    while( 0 == (keys_up & KEY_B) )
-    {
-        scanKeys();
-        keys_up = keysUp();
-    }
-}
+char* seloptionsshowmem [6] = {(char*)"dump ram",(char*)"dump gba ram",(char*)"show nds ram",(char*)"show gba ram",(char*)"cram dump",(char*)"exit"};
 
 u32 userinputval(u32 original_val,u32 bits)
 {
-	u32 srctempmulti = 0x10;
 	while(1)
 	{
 		u32 pressed;
+		u32 srctempmulti = 0x10;
 		do {
 			if((REG_DISPSTAT & DISP_IN_VBLANK)) while((REG_DISPSTAT & DISP_IN_VBLANK)); //workaround
 			while(!(REG_DISPSTAT & DISP_IN_VBLANK));
@@ -94,12 +46,12 @@ u32 userinputval(u32 original_val,u32 bits)
 			pressed = (keysDownRepeat()& ~0xFC00);
 		} while (!pressed);
 		iprintf("\x1b[2J");
-		iprintf("val %08X multi: %08X\n",original_val,srctempmulti);
+		iprintf("val %08X multi: %08X\n",(unsigned int)original_val,(unsigned int)srctempmulti);
 
 		if (pressed&KEY_UP) original_val+= srctempmulti;
-		if (pressed&KEY_DOWN) original_val-=srctempmulti;
-		if (pressed&KEY_RIGHT) srctempmulti = 2 * srctempmulti;
-		if (pressed&KEY_LEFT && srctempmulti != 1) srctempmulti = srctempmulti/ 2;
+		if (pressed&KEY_DOWN && original_val != 0) original_val-=srctempmulti;
+		if (pressed&KEY_RIGHT) srctempmulti *= 2;
+		if (pressed&KEY_LEFT && srctempmulti != 1) srctempmulti /= 2;
 		if (pressed&KEY_SELECT) break;
 	}
 	return original_val;
@@ -107,7 +59,7 @@ u32 userinputval(u32 original_val,u32 bits)
 
 void show_gba_mem()
 {
-	u32 pressed;
+	u32 pressed=0;
 	u32 src = 0x03000000;
 	u32 srctempmulti = 0x10000;
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu
@@ -116,7 +68,7 @@ void show_gba_mem()
 	u16 pointer = 0;
 	while(1) 
 	{
-		iprintf("gba src %08X multi: %08X\n",src,srctempmulti);
+		iprintf("gba src %08X multi: %08X\n",(unsigned int)src,(unsigned int)srctempmulti);
 		switch (type)
 		{
 			case 1:
@@ -125,11 +77,11 @@ void show_gba_mem()
 				{
 					if(writeon && pointer == i)
 					{
-						iprintf("\x1b[33[0m%02X\x1b[39[0m",CPUReadBytereal(src + i));
+						iprintf("\x1b[33[0m%02X\x1b[39[0m",(unsigned int)CPUReadBytereal(src + i));
 					}
 					else
 					{
-						iprintf("%02X",CPUReadBytereal(src + i));
+						iprintf("%02X",(unsigned int)CPUReadBytereal(src + i));
 					}
 				}
 			}
@@ -179,11 +131,11 @@ void show_gba_mem()
 				{
 					if(writeon && pointer == i)
 					{
-						iprintf("\x1b[33[0m%08X\x1b[39[0m",CPUReadMemoryreal(src + i));
+						iprintf("\x1b[33[0m%08X\x1b[39[0m",(unsigned int)CPUReadMemoryreal(src + i));
 					}
 					else
 					{
-						iprintf("%08X",CPUReadMemoryreal(src + i));
+						iprintf("%08X",(unsigned int)CPUReadMemoryreal(src + i));
 					}
 				}
 			}
@@ -232,7 +184,7 @@ void show_gba_mem()
 
 void show_nds_mem() //change colour with \x1b[33[0m back with \x1b[39[0m
 {
-	u32 pressed;
+	u32 pressed=0;
 	u32 src = 0x03000000;
 	u32 srctempmulti = 0x10000;
 	cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu
@@ -241,7 +193,7 @@ void show_nds_mem() //change colour with \x1b[33[0m back with \x1b[39[0m
 	u16 pointer = 0;
 	while(1) 
 	{
-		iprintf("nds src %08X multi: %08X\n",src,srctempmulti);
+		iprintf("nds src %08X multi: %08X\n",(unsigned int)src,(unsigned int)srctempmulti);
 		switch (type)
 		{
 			case 1:
@@ -304,11 +256,11 @@ void show_nds_mem() //change colour with \x1b[33[0m back with \x1b[39[0m
 				{
 					if(writeon && pointer == i)
 					{
-						iprintf("\x1b[33[0m%08X\x1b[39[0m",*(u32*)(src + i));
+						iprintf("\x1b[33[0m%08X\x1b[39[0m",(unsigned int)*(u32*)(src + i));
 					}
 					else
 					{
-						iprintf("%08X",*(u32*)(src + i));
+						iprintf("%08X",(unsigned int)*(u32*)(src + i));
 					}
 				}
 			}
@@ -353,35 +305,7 @@ void show_nds_mem() //change colour with \x1b[33[0m back with \x1b[39[0m
 	}
 	pu_Enable(); //back to normal code
 }
-#ifdef anyarmcom
-extern u32 amr7sendcom;
-extern u32 amr7senddma1;
-extern u32 amr7senddma2;
-extern u32 amr7recmuell;
-extern u32 amr7directrec;
-extern u32 amr7indirectrec;
-extern u32 recDMA1;
-extern u32 recDMA2;
-extern u32 recdir;
-extern u32 recdel;
-extern u32 amr7fehlerfeld[10];
-void showcomdebug()
-{
-	iprintf("%04X\n",CPUReadHalfWordreal(0x4000200));
-	iprintf("%08X %08X\n",amr7recmuell,amr7sendcom);
-	iprintf("%08X %08X\n",amr7directrec,amr7indirectrec);
-	iprintf("%08X %08X\n",amr7senddma1,amr7senddma2);
-	iprintf("%08X %08X\n",recDMA1,recDMA2);
-	iprintf("%08X %08X\n",recdir,recdel);
-	for (int i = 0;i < 8;i+=2)
-	{
-		iprintf("%08X %08X\n",amr7fehlerfeld[i],amr7fehlerfeld[i + 1]);
-	}
-#ifdef countpagefalts
-	iprintf("%08X",pagefehler);
-#endif
-}
-#endif
+
 void show_mem()
 {
 	int pressed;
@@ -391,7 +315,7 @@ void show_mem()
 		iprintf("\x1b[2J");
 		iprintf("show mem\n");
 		iprintf ("--------------------------------");
-		for(int i = 0; i < 7; i++)
+		for(int i = 0; i < 6; i++)
 		{
 			if(i == ausgewauhlt) iprintf("->");
 			else iprintf("  ");
@@ -484,18 +408,11 @@ void show_mem()
 					}
 					break;
 				case 5:
-#ifdef anyarmcom
-					showcomdebug();
-					wait_press_b();
-#endif
-					break;
-				case 6:
 					return; //and return
 				}
 		}
-		if (pressed&KEY_DOWN && ausgewauhlt != 6){ ausgewauhlt++;}
+		if (pressed&KEY_DOWN && ausgewauhlt != 5){ ausgewauhlt++;}
 		if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
 
 	}
 }
-#endif

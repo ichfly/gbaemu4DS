@@ -45,7 +45,7 @@ u8 eepromBuffer[16];
 bool eepromInUse = false;
 int eepromSize = 512;
 
-variable_desc eepromSaveData[] = {
+struct variable_desc eepromSaveData[] = {
   { &eepromMode, sizeof(int) },
   { &eepromByte, sizeof(int) },
   { &eepromBits , sizeof(int) },

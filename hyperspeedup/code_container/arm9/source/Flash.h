@@ -20,6 +20,18 @@
 #ifndef VBA_FLASH_H
 #define VBA_FLASH_H
 
+	//save game
+	struct variable_desc{ 
+		void *address;
+		int size;
+	};
+
+#endif // VBA_FLASH_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void flashSaveGame(gzFile _gzFile);
 extern void flashReadGame(gzFile _gzFile, int version);
 extern u8 flashRead(u32 address);
@@ -30,6 +42,12 @@ extern void flashSaveDecide(u32 address, u8 byte);
 extern void flashReset();
 extern void flashSetSize(int size);
 extern void flashInit();
-
 extern int flashSize;
-#endif // VBA_FLASH_H
+
+extern struct variable_desc flashSaveData[];
+extern struct variable_desc flashSaveData2[];
+extern struct variable_desc flashSaveData3[];
+
+#ifdef __cplusplus
+}
+#endif

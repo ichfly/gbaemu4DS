@@ -22,11 +22,37 @@
 #ifndef FILE_BROWSE_H
 #define FILE_BROWSE_H
 
-#include <string>
-#include <vector>
 
-void browseForFile (const std::vector<std::string> extensionList);
+#define MAXPATHLEN 255
 
+#ifdef __cplusplus
+	#include <string>
+	#include <vector>
+
+	bool browseForFile (const std::vector<std::string> extensionList);
+
+#endif
 
 
 #endif //FILE_BROWSE_H
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern char biosPath[MAXPATHLEN * 2];
+
+extern char patchPath[MAXPATHLEN * 2];
+
+extern char savePath[MAXPATHLEN * 2];
+
+extern char szFile[MAXPATHLEN * 2];
+
+extern char temppath[MAXPATHLEN * 2];
+
+extern bool cpuIsMultiBoot;
+
+#ifdef __cplusplus
+}
+#endif

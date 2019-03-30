@@ -20,16 +20,15 @@
 /* Arm/Thumb command set disassembler                                   */
 /************************************************************************/
 
-
 #include "ichflysettings.h"
 #ifndef noichflydebugger
 #include <stdio.h>
 
 #include "System.h"
-#include "Port.h"
 #include "GBA.h"
 #include "armdis.h"
 #include "elf.h"
+#include "Util.h"
 
 struct Opcodes {
   u32 mask;
@@ -78,139 +77,139 @@ const char *armMultLoadStore[12] = {
 
 const Opcodes thumbOpcodes[] = {
   // Format 1
-  {0xf800, 0x0000, "lsl %r0, %r3, %o"},
-  {0xf800, 0x0800, "lsr %r0, %r3, %o"},
-  {0xf800, 0x1000, "asr %r0, %r3, %o"},
+  {0xf800, 0x0000, (char*)"lsl %r0, %r3, %o"},
+  {0xf800, 0x0800, (char*)"lsr %r0, %r3, %o"},
+  {0xf800, 0x1000, (char*)"asr %r0, %r3, %o"},
   // Format 2
-  {0xfe00, 0x1800, "add %r0, %r3, %r6"},
-  {0xfe00, 0x1a00, "sub %r0, %r3, %r6"},
-  {0xfe00, 0x1c00, "add %r0, %r3, %i"},
-  {0xfe00, 0x1e00, "sub %r0, %r3, %i"},
+  {0xfe00, 0x1800, (char*)"add %r0, %r3, %r6"},
+  {0xfe00, 0x1a00, (char*)"sub %r0, %r3, %r6"},
+  {0xfe00, 0x1c00, (char*)"add %r0, %r3, %i"},
+  {0xfe00, 0x1e00, (char*)"sub %r0, %r3, %i"},
   // Format 3
-  {0xf800, 0x2000, "mov %r8, %O"},
-  {0xf800, 0x2800, "cmp %r8, %O"},
-  {0xf800, 0x3000, "add %r8, %O"},
-  {0xf800, 0x3800, "sub %r8, %O"},
+  {0xf800, 0x2000, (char*)"mov %r8, %O"},
+  {0xf800, 0x2800, (char*)"cmp %r8, %O"},
+  {0xf800, 0x3000, (char*)"add %r8, %O"},
+  {0xf800, 0x3800, (char*)"sub %r8, %O"},
   // Format 4
-  {0xffc0, 0x4000, "and %r0, %r3"},
-  {0xffc0, 0x4040, "eor %r0, %r3"},
-  {0xffc0, 0x4080, "lsl %r0, %r3"},
-  {0xffc0, 0x40c0, "lsr %r0, %r3"},
-  {0xffc0, 0x4100, "asr %r0, %r3"},
-  {0xffc0, 0x4140, "adc %r0, %r3"},
-  {0xffc0, 0x4180, "sbc %r0, %r3"},
-  {0xffc0, 0x41c0, "ror %r0, %r3"},
-  {0xffc0, 0x4200, "tst %r0, %r3"},
-  {0xffc0, 0x4240, "neg %r0, %r3"},
-  {0xffc0, 0x4280, "cmp %r0, %r3"},
-  {0xffc0, 0x42c0, "cmn %r0, %r3"},
-  {0xffc0, 0x4300, "orr %r0, %r3"},
-  {0xffc0, 0x4340, "mul %r0, %r3"},
-  {0xffc0, 0x4380, "bic %r0, %r3"},
-  {0xffc0, 0x43c0, "mvn %r0, %r3"},
+  {0xffc0, 0x4000, (char*)"and %r0, %r3"},
+  {0xffc0, 0x4040, (char*)"eor %r0, %r3"},
+  {0xffc0, 0x4080, (char*)"lsl %r0, %r3"},
+  {0xffc0, 0x40c0, (char*)"lsr %r0, %r3"},
+  {0xffc0, 0x4100, (char*)"asr %r0, %r3"},
+  {0xffc0, 0x4140, (char*)"adc %r0, %r3"},
+  {0xffc0, 0x4180, (char*)"sbc %r0, %r3"},
+  {0xffc0, 0x41c0, (char*)"ror %r0, %r3"},
+  {0xffc0, 0x4200, (char*)"tst %r0, %r3"},
+  {0xffc0, 0x4240, (char*)"neg %r0, %r3"},
+  {0xffc0, 0x4280, (char*)"cmp %r0, %r3"},
+  {0xffc0, 0x42c0, (char*)"cmn %r0, %r3"},
+  {0xffc0, 0x4300, (char*)"orr %r0, %r3"},
+  {0xffc0, 0x4340, (char*)"mul %r0, %r3"},
+  {0xffc0, 0x4380, (char*)"bic %r0, %r3"},
+  {0xffc0, 0x43c0, (char*)"mvn %r0, %r3"},
   // Format 5
-  {0xff80, 0x4700, "bx %h36"},
-  {0xfcc0, 0x4400, "[ ??? ]"},
-  {0xff00, 0x4400, "add %h07, %h36"},
-  {0xff00, 0x4500, "cmp %h07, %h36"},
-  {0xff00, 0x4600, "mov %h07, %h36"},
+  {0xff80, 0x4700, (char*)"bx %h36"},
+  {0xfcc0, 0x4400, (char*)"[ ??? ]"},
+  {0xff00, 0x4400, (char*)"add %h07, %h36"},
+  {0xff00, 0x4500, (char*)"cmp %h07, %h36"},
+  {0xff00, 0x4600, (char*)"mov %h07, %h36"},
   // Format 6
-  {0xf800, 0x4800, "ldr %r8, [%I] (=%J)"},
+  {0xf800, 0x4800, (char*)"ldr %r8, [%I] (=%J)"},
   // Format 7
-  {0xfa00, 0x5000, "str%b %r0, [%r3, %r6]"},
-  {0xfa00, 0x5800, "ldr%b %r0, [%r3, %r6]"},
+  {0xfa00, 0x5000, (char*)"str%b %r0, [%r3, %r6]"},
+  {0xfa00, 0x5800, (char*)"ldr%b %r0, [%r3, %r6]"},
   // Format 8
-  {0xfe00, 0x5200, "strh %r0, [%r3, %r6]"},
-  {0xfe00, 0x5600, "ldsb %r0, [%r3, %r6]"},
-  {0xfe00, 0x5a00, "ldrh %r0, [%r3, %r6]"},
-  {0xfe00, 0x5e00, "ldsh %r0, [%r3, %r6]"},
+  {0xfe00, 0x5200, (char*)"strh %r0, [%r3, %r6]"},
+  {0xfe00, 0x5600, (char*)"ldsb %r0, [%r3, %r6]"},
+  {0xfe00, 0x5a00, (char*)"ldrh %r0, [%r3, %r6]"},
+  {0xfe00, 0x5e00, (char*)"ldsh %r0, [%r3, %r6]"},
   // Format 9
-  {0xe800, 0x6000, "str%B %r0, [%r3, %p]"},
-  {0xe800, 0x6800, "ldr%B %r0, [%r3, %p]"},
+  {0xe800, 0x6000, (char*)"str%B %r0, [%r3, %p]"},
+  {0xe800, 0x6800, (char*)"ldr%B %r0, [%r3, %p]"},
   // Format 10
-  {0xf800, 0x8000, "strh %r0, [%r3, %e]"},
-  {0xf800, 0x8800, "ldrh %r0, [%r3, %e]"},
+  {0xf800, 0x8000, (char*)"strh %r0, [%r3, %e]"},
+  {0xf800, 0x8800, (char*)"ldrh %r0, [%r3, %e]"},
   // Format 11
-  {0xf800, 0x9000, "str %r8, [sp, %w]"},
-  {0xf800, 0x9800, "ldr %r8, [sp, %w]"},
+  {0xf800, 0x9000, (char*)"str %r8, [sp, %w]"},
+  {0xf800, 0x9800, (char*)"ldr %r8, [sp, %w]"},
   // Format 12
-  {0xf800, 0xa000, "add %r8, pc, %w (=%K)"},
-  {0xf800, 0xa800, "add %r8, sp, %w"},
+  {0xf800, 0xa000, (char*)"add %r8, pc, %w (=%K)"},
+  {0xf800, 0xa800, (char*)"add %r8, sp, %w"},
   // Format 13
-  {0xff00, 0xb000, "add sp, %s"},
+  {0xff00, 0xb000, (char*)"add sp, %s"},
   // Format 14
-  {0xffff, 0xb500, "push {lr}"},  
-  {0xff00, 0xb400, "push {%l}"},
-  {0xff00, 0xb500, "push {%l,lr}"},
-  {0xffff, 0xbd00, "pop {pc}"},
-  {0xff00, 0xbd00, "pop {%l,pc}"},  
-  {0xff00, 0xbc00, "pop {%l}"},
+  {0xffff, 0xb500, (char*)"push {lr}"},  
+  {0xff00, 0xb400, (char*)"push {%l}"},
+  {0xff00, 0xb500, (char*)"push {%l,lr}"},
+  {0xffff, 0xbd00, (char*)"pop {pc}"},
+  {0xff00, 0xbd00, (char*)"pop {%l,pc}"},  
+  {0xff00, 0xbc00, (char*)"pop {%l}"},
   // Format 15
-  {0xf800, 0xc000, "stmia %r8!, {%l}"},
-  {0xf800, 0xc800, "ldmia %r8!, {%l}"},
+  {0xf800, 0xc000, (char*)"stmia %r8!, {%l}"},
+  {0xf800, 0xc800, (char*)"ldmia %r8!, {%l}"},
   // Format 17
-  {0xff00, 0xdf00, "swi %m"},
+  {0xff00, 0xdf00, (char*)"swi %m"},
   // Format 16
-  {0xf000, 0xd000, "b%c %W"},
+  {0xf000, 0xd000, (char*)"b%c %W"},
   // Format 18
-  {0xf800, 0xe000, "b %a"},
+  {0xf800, 0xe000, (char*)"b %a"},
   // Format 19
-  {0xf800, 0xf000, "bl %A"},
-  {0xf800, 0xf800, "blh %Z"},
-  {0xff00, 0xbe00, "bkpt %O"},
+  {0xf800, 0xf000, (char*)"bl %A"},
+  {0xf800, 0xf800, (char*)"blh %Z"},
+  {0xff00, 0xbe00, (char*)"bkpt %O"},
   // Unknown
-  {0x0000, 0x0000, "[ ??? ]"}
+  {0x0000, 0x0000, (char*)"[ ??? ]"}
 };
 
 const Opcodes armOpcodes[] = {
   // Undefined
-  {0x0e000010, 0x06000010, "[ undefined ]"},
+  {0x0e000010, 0x06000010, (char*)"[ undefined ]"},
   // Branch instructions
-  {0x0ff000f0, 0x01200010, "bx%c %r0"},
-  {0x0f000000, 0x0a000000, "b%c %o"},
-  {0x0f000000, 0x0b000000, "bl%c %o"},
-  {0x0f000000, 0x0f000000, "swi%c %q"},
+  {0x0ff000f0, 0x01200010, (char*)"bx%c %r0"},
+  {0x0f000000, 0x0a000000, (char*)"b%c %o"},
+  {0x0f000000, 0x0b000000, (char*)"bl%c %o"},
+  {0x0f000000, 0x0f000000, (char*)"swi%c %q"},
   // PSR transfer
-  {0x0fbf0fff, 0x010f0000, "mrs%c %r3, %p"},
-  {0x0db0f000, 0x0120f000, "msr%c %p, %i"},
+  {0x0fbf0fff, 0x010f0000, (char*)"mrs%c %r3, %p"},
+  {0x0db0f000, 0x0120f000, (char*)"msr%c %p, %i"},
   // Multiply instructions
-  {0x0fe000f0, 0x00000090, "mul%c%s %r4, %r0, %r2"},
-  {0x0fe000f0, 0x00200090, "mla%c%s %r4, %r0, %r2, %r3"},
-  {0x0fa000f0, 0x00800090, "%umull%c%s %r3, %r4, %r0, %r2"},
-  {0x0fa000f0, 0x00a00090, "%umlal%c%s %r3, %r4, %r0, %r2"},
+  {0x0fe000f0, 0x00000090, (char*)"mul%c%s %r4, %r0, %r2"},
+  {0x0fe000f0, 0x00200090, (char*)"mla%c%s %r4, %r0, %r2, %r3"},
+  {0x0fa000f0, 0x00800090, (char*)"%umull%c%s %r3, %r4, %r0, %r2"},
+  {0x0fa000f0, 0x00a00090, (char*)"%umlal%c%s %r3, %r4, %r0, %r2"},
   // Load/Store instructions
-  {0x0fb00ff0, 0x01000090, "swp%c%b %r3, %r0, [%r4]"},
-  {0x0fb000f0, 0x01000090, "[ ??? ]"},
-  {0x0c100000, 0x04000000, "str%c%b%t %r3, %a"},
-  {0x0c100000, 0x04100000, "ldr%c%b%t %r3, %a"},
-  {0x0e100090, 0x00000090, "str%c%h %r3, %a"},
-  {0x0e100090, 0x00100090, "ldr%c%h %r3, %a"},
-  {0x0e100000, 0x08000000, "stm%c%m %r4%l"},
-  {0x0e100000, 0x08100000, "ldm%c%m %r4%l"},
+  {0x0fb00ff0, 0x01000090, (char*)"swp%c%b %r3, %r0, [%r4]"},
+  {0x0fb000f0, 0x01000090, (char*)"[ ??? ]"},
+  {0x0c100000, 0x04000000, (char*)"str%c%b%t %r3, %a"},
+  {0x0c100000, 0x04100000, (char*)"ldr%c%b%t %r3, %a"},
+  {0x0e100090, 0x00000090, (char*)"str%c%h %r3, %a"},
+  {0x0e100090, 0x00100090, (char*)"ldr%c%h %r3, %a"},
+  {0x0e100000, 0x08000000, (char*)"stm%c%m %r4%l"},
+  {0x0e100000, 0x08100000, (char*)"ldm%c%m %r4%l"},
   // Data processing
-  {0x0de00000, 0x00000000, "and%c%s %r3, %r4, %i"},
-  {0x0de00000, 0x00200000, "eor%c%s %r3, %r4, %i"},
-  {0x0de00000, 0x00400000, "sub%c%s %r3, %r4, %i"},
-  {0x0de00000, 0x00600000, "rsb%c%s %r3, %r4, %i"},
-  {0x0de00000, 0x00800000, "add%c%s %r3, %r4, %i"},
-  {0x0de00000, 0x00a00000, "adc%c%s %r3, %r4, %i"},
-  {0x0de00000, 0x00c00000, "sbc%c%s %r3, %r4, %i"},
-  {0x0de00000, 0x00e00000, "rsc%c%s %r3, %r4, %i"},
-  {0x0de00000, 0x01000000, "tst%c%s %r4, %i"},
-  {0x0de00000, 0x01200000, "teq%c%s %r4, %i"},
-  {0x0de00000, 0x01400000, "cmp%c%s %r4, %i"},
-  {0x0de00000, 0x01600000, "cmn%c%s %r4, %i"},
-  {0x0de00000, 0x01800000, "orr%c%s %r3, %r4, %i"},
-  {0x0de00000, 0x01a00000, "mov%c%s %r3, %i"},
-  {0x0de00000, 0x01c00000, "bic%c%s %r3, %r4, %i"},
-  {0x0de00000, 0x01e00000, "mvn%c%s %r3, %i"},
+  {0x0de00000, 0x00000000, (char*)"and%c%s %r3, %r4, %i"},
+  {0x0de00000, 0x00200000, (char*)"eor%c%s %r3, %r4, %i"},
+  {0x0de00000, 0x00400000, (char*)"sub%c%s %r3, %r4, %i"},
+  {0x0de00000, 0x00600000, (char*)"rsb%c%s %r3, %r4, %i"},
+  {0x0de00000, 0x00800000, (char*)"add%c%s %r3, %r4, %i"},
+  {0x0de00000, 0x00a00000, (char*)"adc%c%s %r3, %r4, %i"},
+  {0x0de00000, 0x00c00000, (char*)"sbc%c%s %r3, %r4, %i"},
+  {0x0de00000, 0x00e00000, (char*)"rsc%c%s %r3, %r4, %i"},
+  {0x0de00000, 0x01000000, (char*)"tst%c%s %r4, %i"},
+  {0x0de00000, 0x01200000, (char*)"teq%c%s %r4, %i"},
+  {0x0de00000, 0x01400000, (char*)"cmp%c%s %r4, %i"},
+  {0x0de00000, 0x01600000, (char*)"cmn%c%s %r4, %i"},
+  {0x0de00000, 0x01800000, (char*)"orr%c%s %r3, %r4, %i"},
+  {0x0de00000, 0x01a00000, (char*)"mov%c%s %r3, %i"},
+  {0x0de00000, 0x01c00000, (char*)"bic%c%s %r3, %r4, %i"},
+  {0x0de00000, 0x01e00000, (char*)"mvn%c%s %r3, %i"},
   // Coprocessor operations
-  {0x0f000010, 0x0e000000, "cdp%c %P, %N, %r3, %R4, %R0%V"},
-  {0x0e100000, 0x0c000000, "stc%c%L %P, %r3, %A"},
-  {0x0f100010, 0x0e000010, "mcr%c %P, %N, %r3, %R4, %R0%V"},
-  {0x0f100010, 0x0e100010, "mrc%c %P, %N, %r3, %R4, %R0%V"},
+  {0x0f000010, 0x0e000000, (char*)"cdp%c %P, %N, %r3, %R4, %R0%V"},
+  {0x0e100000, 0x0c000000, (char*)"stc%c%L %P, %r3, %A"},
+  {0x0f100010, 0x0e000010, (char*)"mcr%c %P, %N, %r3, %R4, %R0%V"},
+  {0x0f100010, 0x0e100010, (char*)"mrc%c %P, %N, %r3, %R4, %R0%V"},
   // Unknown
-  {0x00000000, 0x00000000, "[ ??? ]"}
+  {0x00000000, 0x00000000, (char*)"[ ??? ]"}
 };
 
 char* addStr(char *dest, const char *src){

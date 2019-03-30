@@ -1,11 +1,5 @@
-//ichfly test
-
 
 #define loadindirect
-
-
-//#define DEV_VERSION
-
 
 // VisualBoyAdvance - Nintendo Gameboy/GameboyAdvance (TM) emulator.
 // Copyright (C) 1999-2003 Forgotten
@@ -25,27 +19,16 @@
 // along with this program; if not, write to the Free Software Foundation,
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-
-
-
 #include "GBA.h"
 #include "Sound.h"
 #include "Util.h"
 #include "getopt.h"
 #include "System.h"
-
-
-#ifndef loadindirect
-#include "puzzleorginal_bin.h"
-#endif
-
-
-extern int framenummer;
-
-
-#define ichflytestkeypossibillity
+#include "main.h"
 
 bool ichflytest = false;
+bool disableMessage = false;
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,9 +46,6 @@ bool ichflytest = false;
 #include <string.h>
 
 #include "GBA.h"
-#include "GBAinline.h"
-#include "Globals.h"
-//#include "Gfx.h" //ichfly not that
 #include "EEprom.h"
 #include "Flash.h"
 #include "Sound.h"
@@ -75,41 +55,335 @@ bool ichflytest = false;
 #include "NLS.h"
 #include "elf.h"
 #include "Util.h"
-#include "Port.h"
-#ifdef PROFILING
-#include "prof/prof.h"
-#endif
-
-#define UPDATE_REG(address, value)\
-  {\
-    WRITE16LE(((u16 *)&caioMem[address + dsuncashedoffset]),value);\
-  }\
-
-#define ARM_PREFETCH \
-  {\
-    cpuPrefetch[0] = CPUReadMemoryQuick(armNextPC);\
-    cpuPrefetch[1] = CPUReadMemoryQuick(armNextPC+4);\
-  }
-
-#define THUMB_PREFETCH \
-  {\
-    cpuPrefetch[0] = CPUReadHalfWordQuick(armNextPC);\
-    cpuPrefetch[1] = CPUReadHalfWordQuick(armNextPC+2);\
-  }
-
-#define ARM_PREFETCH_NEXT \
-  cpuPrefetch[1] = CPUReadMemoryQuick(armNextPC+4);
-
-#define THUMB_PREFETCH_NEXT\
-  cpuPrefetch[1] = CPUReadHalfWordQuick(armNextPC+2);
+#include "RTC.h"
+#include "agbprint.h"
+#include "fatmore.h"
+#include "ds_dma.h"
 
 #ifdef __GNUC__
 #define _stricmp strcasecmp
 #endif
 
-extern int bg;
 
-extern int emulating;
+#include "GBA.h"
+#include "ichflysettings.h"
+#include "gba_ipc.h"
+
+reg_pair reg[45];
+memoryMap map[256];
+bool ioReadable[0x400];
+
+__attribute__((section(".dtcm")))
+bool N_FLAG = 0;
+
+__attribute__((section(".dtcm")))
+bool C_FLAG = 0;
+
+__attribute__((section(".dtcm")))
+bool Z_FLAG = 0;
+
+__attribute__((section(".dtcm")))
+bool V_FLAG = 0;
+
+__attribute__((section(".dtcm")))
+bool armState = true;
+
+__attribute__((section(".dtcm")))
+bool armIrqEnable = true;
+
+__attribute__((section(".dtcm")))
+u32 armNextPC = 0x00000000;
+
+__attribute__((section(".dtcm")))
+int armMode = 0x1f;
+
+__attribute__((section(".dtcm")))
+u32 stop = 0x08000568;
+
+__attribute__((section(".dtcm")))
+int saveType = 0;
+
+__attribute__((section(".dtcm")))
+bool useBios = false;
+
+__attribute__((section(".dtcm")))
+bool skipBios = false;
+
+__attribute__((section(".dtcm")))
+int frameSkip = 1;
+
+__attribute__((section(".dtcm")))
+bool speedup = false;
+
+__attribute__((section(".dtcm")))
+bool synchronize = true;
+
+__attribute__((section(".dtcm")))
+bool cpuDisableSfx = false;
+
+__attribute__((section(".dtcm")))
+bool cpuIsMultiBoot = false;
+
+__attribute__((section(".dtcm")))
+bool parseDebug = true;
+
+__attribute__((section(".dtcm")))
+int layerSettings = 0xff00;
+
+__attribute__((section(".dtcm")))
+int layerEnable = 0xff00;
+
+__attribute__((section(".dtcm")))
+bool speedHack = false;
+
+__attribute__((section(".dtcm")))
+int cpuSaveType = 0;
+
+__attribute__((section(".dtcm")))
+bool cheatsEnabled = true;
+
+__attribute__((section(".dtcm")))
+bool mirroringEnable = false;
+
+u8 *bios = NULL; //calloc
+u8 *rom = NULL; //calc
+/*static u8 *internalRAM = (u8*)0x03000000; 
+static u8 *workRAM = (u8*)0x02000000;
+static u8 *paletteRAM = (u8*)0x05000000;
+static u8 *vram = (u8*)0x06000000;
+static u8 *oam = (u8*)0x07000000;*/
+u8 ioMem[0x400];
+
+__attribute__((section(".dtcm")))
+u16 DISPSTAT = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 VCOUNT   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG0CNT   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG1CNT   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG2CNT   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG3CNT   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG0HOFS  = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG0VOFS  = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG1HOFS  = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG1VOFS  = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG2HOFS  = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG2VOFS  = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG3HOFS  = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG3VOFS  = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG2PA    = 0x0100;
+
+__attribute__((section(".dtcm")))
+u16 BG2PB    = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG2PC    = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG2PD    = 0x0100;
+
+__attribute__((section(".dtcm")))
+u16 BG2X_L   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG2X_H   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG2Y_L   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG2Y_H   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG3PA    = 0x0100;
+
+__attribute__((section(".dtcm")))
+u16 BG3PB    = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG3PC    = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG3PD    = 0x0100;
+
+__attribute__((section(".dtcm")))
+u16 BG3X_L   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG3X_H   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG3Y_L   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BG3Y_H   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 WIN0H    = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 WIN1H    = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 WIN0V    = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 WIN1V    = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 WININ    = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 WINOUT   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 MOSAIC   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 BLDMOD   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 COLEV    = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 COLY     = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM0SAD_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM0SAD_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM0DAD_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM0DAD_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM0CNT_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM0CNT_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM1SAD_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM1SAD_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM1DAD_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM1DAD_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM1CNT_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM1CNT_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM2SAD_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM2SAD_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM2DAD_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM2DAD_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM2CNT_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM2CNT_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM3SAD_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM3SAD_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM3DAD_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM3DAD_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM3CNT_L = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 DM3CNT_H = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 TM0D     = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 TM0CNT   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 TM1D     = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 TM1CNT   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 TM2D     = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 TM2CNT   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 TM3D     = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 TM3CNT   = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 P1       = 0xFFFF;
+
+__attribute__((section(".dtcm")))
+u16 IE       = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 IF       = 0x0000;
+
+__attribute__((section(".dtcm")))
+u16 IME      = 0x0000;
+
+
+//gba arm core variables
 int SWITicks = 0;
 int IRQTicks = 0;
 
@@ -126,7 +400,6 @@ int dummyAddress = 0;
 bool cpuBreakLoop = false;
 int cpuNextEvent = 0;
 
-int gbaSaveType = 0; // used to remember the save type on reset
 bool intState = false;
 bool stopState = false;
 bool holdState = false;
@@ -205,7 +478,7 @@ const int TIMER_TICKS[4] = {
   10
 };
 
-//const u32  objTilesAddress [3] = {0x010000, 0x014000, 0x014000}; //now in GBAinline
+const u32  objTilesAddress [3] = {0x010000, 0x014000, 0x014000};
 const u8 gamepakRamWaitState[4] = { 4, 3, 2, 8 };
 const u8 gamepakWaitState[4] =  { 4, 3, 2, 8 };
 const u8 gamepakWaitState0[2] = { 2, 1 };
@@ -234,22 +507,6 @@ u8 memoryWaitSeq32[16] =
 
 u8 biosProtected[4];
 
-#ifdef WORDS_BIGENDIAN
-bool cpuBiosSwapped = false;
-#endif
-u16 soundvalbitmask[0x50] =
-{
-		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0
-		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x10
-		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x20
-		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x30
-		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x40
-		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x50
-		0xFFFF,0xFFC0,0x7800,0xFFFF,0xFFC0,0xFFFF,0x7800,0xFFFF, //0x60
-		0xFFFF,0xFF00,0x7800,0xFFFF,0xFFC0,0xFFFF,0x7FFF,0xFFFF, //0x70
-		0xFFFF,0xFFFF,0xFFF0,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x80
-		0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF,0xFFFF, //0x90
-};
 u32 myROM[] = {
 0xEA000006,
 0xEA000093,
@@ -425,57 +682,190 @@ u32 myROM[] = {
 0x09FFC000,
 0x03007FE0
 };
-
+/*
+variable_desc saveGameStruct[] = {
+  { &DISPCNT  , sizeof(u16) },
+  { &DISPSTAT , sizeof(u16) },
+  { &VCOUNT   , sizeof(u16) },
+  { &BG0CNT   , sizeof(u16) },
+  { &BG1CNT   , sizeof(u16) },
+  { &BG2CNT   , sizeof(u16) },
+  { &BG3CNT   , sizeof(u16) },
+  { &BG0HOFS  , sizeof(u16) },
+  { &BG0VOFS  , sizeof(u16) },
+  { &BG1HOFS  , sizeof(u16) },
+  { &BG1VOFS  , sizeof(u16) },
+  { &BG2HOFS  , sizeof(u16) },
+  { &BG2VOFS  , sizeof(u16) },
+  { &BG3HOFS  , sizeof(u16) },
+  { &BG3VOFS  , sizeof(u16) },
+  { &BG2PA    , sizeof(u16) },
+  { &BG2PB    , sizeof(u16) },
+  { &BG2PC    , sizeof(u16) },
+  { &BG2PD    , sizeof(u16) },
+  { &BG2X_L   , sizeof(u16) },
+  { &BG2X_H   , sizeof(u16) },
+  { &BG2Y_L   , sizeof(u16) },
+  { &BG2Y_H   , sizeof(u16) },
+  { &BG3PA    , sizeof(u16) },
+  { &BG3PB    , sizeof(u16) },
+  { &BG3PC    , sizeof(u16) },
+  { &BG3PD    , sizeof(u16) },
+  { &BG3X_L   , sizeof(u16) },
+  { &BG3X_H   , sizeof(u16) },
+  { &BG3Y_L   , sizeof(u16) },
+  { &BG3Y_H   , sizeof(u16) },
+  { &WIN0H    , sizeof(u16) },
+  { &WIN1H    , sizeof(u16) },
+  { &WIN0V    , sizeof(u16) },
+  { &WIN1V    , sizeof(u16) },
+  { &WININ    , sizeof(u16) },
+  { &WINOUT   , sizeof(u16) },
+  { &MOSAIC   , sizeof(u16) },
+  { &BLDMOD   , sizeof(u16) },
+  { &COLEV    , sizeof(u16) },
+  { &COLY     , sizeof(u16) },
+  { &DM0SAD_L , sizeof(u16) },
+  { &DM0SAD_H , sizeof(u16) },
+  { &DM0DAD_L , sizeof(u16) },
+  { &DM0DAD_H , sizeof(u16) },
+  { &DM0CNT_L , sizeof(u16) },
+  { &DM0CNT_H , sizeof(u16) },
+  { &DM1SAD_L , sizeof(u16) },
+  { &DM1SAD_H , sizeof(u16) },
+  { &DM1DAD_L , sizeof(u16) },
+  { &DM1DAD_H , sizeof(u16) },
+  { &DM1CNT_L , sizeof(u16) },
+  { &DM1CNT_H , sizeof(u16) },
+  { &DM2SAD_L , sizeof(u16) },
+  { &DM2SAD_H , sizeof(u16) },
+  { &DM2DAD_L , sizeof(u16) },
+  { &DM2DAD_H , sizeof(u16) },
+  { &DM2CNT_L , sizeof(u16) },
+  { &DM2CNT_H , sizeof(u16) },
+  { &DM3SAD_L , sizeof(u16) },
+  { &DM3SAD_H , sizeof(u16) },
+  { &DM3DAD_L , sizeof(u16) },
+  { &DM3DAD_H , sizeof(u16) },
+  { &DM3CNT_L , sizeof(u16) },
+  { &DM3CNT_H , sizeof(u16) },
+  { &TM0D     , sizeof(u16) },
+  { &TM0CNT   , sizeof(u16) },
+  { &TM1D     , sizeof(u16) },
+  { &TM1CNT   , sizeof(u16) },
+  { &TM2D     , sizeof(u16) },
+  { &TM2CNT   , sizeof(u16) },
+  { &TM3D     , sizeof(u16) },
+  { &TM3CNT   , sizeof(u16) },
+  { &P1       , sizeof(u16) },
+  { &IE       , sizeof(u16) },
+  { &IF       , sizeof(u16) },
+  { &IME      , sizeof(u16) },
+  { &holdState, sizeof(bool) },
+  { &holdType, sizeof(int) },
+  { &lcdTicks, sizeof(int) },
+  { &timer0On , sizeof(bool) },
+  { &timer0Ticks , sizeof(int) },
+  { &timer0Reload , sizeof(int) },
+  { &timer0ClockReload  , sizeof(int) },
+  { &timer1On , sizeof(bool) },
+  { &timer1Ticks , sizeof(int) },
+  { &timer1Reload , sizeof(int) },
+  { &timer1ClockReload  , sizeof(int) },
+  { &timer2On , sizeof(bool) },
+  { &timer2Ticks , sizeof(int) },
+  { &timer2Reload , sizeof(int) },
+  { &timer2ClockReload  , sizeof(int) },
+  { &timer3On , sizeof(bool) },
+  { &timer3Ticks , sizeof(int) },
+  { &timer3Reload , sizeof(int) },
+  { &timer3ClockReload  , sizeof(int) },
+  { &dma0Source , sizeof(u32) },
+  { &dma0Dest , sizeof(u32) },
+  { &dma1Source , sizeof(u32) },
+  { &dma1Dest , sizeof(u32) },
+  { &dma2Source , sizeof(u32) },
+  { &dma2Dest , sizeof(u32) },
+  { &dma3Source , sizeof(u32) },
+  { &dma3Dest , sizeof(u32) },
+  { &fxOn, sizeof(bool) },
+  { &windowOn, sizeof(bool) },
+  { &N_FLAG , sizeof(bool) },
+  { &C_FLAG , sizeof(bool) },
+  { &Z_FLAG , sizeof(bool) },
+  { &V_FLAG , sizeof(bool) },
+  { &armState , sizeof(bool) },
+  { &armIrqEnable , sizeof(bool) },
+  { &armNextPC , sizeof(u32) },
+  { &armMode , sizeof(int) },
+  { &saveType , sizeof(int) },
+  { NULL, 0 } 
+};
+*/
 int romSize = 0x200000; //test normal 0x2000000 current 1/10 oh no only 2.4 MB
 
 
 bool CPUWriteBatteryFile(const char *fileName)
 {
-  if(gbaSaveType == 0) {
-    if(eepromInUse)
-      gbaSaveType = 3;
+  if(saveType == 0) {
+    if(eepromInUse){
+		saveType = 3;
+	}
     else switch(saveType) {
-    case 1:
-      gbaSaveType = 1;
-      break;
-    case 2:
-      gbaSaveType = 2;
-      break;
-    }
-  }
+		case 1:
+			saveType = 1;
+		break;
+		case 2:
+			saveType = 2;
+			break;
+		}
+	}
   
-  if((gbaSaveType) && (gbaSaveType!=5)) {
-    FILE *file = fopen(fileName, "wb");
-    
-    if(!file) {
+  if(saveType!=5) {
+    FILE *filehandle = NULL;
+	//coto: allow savefix support. Means if the read savefile (according to savefix logic) was fixed in memory, 
+	//it is now updated back to file. So the next time the file is read correctly, and not as a saveFix file.
+	
+	if(pendingSaveFix == true){
+		filehandle = fopen(fileName, "w+");
+		pendingSaveFix = false;
+		iprintf("[SaveFix]Write:OK \n");
+		iprintf("File updated. ");
+	}
+	else{
+		filehandle = fopen(fileName, "wb");
+	}
+	
+    if(!filehandle) {
       systemMessage(MSG_ERROR_CREATING_FILE, N_("Error creating file %s"),
                     fileName);
       return false;
     }
     
     // only save if Flash/Sram in use or EEprom in use
-    if(gbaSaveType != 3) {
-      if(gbaSaveType == 2) {
-        if(fwrite(flashSaveMemory, 1, flashSize, file) != (size_t)flashSize) {
-          fclose(file);
+    if(saveType != 3) {
+      if(saveType == 2) {
+        if(fwrite(flashSaveMemory, 1, flashSize, filehandle) != (size_t)flashSize) {
+          fclose(filehandle);
           return false;
         }
       } else {
-        if(fwrite(flashSaveMemory, 1, 0x10000, file) != 0x10000) {
-          fclose(file);
+        if(fwrite(flashSaveMemory, 1, 0x10000, filehandle) != 0x10000) {
+          fclose(filehandle);
           return false;
         }
       }
     } else {
-      if(fwrite(eepromData, 1, eepromSize, file) != (size_t)eepromSize) {
-        fclose(file);
+      if(fwrite(eepromData, 1, eepromSize, filehandle) != (size_t)eepromSize) {
+        fclose(filehandle);
         return false;
       }
     }
-    fclose(file);
+    fclose(filehandle);
   }
   return true;
 }
+
 bool CPUReadBatteryFile(const char *fileName)
 {
   FILE *file = fopen(fileName, "rb");
@@ -485,9 +875,9 @@ bool CPUReadBatteryFile(const char *fileName)
   
   // check file size to know what we should read
   fseek(file, 0, SEEK_END);
-
   long size = ftell(file);
   fseek(file, 0, SEEK_SET);
+  
   systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
 
   if(size == 512 || size == 0x2000) {
@@ -502,13 +892,15 @@ bool CPUReadBatteryFile(const char *fileName)
         return false;
       }
       flashSetSize(0x20000);
-    } else {
-      if(fread(flashSaveMemory, 1, 0x10000, file) != 0x10000) {
-        fclose(file);
-        return false;
-      }
-      flashSetSize(0x10000);
-    }
+    } 
+	else {
+		if(fread(flashSaveMemory, 1, 0x10000, file) != 0x10000) {
+			fclose(file);
+			return false;
+		}
+        
+		flashSetSize(0x10000);
+	}
   }
   fclose(file);
   return true;
@@ -599,29 +991,15 @@ rom = (u8*)puzzleorginal_bin;  //rom = (u8*)puzzleorginal_bin;
 
   return romSize;
 }
-#ifdef WORDS_BIGENDIAN
-static void CPUSwap(volatile u32 *a, volatile u32 *b)
-{
-  volatile u32 c = *b;
-  *b = *a;
-  *a = c;
-}
-#else
-static void CPUSwap(u32 *a, u32 *b)
-{
-  u32 c = *b;
-  *b = *a;
-  *a = c;
-}
-#endif
 
+__attribute__((section(".itcm")))
 void  __attribute__ ((hot)) doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
 {
 
 	cpuDmaCount = c;
   if(transfer32) {
     s &= 0xFFFFFFFC;
-    if(s < 0x02000000) {
+    if(s < 0x02000000 && (reg[15].I >> 24)) {
       while(c != 0) {
         CPUWriteMemory(d, 0);
         d += di;
@@ -640,7 +1018,7 @@ void  __attribute__ ((hot)) doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int
     s &= 0xFFFFFFFE;
     si = (int)si >> 1;
     di = (int)di >> 1;
-    if(s < 0x02000000) {
+    if(s < 0x02000000 && (reg[15].I >> 24)) {
       while(c != 0) {
         CPUWriteHalfWord(d, 0);
         d += di;
@@ -659,6 +1037,7 @@ void  __attribute__ ((hot)) doDMAslow(u32 &s, u32 &d, u32 si, u32 di, u32 c, int
   }
 
 }
+__attribute__((section(".itcm")))
 void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int transfer32) //ichfly veraltet
 {
 	if(si == 0 || di == 0 || s < 0x02000000 || d < 0x02000000 || (d & ~0xFFFFFF) == 0x04000000 || (s & ~0xFFFFFF) == 0x04000000 || s >= 0x0D000000 || d >= 0x0D000000)
@@ -672,12 +1051,12 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 		{
 #ifdef uppern_read_emulation
 
-			if(((s&0x1FFFFFF) + c*4) > romSize) //slow
+			if( (int)((s&0x1FFFFFF) + (c*4)) > romSize) //slow
 			{
 #ifdef print_uppern_read_emulation
 				iprintf("highdmaread %X %X %X %X %X %X\r\n",s,d,c,si,di,transfer32);
 #endif
-				if(di == -4 || si == -4)//this can't work the slow way so use the
+				if( ( (int)di == -4) || ((int)si == -4) )//this can't work the slow way so use the
 				{
 					doDMAslow(s, d, si, di, c, transfer32); //very slow way
 					return;
@@ -687,7 +1066,6 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 #ifdef ownfilebuffer
 					//iprintf("4 %08X %08X %08X %08X ",s,d,c,*(u32 *)d);
 					ichfly_readdma_rom((u32)(s&0x1FFFFFF),(u8 *)d,c,4);
-					//cpuDmaLast = *(u32*)((c - 1)*4 + d);  //ichfly hack
 					//iprintf("exit%08X ",*(u32 *)d);
 					//while(1);
 #else
@@ -703,7 +1081,6 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 #ifdef ownfilebuffer
 					//iprintf("2 %08X %08X %08X %04X ",s,d,c,*(u16 *)d);
 					ichfly_readdma_rom((u32)(s&0x1FFFFFF),(u8 *)d,c,2);
-					//cpuDmaLast = *(u16*)((c - 1)*2 + d);  //ichfly hack
 					//iprintf("exit%04X ",*(u16 *)d);
 					//while(1);
 #else
@@ -731,24 +1108,19 @@ void  __attribute__ ((hot)) doDMA(u32 &s, u32 &d, u32 si, u32 di, u32 c, int tra
 		DMA3_SRC = s;
 		DMA3_DEST = d;
 
-		int tmpzahl = DMA_ENABLE | c;
-		if(transfer32)tmpzahl |= DMA_32_BIT;
-		if(di == -4) tmpzahl |= DMA_DST_DEC;
-		if(si == -4) tmpzahl |= DMA_SRC_DEC;
-		DMA3_CR = tmpzahl;
-		//iprintf("%x,%x,%x",s,d,tmpzahl);
-		/*if(transfer32) //ichfly hack
-		{
-			cpuDmaLast = *(u32*)((c - 1)*4 + d);
-		}
-		else
-		{
-			cpuDmaLast = *(u16*)((c - 1)*2 + d);
-		}*/
+		int tmpnum = (DMA_ENABLE | c);
+		if(transfer32)
+			tmpnum |= DMA_32_BIT;
+		if( (int)di == -4) 
+			tmpnum |= DMA_DST_DEC;
+		if( (int)si == -4) 
+			tmpnum |= DMA_SRC_DEC;
+		DMA3_CR = tmpnum;
+		//iprintf("%x,%x,%x",(unsigned int)s,(unsigned int)d,(unsigned int)tmpnum);
 	}
 
 }
-
+__attribute__((section(".itcm")))
 void  __attribute__ ((hot)) CPUCheckDMA(int reason, int dmamask)
 {
   // DMA 0
@@ -836,7 +1208,7 @@ void  __attribute__ ((hot)) CPUCheckDMA(int reason, int dmamask)
       if(reason == 3) {
 #ifdef DEV_VERSION
         if(systemVerbose & VERBOSE_DMA1) {
-          Log("DMA1: s=%08x d=%08x c=%04x count=%08x\n", dma1Source, dma1Dest,
+          iprintf("DMA1: s=%08x d=%08x c=%04x count=%08x\n", dma1Source, dma1Dest,
               DM1CNT_H,
               16);
         }
@@ -906,7 +1278,7 @@ void  __attribute__ ((hot)) CPUCheckDMA(int reason, int dmamask)
 #ifdef DEV_VERSION
         if(systemVerbose & VERBOSE_DMA2) {
           int count = (4) << 2;
-          Log("DMA2: s=%08x d=%08x c=%04x count=%08x\n", dma2Source, dma2Dest,
+          iprintf("DMA2: s=%08x d=%08x c=%04x count=%08x\n", dma2Source, dma2Dest,
               DM2CNT_H,
               count);
         }
@@ -1017,113 +1389,114 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	}*/
 
   switch(address) {
-  case 0x00:
-    {		
-		if((value & 7) < 3)
-		{
-			if(value != DISPCNT)
-			{
-				if(!((DISPCNT & 7) < 3))
-				{
-					//reset BG3HOFS and BG3VOFS
-					REG_BG3HOFS = BG3HOFS;
-					REG_BG3VOFS = BG3VOFS;
+  case 0x00: 
+     {		 
+ 		if((value & 7) < 3) 
+ 		{ 
+ 			if(value != DISPCNT) 
+ 			{ 
+ 				if(!((DISPCNT & 7) < 3)) 
+ 				{ 
+ 					//reset BG3HOFS and BG3VOFS 
+ 					REG_BG3HOFS = BG3HOFS; 
+ 					REG_BG3VOFS = BG3VOFS; 
+  
+ 					//reset 
+ 					REG_BG3CNT = BG3CNT; 
+ 					REG_BG2CNT = BG2CNT; 
+ 					REG_BLDCNT = BLDMOD; 
+ 					WIN_IN = WININ; 
+ 					WIN_OUT = WINOUT; 
+  
+ 					REG_BG2PA = BG2PA; 
+ 					REG_BG2PB = BG2PB; 
+ 					REG_BG2PC = BG2PC; 
+ 					REG_BG2PD = BG2PD; 
+ 					REG_BG2X = (BG2X_L | (BG2X_H << 16)); 
+ 					REG_BG2Y = (BG2Y_L | (BG2Y_H << 16)); 
+  
+ 					REG_BG3PA = BG3PA; 
+ 					REG_BG3PB = BG3PB; 
+ 					REG_BG3PC = BG3PC; 
+ 					REG_BG3PD = BG3PD; 
+ 					REG_BG3X = (BG3X_L | (BG3X_H << 16)); 
+ 					REG_BG3Y = (BG3Y_L | (BG3Y_H << 16)); 
+ 				} 
+  
+ 				u32 dsValue; 
+ 				dsValue  = value & 0xFF87; 
+ 				dsValue |= (value & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */ 
+ 				dsValue |= (value & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */ 
+ #ifndef capture_and_pars 
+ 				dsValue |= (value & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/ 
+ #endif 
+ 				REG_DISPCNT = dsValue;  
+ 			} 
+ 		} 
+ 		else 
+ 		{ 
+ 			if((value & 0xFFEF) != (DISPCNT & 0xFFEF)) 
+ 			{ 
+  
+ 				u32 dsValue; 
+ 				dsValue  = value & 0xF087; 
+ 				dsValue |= (value & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */ 
+ 				dsValue |= (value & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */ 
+ #ifndef capture_and_pars 
+ 				dsValue |= (value & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/ 
+ #endif 
+ 				REG_DISPCNT = (dsValue | BIT(11)); //enable BG3 
+ 				if((DISPCNT & 7) != (value & 7)) 
+ 				{ 
+ 					if((value & 7) == 4) 
+ 					{ 
+ 						//bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8); 
+ 						REG_BG3CNT = BG_MAP_BASE(/*mapBase*/8) | BG_TILE_BASE(/*tileBase*/8) | BgSize_B8_256x256; 
+ 					} 
+ 					else  
+ 					{ 
+ 						//bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8); 
+ 						REG_BG3CNT = BG_MAP_BASE(/*mapBase*/8) | BG_TILE_BASE(/*tileBase*/8) | BgSize_B16_256x256; 
+ 					} 
+ 					if((DISPCNT & 7) < 3) 
+ 					{ 
+ 						//reset BG3HOFS and BG3VOFS 
+ 						REG_BG3HOFS = 0; 
+ 						REG_BG3VOFS = 0; 
+  
+ 						//BLDCNT(2 enabeled bits) 
+ 						int tempBLDMOD = BLDMOD & ~0xF0F; 
+ 						tempBLDMOD = tempBLDMOD| ((BLDMOD & 0x404) << 1); 
+ 						REG_BLDCNT = tempBLDMOD; 
+  
+ 						//WINOUT(2 enabeled bits) 
+ 						int tempWINOUT = WINOUT & ~0xF0F; 
+ 						tempWINOUT = tempWINOUT | ((WINOUT & 0x404) << 1); 
+ 						WIN_OUT = tempWINOUT; 
+  
+ 						//WININ(2 enabeled bits) 
+ 						int tempWININ = WININ & ~0xF0F; 
+ 						tempWININ = tempWININ | ((WININ & 0x404) << 1); 
+ 						WIN_IN = tempWININ; 
+  
+ 						//swap LCD I/O BG Rotation/Scaling 
+  
+ 						REG_BG3PA = BG2PA; 
+ 						REG_BG3PB = BG2PB; 
+ 						REG_BG3PC = BG2PC; 
+ 						REG_BG3PD = BG2PD; 
+ 						REG_BG3X = (BG2X_L | (BG2X_H << 16)); 
+ 						REG_BG3Y = (BG2Y_L | (BG2Y_H << 16)); 
+ 						REG_BG3CNT = (REG_BG3CNT & ~0x43) | (BG2CNT & 0x43); //swap BG2CNT (BG Priority and Mosaic)  
+ 					} 
+ 				} 
+ 			} 
+ 		} 
+ 		DISPCNT = value & 0xFFF7; 
+ 		UPDATE_REG(0x00, DISPCNT); 
+     } 
+     break; 
 
-					//reset
-					REG_BG3CNT = BG3CNT;
-					REG_BG2CNT = BG2CNT;
-					REG_BLDCNT = BLDMOD;
-					WIN_IN = WININ;
-					WIN_OUT = WINOUT;
-
-					REG_BG2PA = BG2PA;
-					REG_BG2PB = BG2PB;
-					REG_BG2PC = BG2PC;
-					REG_BG2PD = BG2PD;
-					REG_BG2X = (BG2X_L | (BG2X_H << 16));
-					REG_BG2Y = (BG2Y_L | (BG2Y_H << 16));
-
-					REG_BG3PA = BG3PA;
-					REG_BG3PB = BG3PB;
-					REG_BG3PC = BG3PC;
-					REG_BG3PD = BG3PD;
-					REG_BG3X = (BG3X_L | (BG3X_H << 16));
-					REG_BG3Y = (BG3Y_L | (BG3Y_H << 16));
-				}
-
-				u32 dsValue;
-				dsValue  = value & 0xFF87;
-				dsValue |= (value & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
-				dsValue |= (value & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
-#ifndef capture_and_pars
-				dsValue |= (value & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
-#endif
-				REG_DISPCNT = dsValue; 
-			}
-		}
-		else
-		{
-			if((value & 0xFFEF) != (DISPCNT & 0xFFEF))
-			{
-
-				u32 dsValue;
-				dsValue  = value & 0xF087;
-				dsValue |= (value & (1 << 5)) ? (1 << 23) : 0;	/* oam hblank access */
-				dsValue |= (value & (1 << 6)) ? (1 << 4) : 0;	/* obj mapping 1d/2d */
-#ifndef capture_and_pars
-				dsValue |= (value & (1 << 7)) ? 0 : (1 << 16);	/* forced blank => no display mode (both)*/
-#endif
-				REG_DISPCNT = (dsValue | BIT(11)); //enable BG3
-				if((DISPCNT & 7) != (value & 7))
-				{
-					if((value & 7) == 4)
-					{
-						//bgInit_call(3, BgType_Bmp8, BgSize_B8_256x256,8,8);
-						REG_BG3CNT = BG_MAP_BASE(/*mapBase*/8) | BG_TILE_BASE(/*tileBase*/8) | BgSize_B8_256x256;
-					}
-					else 
-					{
-						//bgInit_call(3, BgType_Bmp16, BgSize_B16_256x256,8,8);
-						REG_BG3CNT = BG_MAP_BASE(/*mapBase*/8) | BG_TILE_BASE(/*tileBase*/8) | BgSize_B16_256x256;
-					}
-					if((DISPCNT & 7) < 3)
-					{
-						//reset BG3HOFS and BG3VOFS
-						REG_BG3HOFS = 0;
-						REG_BG3VOFS = 0;
-
-						//BLDCNT(2 enabeled bits)
-						int tempBLDMOD = BLDMOD & ~0x404;
-						tempBLDMOD = tempBLDMOD | ((BLDMOD & 0x404) << 1);
-						REG_BLDCNT = tempBLDMOD;
-
-						//WINOUT(2 enabeled bits)
-						int tempWINOUT = WINOUT & ~0x404;
-						tempWINOUT = tempWINOUT | ((WINOUT & 0x404) << 1);
-						WIN_OUT = tempWINOUT;
-
-						//WININ(2 enabeled bits)
-						int tempWININ = WININ & ~0x404;
-						tempWININ = tempWININ | ((WININ & 0x404) << 1);
-						WIN_IN = tempWININ;
-
-						//swap LCD I/O BG Rotation/Scaling
-
-						REG_BG3PA = BG2PA;
-						REG_BG3PB = BG2PB;
-						REG_BG3PC = BG2PC;
-						REG_BG3PD = BG2PD;
-						REG_BG3X = (BG2X_L | (BG2X_H << 16));
-						REG_BG3Y = (BG2Y_L | (BG2Y_H << 16));
-						REG_BG3CNT = REG_BG3CNT | (BG2CNT & 0x43); //swap BG2CNT (BG Priority and Mosaic) 
-					}
-				}
-			}
-		}
-		DISPCNT = value & 0xFFF7;
-		UPDATE_REG(0x00, DISPCNT);
-    }
-    break;
   case 0x04:
     DISPSTAT = (value & 0xFF38) | (DISPSTAT & 7);
     UPDATE_REG(0x04, DISPSTAT);
@@ -1185,7 +1558,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	if((DISPCNT & 7) < 3)*(u16 *)(0x400000C) = BG2CNT;
 	else //ichfly some extra handling 
 	{
-		REG_BG3CNT = REG_BG3CNT | (BG2CNT & 0x43);
+		REG_BG3CNT = (REG_BG3CNT & ~0x43) | (BG2CNT & 0x43);
 	}
     break;
   case 0x0E:
@@ -1357,7 +1730,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     if((DISPCNT & 7) < 3)*(u16 *)(0x4000048) = value;
 	else
 	{
-		int tempWININ = WININ & ~0x404;
+		int tempWININ = WININ & ~0xF0F;
 		tempWININ = tempWININ | ((WININ & 0x404) << 1);
 		WIN_IN = tempWININ;
 	}
@@ -1368,7 +1741,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     if((DISPCNT & 7) < 3)*(u16 *)(0x400004A) = value;
 	else
 	{
-		int tempWINOUT = WINOUT & ~0x404;
+		int tempWINOUT = WINOUT & ~0xF0F;
 		tempWINOUT = tempWINOUT | ((WINOUT & 0x404) << 1);
 		WIN_OUT = tempWINOUT;
 	}
@@ -1386,7 +1759,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	if((DISPCNT & 7) < 3)*(u16 *)(0x4000050) = value;
 	else
 	{
-		int tempBLDMOD = BLDMOD & ~0x404;
+		int tempBLDMOD = BLDMOD & ~0xF0F;
 		tempBLDMOD = tempBLDMOD | ((BLDMOD & 0x404) << 1);
 		REG_BLDCNT = tempBLDMOD;
 	}
@@ -1435,11 +1808,8 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	  iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	  SendArm7Command((u32)(address | 0x80000000),(u32)value);	//faster in case we send a 0
 #endif
-	  value &= soundvalbitmask[address>>1];
-	  value |= (*(u16 *)&caioMem[address + dsuncashedoffset] & ~soundvalbitmask[address>>1]);
 	  UPDATE_REG(address,value);
     break;
   case 0xB0:
@@ -1482,8 +1852,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
     
 	DM1SAD_L = value;
@@ -1494,8 +1863,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 
     DM1SAD_H = value & 0x0FFF;
@@ -1506,8 +1874,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 
 	DM1DAD_L = value;
@@ -1518,8 +1885,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 
     DM1DAD_H = value & 0x07FF;
@@ -1530,8 +1896,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 
 	DM1CNT_L = value & 0x3FFF;
@@ -1542,8 +1907,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 	  {
       bool start = ((DM1CNT_H ^ value) & 0x8000) ? true : false;
@@ -1564,8 +1928,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 
 	DM2SAD_L = value;
@@ -1576,8 +1939,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 
 	DM2SAD_H = value & 0x0FFF;
@@ -1588,8 +1950,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 
 	DM2DAD_L = value;
@@ -1600,8 +1961,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 
 	DM2DAD_H = value & 0x07FF;
@@ -1613,8 +1973,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 
 	DM2CNT_L = value & 0x3FFF;
@@ -1626,8 +1985,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);
 #endif
 
 	  {
@@ -1688,10 +2046,9 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
-	*(u16 *)(0x4000100) = timer1Reload << 1;
+
 	UPDATE_REG(0x100, value);
     break;
   case 0x102:
@@ -1703,11 +2060,36 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
-	//*(u16 *)(0x4000100) = timer1Reload << 1;
-	*(u16 *)(0x4000102) = value;
+	/*if(timer0Reload & 0x8000)
+	{
+		if((value & 0x3) == 0)
+		{
+			*(u16 *)(0x4000100) = timer0Reload >> 5;
+			*(u16 *)(0x4000102) = value + 1;
+			break;
+		}
+		if((value & 0x3) == 1)
+		{
+			*(u16 *)(0x4000100) = timer0Reload >> 1;
+			*(u16 *)(0x4000102) = value + 1;
+			break;
+		}
+		if((value & 3) == 2)
+		{
+			*(u16 *)(0x4000100) = timer0Reload >> 1;
+			*(u16 *)(0x4000102) = value + 1;
+			break;
+		}
+		*(u16 *)(0x4000102) = value;
+		iprintf("big reload0\r\n");//todo 
+	}
+	else*/
+	{	
+		*(u16 *)(0x4000100) = timer1Reload << 1;
+		*(u16 *)(0x4000102) = value;
+	}
     break;
   case 0x104:
     timer1Reload = value;
@@ -1715,10 +2097,9 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
-	*(u16 *)(0x4000104) = timer1Reload << 1;
+
 	UPDATE_REG(0x104, value);
 	break;
   case 0x106:
@@ -1726,16 +2107,42 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	iprintf("ur %04x to %08x\r\n",value,address);
 #endif
 #ifdef arm9advsound
-	  REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-	  //REG_IPC_FIFO_TXs(value; //faster in case we send a 0
+	SendArm7Command((u32)(address | 0x80000000), (u32)value);	//faster in case we send a 0
 #endif
 
     timer1Value = value;
     //timerOnOffDelay|=2;
     //cpuNextEvent = cpuTotalTicks;
 	UPDATE_REG(0x106, value);
-	//*(u16 *)(0x4000104) = timer1Reload << 1;
-	*(u16 *)(0x4000106) = value;
+
+	/*if(timer1Reload & 0x8000)
+	{
+		if((value & 0x3) == 0)
+		{
+			*(u16 *)(0x4000104) = timer1Reload >> 5;
+			*(u16 *)(0x4000106) = value + 1;
+			break;
+		}
+		if((value & 0x3) == 1)
+		{
+			*(u16 *)(0x4000104) = timer1Reload >> 1;
+			*(u16 *)(0x4000106) = value + 1;
+			break;
+		}
+		if((value & 3) == 2)
+		{
+			*(u16 *)(0x4000104) = timer1Reload >> 1;
+			*(u16 *)(0x4000106) = value + 1;
+			break;
+		}
+		*(u16 *)(0x4000106) = value;
+		iprintf("big reload1\r\n");//todo 
+	}
+	else*/
+	{	
+		*(u16 *)(0x4000104) = timer1Reload << 1;
+		*(u16 *)(0x4000106) = value;
+	}
 	  break;
   case 0x108:
     timer2Reload = value;
@@ -1747,13 +2154,38 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     //timerOnOffDelay|=4;
     //cpuNextEvent = cpuTotalTicks;
 	UPDATE_REG(0x10A, value);
-	
-	//*(u16 *)(0x4000108) = timer2Reload << 1;
-	*(u16 *)(0x400010A) = value;
+
+	/*if(timer2Reload & 0x8000)
+	{
+		if((value & 0x3) == 0)
+		{
+			*(u16 *)(0x4000108) = timer2Reload >> 5;
+			*(u16 *)(0x400010A) = value + 1;
+			break;
+		}
+		if((value & 0x3) == 1)
+		{
+			*(u16 *)(0x4000108) = timer2Reload >> 1;
+			*(u16 *)(0x400010A) = value + 1;
+			break;
+		}
+		if((value & 3) == 2)
+		{
+			*(u16 *)(0x4000108) = timer2Reload >> 1;
+			*(u16 *)(0x400010A) = value + 1;
+			break;
+		}
+		iprintf("big reload2\r\n");//todo 
+		*(u16 *)(0x400010A) = value;
+	}
+	else*/
+	{	
+		*(u16 *)(0x4000108) = timer2Reload << 1;
+		*(u16 *)(0x400010A) = value;
+	}
 	  break;
   case 0x10C:
     timer3Reload = value;
-	*(u16 *)(0x400010C) = timer3Reload << 1;
 	UPDATE_REG(0x10C, value);
 	  break;
   case 0x10E:
@@ -1762,12 +2194,36 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     //cpuNextEvent = cpuTotalTicks;
 	UPDATE_REG(0x10E, value);
 
-	//*(u16 *)(0x400010C) = timer3Reload << 1;
-	*(u16 *)(0x400010E) = value;
+	/*if(timer3Reload & 0x8000)
+	{
+		if((value & 0x3) == 0)
+		{
+			*(u16 *)(0x400010C) = timer3Reload >> 5;
+			*(u16 *)(0x400010E) = value + 1;
+			break;
+		}
+		if((value & 0x3) == 1)
+		{
+			*(u16 *)(0x400010C) = timer3Reload >> 1;
+			*(u16 *)(0x400010E) = value + 1;
+			break;
+		}
+		if((value & 3) == 2)
+		{
+			*(u16 *)(0x400010C) = timer3Reload >> 1;
+			*(u16 *)(0x400010E) = value + 1;
+			break;
+		}
+		iprintf("big reload3\r\n");//todo 
+		*(u16 *)(0x400010E) = value;
+	}
+	else*/
+	{	
+		*(u16 *)(0x400010C) = timer3Reload << 1;
+		*(u16 *)(0x400010E) = value;
+	}
   break;
-  
-#ifndef nifi 
-  case 0x128: //most parts are not working anyway
+  case 0x128:
     if(value & 0x80) {
       value &= 0xff7f;
       if(value & 1 && (value & 0x4000)) {
@@ -1779,14 +2235,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     }
     UPDATE_REG(0x128, value);
     break;
-#endif
-#ifdef nifi
-	case 0x120 ... 0x12A: //nifi
-	case 0x134 ... 0x15A:
-		REG_IPC_FIFO_TXs(address | 0x80000000 | (value << 12));
-		break;
-#endif
-	case 0x130:
+  case 0x130:
     //P1 |= (value & 0x3FF); //ichfly readonly
     //UPDATE_REG(0x130, P1);
     break;
@@ -1794,7 +2243,6 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
     UPDATE_REG(0x132, value & 0xC3FF);
 	*(u16 *)(0x4000132) = value;
     break;
-
   case 0x200:
     IE = value & 0x3FFF;
     UPDATE_REG(0x200, IE);
@@ -1813,7 +2261,7 @@ void  __attribute__ ((hot)) CPUUpdateRegister(u32 address, u16 value)
 	//REG_IF = value; //ichfly update at read outdated
 	//IF = REG_IF;
 #ifdef gba_handel_IRQ_correct
-	REG_IF = value;
+	REG_IF = IF = value;
 #else
     IF ^= (value & IF);
     UPDATE_REG(0x202, IF);
@@ -1892,14 +2340,13 @@ void CPUInit(const char *biosFileName, bool useBiosFile,bool extram)
 #ifdef WORDS_BIGENDIAN
   if(!cpuBiosSwapped) {
     for(unsigned int i = 0; i < sizeof(myROM)/4; i++) {
-      WRITE32LE(&myROM[i], myROM[i]);
+      WRITE32LE((u32*)&myROM[i], myROM[i]);
     }
     cpuBiosSwapped = true;
   }
 #endif
-  gbaSaveType = 0;
-  eepromInUse = 0;
   saveType = 0;
+  eepromInUse = 0;
   useBios = false;
   
   if(useBiosFile) {
@@ -1974,33 +2421,25 @@ void CPUInit(const char *biosFileName, bool useBiosFile,bool extram)
   for(i = 0x304; i < 0x400; i++)
     ioReadable[i] = false;
 
-  /*if(romSize < 0x1fe2000) {
-    *((u16 *)&rom[0x1fe209c]) = 0xdffa; // SWI 0xFA
-    *((u16 *)&rom[0x1fe209e]) = 0x4770; // BX LR
-  } else {
-    agbPrintEnable(false);
-  }*/ //ichfly todo
+	agbPrintEnable(false);
 }
 
-void CPUReset()
-{
+void CPUReset(){
 
-
-  if(gbaSaveType == 0) {
+  if(saveType == 0) {
     if(eepromInUse)
-      gbaSaveType = 3;
+      saveType = 3;
     else
-      switch(saveType) {
-      case 1:
-        gbaSaveType = 1;
-        break;
-      case 2:
-        gbaSaveType = 2;
-        break;
-      }
+		switch(saveType) {
+			case 1:
+				saveType = 1;
+			break;
+			case 2:
+				saveType = 2;
+			break;
+		}
   }
   rtcReset();
-
 
   // clean registers
   memset(&reg[0], 0, sizeof(reg));
@@ -2198,7 +2637,7 @@ void CPUReset()
   map[2].mask = 0x3FFFF;
   map[3].address = internalRAM;
   map[3].mask = 0x7FFF;
-  map[4].address = caioMem + dsuncashedoffset;
+  map[4].address = ioMem;
   map[4].mask = 0x3FF;
   map[5].address = paletteRAM;
   map[5].mask = 0x3FF;
@@ -2207,13 +2646,13 @@ void CPUReset()
   map[7].address = emultoroam;
   map[7].mask = 0x3FF;
   map[8].address = rom;
-  map[8].mask = 0x400000; //hack 4 MByte not correct
+  map[8].mask = 0x1FFFFFF;
   map[9].address = rom;
-  map[9].mask = 0x400000; //hack 4 MByte not correct 
+  map[9].mask = 0x1FFFFFF;  
   map[10].address = rom;
-  map[10].mask = 0x400000; //hack 4 MByte not correct
+  map[10].mask = 0x1FFFFFF;
   map[12].address = rom;
-  map[12].mask = 0x400000; //hack 4 MByte not correct
+  map[12].mask = 0x1FFFFFF;
   map[14].address = flashSaveMemory;
   map[14].mask = 0xFFFF;
 
@@ -2244,14 +2683,14 @@ void CPUReset()
     cpuFlashEnabled = true;
     cpuEEPROMEnabled = true;
     cpuEEPROMSensorEnabled = false;
-    saveType = gbaSaveType = 0;
+    saveType = 0;
     break;
   case 1: // EEPROM
     cpuSramEnabled = false;
     cpuFlashEnabled = false;
     cpuEEPROMEnabled = true;
     cpuEEPROMSensorEnabled = false;
-    saveType = gbaSaveType = 3;
+    saveType = 3;
     // EEPROM usage is automatically detected
     break;
   case 2: // SRAM
@@ -2260,7 +2699,7 @@ void CPUReset()
     cpuEEPROMEnabled = false;
     cpuEEPROMSensorEnabled = false;
     cpuSaveGameFunc = sramDelayedWrite; // to insure we detect the write
-    saveType = gbaSaveType = 1;
+    saveType = 1;
     break;
   case 3: // FLASH
     cpuSramEnabled = false;
@@ -2268,7 +2707,7 @@ void CPUReset()
     cpuEEPROMEnabled = false;
     cpuEEPROMSensorEnabled = false;
     cpuSaveGameFunc = flashDelayedWrite; // to insure we detect the write
-    saveType = gbaSaveType = 2;
+    saveType = 2;
     break;
   case 4: // EEPROM+Sensor
     cpuSramEnabled = false;
@@ -2276,7 +2715,7 @@ void CPUReset()
     cpuEEPROMEnabled = true;
     cpuEEPROMSensorEnabled = true;
     // EEPROM usage is automatically detected
-    saveType = gbaSaveType = 3;
+    saveType = 3;
     break;
   case 5: // NONE
     cpuSramEnabled = false;
@@ -2284,19 +2723,16 @@ void CPUReset()
     cpuEEPROMEnabled = false;
     cpuEEPROMSensorEnabled = false;
     // no save at all
-    saveType = gbaSaveType = 5;
+    saveType = 5;
     break;
   } 
 
   //ARM_PREFETCH;
-
   systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
-
   cpuDmaHack = false;
-
   //lastTime = systemGetClock();
-
   //SWITicks = 0;
+  rtcEnable(true); //Coto: GBA RTC Support
 }
 
 #ifdef SDL
@@ -2319,3 +2755,1974 @@ void Log(const char *defaultMsg, ...)
 #else
 extern void winLog(const char *, ...);
 #endif
+
+
+
+//CPU Read/Writes
+
+u32 CPUReadMemorypu(u32 address)
+{
+	return CPUReadMemoryrealpu(address);
+}
+
+u16 CPUReadHalfWordpu(u32 address)
+{
+	return CPUReadHalfWordrealpu(address);
+}
+
+u8 CPUReadBytepu(u32 address)
+{
+	return CPUReadByterealpu(address);
+}
+
+u32 CPUReadMemory(u32 address)
+{
+	return CPUReadMemoryreal(address);
+}
+
+s16 CPUReadHalfWordSignedoutline(u32 address)
+{
+	return (s16)CPUReadHalfWordSigned(address);
+}
+
+s8 CPUReadByteSigned(u32 address)
+{
+	return (s8)CPUReadBytereal(address);
+}
+
+u16 CPUReadHalfWord(u32 address)
+{
+	return CPUReadHalfWordreal(address);
+}
+
+u8 CPUReadByte(u32 address)
+{
+	return CPUReadBytereal(address);
+}
+
+void CPUWriteMemoryextern(u32 address, u32 value)
+{
+	CPUWriteMemory(address,value);
+}
+
+void CPUWriteHalfWordextern(u32 address, u16 value)
+{
+	CPUWriteHalfWord(address,value);
+}
+
+void CPUWriteByteextern(u32 address, u8 b)
+{
+	CPUWriteByte(address,b);
+}
+
+void CPUWriteMemorypuextern(u32 address, u32 value)
+{
+	CPUWriteMemorypu(address,value);
+}
+
+void CPUWriteHalfWordpuextern(u32 address, u16 value)
+{
+	CPUWriteHalfWordpu(address,value);
+}
+
+void CPUWriteBytepuextern(u32 address, u8 b)
+{
+	CPUWriteBytepu(address,b);
+}
+
+s16 CPUReadHalfWordrealpuSignedoutline(u32 address)
+{
+	return (s16)CPUReadHalfWordrealpuSigned(address);
+}
+
+s8 CPUReadByteSignedpu(u32 address)
+{
+	return (s8)CPUReadByterealpu(address);
+}
+
+
+
+//HBLANK IRQ Disabled emulation
+__attribute__((section(".itcm")))
+void vcounthandler(void){		
+	DISPSTAT |= (REG_DISPSTAT & 0x3);
+	VCOUNT = REG_VCOUNT&0xff;
+	
+	if(VCOUNT == (DISPSTAT >> 8)) //update by V-Count Setting
+	{
+		DISPSTAT |= 0x4;
+	}
+	else{
+		DISPSTAT &= 0xFFFb; //remove vcount
+	}
+	//io update
+	UPDATE_REG(0x06, VCOUNT);
+	UPDATE_REG(0x04, DISPSTAT);
+}
+
+//normal cpu read/write opcodes
+__attribute__((section(".itcm")))
+void updateVC()
+{
+		u32 temp = REG_VCOUNT;
+		u32 temp2 = REG_DISPSTAT;
+		//iprintf("Vcountreal: %08x\n",temp);
+		//u16 help3;
+#ifdef usebuffedVcout
+		VCOUNT = VCountdstogba[temp];
+#else
+		if(temp < 192)
+		{
+			VCOUNT = ((temp * 214) >> 8);//VCOUNT = help * (1./1.2); //1.15350877;
+			//help3 = (help + 1) * (1./1.2); //1.15350877;  // ichfly todo it is to slow
+		}
+		else
+		{
+			VCOUNT = (((temp - 192) * 246) >>  8)+ 160;//VCOUNT = ((temp - 192) * (1./ 1.04411764)) + 160 //* (1./ 1.04411764)) + 160; //1.15350877;
+			//help3 = ((help - 191) *  (1./ 1.04411764)) + 160; //1.15350877;  // ichfly todo it is to slow			
+		}
+#endif
+		DISPSTAT &= 0xFFF8; //reset h-blanc and V-Blanc and V-Count Setting
+		//if(help3 == VCOUNT) //else it is a extra long V-Line // ichfly todo it is to slow
+		//{
+			DISPSTAT |= (temp2 & 0x3); //temporary patch get original settings
+		//}
+		//if(VCOUNT > 160 && VCOUNT != 227)DISPSTAT |= 1;//V-Blanc
+		UPDATE_REG(0x06, VCOUNT);
+		if(VCOUNT == (DISPSTAT >> 8)) //update by V-Count Setting
+		{
+			DISPSTAT |= 0x4;
+			/*if(DISPSTAT & 0x20) {
+			  IF |= 4;
+			  UPDATE_REG(0x202, IF);
+			}*/
+		}
+		UPDATE_REG(0x04, DISPSTAT);
+		//iprintf("Vcountreal: %08x\n",temp);
+		//iprintf("DISPSTAT: %08x\n",temp2);
+}
+
+__attribute__((section(".itcm")))
+u32 CPUReadMemoryreal(u32 address) //ichfly not inline is faster because it is smaler
+{
+#ifdef DEV_VERSION
+  if(address & 3) {  
+    if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
+      iprintf("Unaligned word read: %08x at %08x\n", address, armMode ?
+          armNextPC - 4 : armNextPC - 2);
+    }
+  }
+#endif
+  
+#ifdef printreads
+  iprintf("r32 %08x\n",address);
+#endif
+  
+  u32 value;
+  switch(address >> 24) {
+  case 0:
+    if(reg[15].I >> 24) {
+      if(address < 0x4000) {
+#ifdef DEV_VERSION
+        if(systemVerbose & VERBOSE_ILLEGAL_READ) {
+          iprintf("Illegal word read: %08x at %08x\n", address, armMode ?
+              armNextPC - 4 : armNextPC - 2);
+        }
+#endif
+        
+        value = READ32LE(((u32*)&biosProtected));
+      }
+      else goto unreadable;
+    } else
+      value = READ32LE(((u32*)&bios[address & 0x3FFC]));
+    break;
+  case 2:
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unreadable;
+#endif
+    value = READ32LE(((u32*)&workRAM[address & 0x3FFFC]));
+    break;
+  case 3:
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
+#endif
+    value = READ32LE(((u32*)&internalRAM[address & 0x7ffC]));
+    break;
+  case 4:
+  
+	if(address > 0x40000FF && address < 0x4000111)
+	{
+		//todo timer shift
+		value = *(u32 *)(address);
+		break;
+	}
+#ifdef gba_handel_IRQ_correct
+	if(address == 0x4000202 || address == 0x4000200)//ichfly update
+	{
+		IF = *(vuint16*)0x04000214; //VBlanc
+		UPDATE_REG(0x202, IF);
+	}
+#endif	
+
+
+	if(address > 0x4000003 && address < 0x4000008)//ichfly update
+	{
+		if(disableHBLANKIRQ == true){
+			vcounthandler();
+		}
+		else{
+			updateVC();
+		}
+	}
+    if((address < 0x4000400) && ioReadable[address & 0x3fc]) {
+      if(ioReadable[(address & 0x3fc) + 2])
+        value = READ32LE(((u32*)&ioMem[address & 0x3fC]));
+      else
+        value = READ16LE(((u16*)&ioMem[address & 0x3fc]));
+    } else goto unreadable;
+    break;
+  case 5:
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unreadable;
+#endif
+    value = READ32LE(((u32*)&paletteRAM[address & 0x3fC]));
+    break;
+  case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unreadable;
+#endif
+    address = (address & 0x1fffc);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+    {
+        value = 0;
+        break;
+    }
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+    value = READ32LE(((u32*)&vram[address]));
+    break;
+  case 7:
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unreadable;
+#endif
+    value = READ32LE(((u32*)&emultoroam[address & 0x3FC]));
+    break;
+  case 8:
+  case 9:
+  case 10:
+  case 11:
+  case 12:
+#ifdef uppern_read_emulation
+	if( (int)(address&0x1FFFFFC) > romSize)
+	{
+#ifdef print_uppern_read_emulation
+		iprintf("high r32 %08x\n",address);
+#endif
+		if(ichflyfilestreamsize > (int)(address&0x1FFFFFC))
+		{
+			//fseek(ichflyfilestream , address&0x1FFFFFC , SEEK_SET);
+			//fread(&value,1,4,ichflyfilestream);
+			//ichfly_readfrom(ichflyfilestream,(address&0x1FFFFFC),(char*)&value,4);
+			value = ichfly_readu32(address&0x1FFFFFC);
+		}
+		else
+		{
+			value = 0;
+		}
+	}
+	else
+	{
+		value = READ32LE(((u32*)&rom[address&0x1FFFFFC]));
+	}
+#else
+    value = READ32LE(((u32*)&rom[address&0x1FFFFFC]));
+#endif
+    break;
+  case 13:
+    if(cpuEEPROMEnabled)
+      // no need to swap this
+      return eepromRead(address);
+    goto unreadable;
+  case 14:
+    if(cpuFlashEnabled | cpuSramEnabled)
+      // no need to swap this
+      return flashRead(address);
+    // default
+  default:
+  unreadable:
+  //while(1);
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal word read: %08x\n", address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+
+    //if(cpuDmaHack) { //only this is possible here
+      value = cpuDmaLast;
+    /*} else {
+      if(armState) {
+        value = CPUReadMemoryQuick(reg[15].I);
+      } else {
+        value = CPUReadHalfWordQuick(reg[15].I) |
+          CPUReadHalfWordQuick(reg[15].I) << 16;
+      }
+    }*/
+  }
+
+  if(address & 3) {
+//#ifdef C_CORE
+    int shift = (address & 3) << 3;
+    value = (value >> shift) | (value << (32 - shift));
+/*#else    
+#ifdef __GNUC__ ichfly
+    asm("and $3, %%ecx;"
+        "shl $3 ,%%ecx;"
+        "ror %%cl, %0"
+        : "=r" (value)
+        : "r" (value), "c" (address));
+#else
+    asm(
+      mov ecx, address;
+      and ecx, 3;
+      shl ecx, 3;
+      ror [dword ptr value], cl;
+    )
+//#endif
+#endif*/
+  }
+  return value;
+}
+
+__attribute__((section(".itcm")))
+u16 CPUReadHalfWordreal(u32 address) //ichfly not inline is faster because it is smaler
+{
+#ifdef printreads
+	iprintf("r16 %08x\n",address);
+#endif
+#ifdef DEV_VERSION      
+  if(address & 1) {
+    if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
+      iprintf("Unaligned halfword read: %08x at %08x\n", address, armMode ?
+          armNextPC - 4 : armNextPC - 2);
+    }
+  }
+#endif
+  
+  u32 value;
+  
+  switch(address >> 24) {
+  case 0:
+    if (reg[15].I >> 24) {
+      if(address < 0x4000) {
+#ifdef DEV_VERSION
+        if(systemVerbose & VERBOSE_ILLEGAL_READ) {
+          iprintf("Illegal halfword read: %08x at %08x\n", address, armMode ?
+              armNextPC - 4 : armNextPC - 2);
+        }
+#endif
+        value = READ16LE(((u16*)&biosProtected[address&2]));
+      } else goto unreadable;
+    } else
+      value = READ16LE(((u16*)&bios[address & 0x3FFE]));
+    break;
+  case 2:
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unreadable;
+#endif
+    value = READ16LE(((u16*)&workRAM[address & 0x3FFFE]));
+    break;
+  case 3:
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
+#endif
+    value = READ16LE(((u16*)&internalRAM[address & 0x7ffe]));
+    break;
+  case 4:
+  
+	if(address > 0x40000FF && address < 0x4000111)
+	{
+		
+		if((address&0x2) == 0)
+		{
+			if(ioMem[address & 0x3fe] & 0x8000)
+			{
+				value = ((*(u16 *)(address)) >> 1) | 0x8000;
+			}
+			else
+			{
+				value = (*(u16 *)(address)) >> 1;
+			}
+			return value;
+		}
+	}
+  
+	if(address > 0x4000003 && address < 0x4000008)//ichfly update
+	{
+		if(disableHBLANKIRQ == true){
+			vcounthandler();
+		}
+		else{
+			updateVC();
+		}
+	}
+	
+#ifdef gba_handel_IRQ_correct
+	if(address == 0x4000202)//ichfly update
+	{
+		IF = *(vuint16*)0x04000214;
+		UPDATE_REG(0x202, IF);
+	}
+#endif
+	
+    if((address < 0x4000400) && ioReadable[address & 0x3fe])
+    {
+		value =  READ16LE(((u16*)&ioMem[address & 0x3fe]));
+    }
+    else goto unreadable;
+    break;
+  case 5:
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unreadable;
+#endif
+    value = READ16LE(((u16*)&paletteRAM[address & 0x3fe]));
+    break;
+  case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unreadable;
+#endif
+    address = (address & 0x1fffe);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+    {
+        value = 0;
+        break;
+    }
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+    value = READ16LE(((u16*)&vram[address]));
+    break;
+  case 7:
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unreadable;
+#endif
+    value = READ16LE(((u16*)&emultoroam[address & 0x3fe]));
+    break;
+  case 8:
+  case 9:
+  case 10:
+  case 11:
+  case 12:
+    if(address == 0x80000c4 || address == 0x80000c6 || address == 0x80000c8)
+      value = rtcRead(address);
+    else
+	{
+#ifdef uppern_read_emulation
+	if( (int)(address&0x1FFFFFE) > romSize)
+	{
+#ifdef print_uppern_read_emulation
+		iprintf("high r16 %08x\n",address);
+#endif
+		if(ichflyfilestreamsize > (int)(address&0x1FFFFFE))
+		{
+			//fseek (ichflyfilestream , address&0x1FFFFFE , SEEK_SET);
+			//fread (&value,1,2,ichflyfilestream);
+			//ichfly_readfrom(ichflyfilestream,(address&0x1FFFFFE),(char*)&value,2);
+			value = ichfly_readu16(address&0x1FFFFFE);
+		}
+		else
+		{
+			value = 0;
+		}
+	}
+	else
+	{
+		value = READ16LE(((u16*)&rom[address & 0x1FFFFFE]));
+	}
+#else
+    value = READ16LE(((u16*)&rom[address & 0x1FFFFFE]));
+#endif
+	}
+    break;    
+  case 13:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif
+    if(cpuEEPROMEnabled)
+      // no need to swap this
+      return  eepromRead(address);
+    goto unreadable;
+  case 14:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif
+    if(cpuFlashEnabled | cpuSramEnabled)
+      // no need to swap this
+      return flashRead(address);
+    // default
+  default:
+  unreadable:
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal hword read: %08x\n", address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+
+    //if(cpuDmaHack) { //only this is possible here
+      value = cpuDmaLast & 0xFFFF;
+    /*} else {
+      if(armState) {
+        value = CPUReadHalfWordQuick(reg[15].I + (address & 2));
+      } else {
+        value = CPUReadHalfWordQuick(reg[15].I);
+      }
+    }*/
+    break;
+  }
+
+  if(address & 1) {
+    value = (value >> 8) | (value << 24);
+  }
+  
+  return value;
+}
+
+__attribute__((section(".itcm")))
+s16 CPUReadHalfWordSigned(u32 address)
+{
+  u16 value = CPUReadHalfWordreal(address);
+  if((address & 1))
+    value = (s8)value;
+  return value;
+}
+
+__attribute__((section(".itcm")))
+u8 CPUReadBytereal(u32 address) //ichfly not inline is faster because it is smaler
+{
+#ifdef printreads
+iprintf("r8 %02x\n",address);
+#endif
+
+  switch(address >> 24) {
+  case 0:
+    if (reg[15].I >> 24) {
+      if(address < 0x4000) {
+#ifdef DEV_VERSION
+        if(systemVerbose & VERBOSE_ILLEGAL_READ) {
+          iprintf("Illegal byte read: %08x at %08x\n", address, armMode ?
+              armNextPC - 4 : armNextPC - 2);
+        }
+#endif
+        return biosProtected[address & 3];
+      } else goto unreadable;
+    }
+    return bios[address & 0x3FFF];
+  case 2:
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unreadable;
+#endif
+    return workRAM[address & 0x3FFFF];
+  case 3:
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
+#endif
+    return internalRAM[address & 0x7fff];
+  case 4:
+  
+	if(address > 0x40000FF && address < 0x4000111)
+	{
+		//todo timer shift
+		return *(u8 *)(address);
+	}
+  
+  	if(address > 0x4000003 && address < 0x4000008)//ichfly update
+	{
+		if(disableHBLANKIRQ == true){
+			vcounthandler();
+		}
+		else{
+			updateVC();
+		}
+	}
+#ifdef gba_handel_IRQ_correct
+	if(address == 0x4000202 || address == 0x4000203)//ichfly update
+	{
+		IF = *(vuint16*)0x04000214; //VBlanc
+		UPDATE_REG(0x202, IF);
+	}
+#endif
+    if((address < 0x4000400) && ioReadable[address & 0x3ff])
+      return ioMem[address & 0x3ff];
+    else goto unreadable;
+  case 5:
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unreadable;
+#endif
+    return paletteRAM[address & 0x3ff];
+  case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unreadable;
+#endif
+    address = (address & 0x1ffff);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+        return 0;
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+    return vram[address];
+  case 7:
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unreadable;
+#endif
+    return emultoroam[address & 0x3ff];
+  case 8:
+  case 9:
+  case 10:
+  case 11:
+  case 12:
+
+#ifdef uppern_read_emulation
+	if( (int)(address&0x1FFFFFF) > romSize)
+	{
+#ifdef print_uppern_read_emulation
+		iprintf("high r8 %08x\n",address);
+#endif
+		if(ichflyfilestreamsize > (int)(address&0x1FFFFFF))
+		{
+			//u8 temp = 0;
+			//fseek (ichflyfilestream , address&0x1FFFFFF , SEEK_SET);
+			//fread (&temp,1,1,ichflyfilestream);
+			//ichfly_readfrom(ichflyfilestream,(address&0x1FFFFFF),(char*)&temp,1);
+			return ichfly_readu8(address&0x1FFFFFF);
+		}
+		else
+		{
+			return 0;
+		}
+	}
+	else
+	{
+		return rom[address & 0x1FFFFFF];
+	}
+#else
+    return rom[address & 0x1FFFFFF];
+#endif        
+  case 13:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif
+    if(cpuEEPROMEnabled)
+      return eepromRead(address);
+    goto unreadable;
+  case 14:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif
+    if(cpuSramEnabled | cpuFlashEnabled)
+      return flashRead(address);
+    if(cpuEEPROMSensorEnabled) {
+      switch(address & 0x00008f00) {
+      case 0x8200:
+        return systemGetSensorX() & 255;
+      case 0x8300:
+        return (systemGetSensorX() >> 8)|0x80;
+      case 0x8400:
+        return systemGetSensorY() & 255;
+      case 0x8500:
+        return systemGetSensorY() >> 8;
+      }
+    }
+    // default
+  default:
+  unreadable:
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal byte read: %08x\n", address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+
+    //if(cpuDmaHack) { //only this is possible here
+      return cpuDmaLast & 0xFF;
+    /*} else {
+      if(armState) {
+        return CPUReadByteQuick(reg[15].I+(address & 3));
+      } else {
+        return CPUReadByteQuick(reg[15].I+(address & 1));
+      }
+    }*/
+    break;
+  }
+}
+
+__attribute__((section(".itcm")))
+void CPUWriteMemory(u32 address, u32 value) //ichfly not inline is faster because it is smaler
+{
+#ifdef printreads
+    iprintf("w32 %08x to %08x\n",value,address);
+#endif		  
+		
+
+#ifdef DEV_VERSION
+  if(address & 3) {
+    if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
+      iprintf("Unaligned word write: %08x to %08x from %08x\n",
+          value,
+          address,
+          armMode ? armNextPC - 4 : armNextPC - 2);
+    }
+  }
+#endif
+  
+  switch(address >> 24) {
+  case 0x02:
+#ifdef BKPT_SUPPORT
+    if(*((u32 *)&freezeWorkRAM[address & 0x3FFFC]))
+      cheatsWriteMemory(address & 0x203FFFC,
+                        value);
+    else
+#endif
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unreadable;
+#endif
+      WRITE32LE(((u32*)&workRAM[address & 0x3FFFC]), value);
+    break;
+  case 0x03:
+#ifdef BKPT_SUPPORT
+    if(*((u32 *)&freezeInternalRAM[address & 0x7ffc]))
+      cheatsWriteMemory(address & 0x3007FFC,
+                        value);
+    else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unreadable;
+#endif
+      WRITE32LE(((u32*)&internalRAM[address & 0x7ffC]), value);
+    break;
+  case 0x04:
+    if(address < 0x4000400) {
+
+	/*if((0x4000060 > address && address > 0x4000007) || (address > 0x40000FF && address < 0x4000110)) //timer and lcd
+	{
+			//iprintf("32 %x %x\r\n",address,value);
+		    *(u32 *)(address) = value;
+	}
+	else //dont do twice*/ //don't need that any more
+	{
+      CPUUpdateRegister((address & 0x3FC), value & 0xFFFF);
+      CPUUpdateRegister((address & 0x3FC) + 2, (value >> 16));
+    }
+	} else goto unwritable;
+    break;
+  case 0x05:
+#ifdef BKPT_SUPPORT
+    if(*((u32 *)&freezePRAM[address & 0x3fc]))
+      cheatsWriteMemory(address & 0x70003FC,
+                        value);
+    else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unreadable;
+#endif
+    WRITE32LE(((u32*)&paletteRAM[address & 0x3FC]), value);
+    break;
+  case 0x06:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unreadable;
+#endif
+    address = (address & 0x1fffc);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+        return;
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+
+#ifdef BKPT_SUPPORT
+    if(*((u32 *)&freezeVRAM[address]))
+      cheatsWriteMemory(address + 0x06000000, value);
+    else
+#endif
+    
+    WRITE32LE(((u32*)&vram[address]), value);
+    break;
+  case 0x07:
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unreadable;
+#endif
+#ifdef BKPT_SUPPORT
+    if(*((u32 *)&freezeOAM[address & 0x3fc]))
+      cheatsWriteMemory(address & 0x70003FC,
+                        value);
+    else
+#endif
+    WRITE32LE(((u32*)&emultoroam[address & 0x3fc]), value);
+    break;
+  case 0x0D:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,value);
+#endif
+    if(cpuEEPROMEnabled) {
+      eepromWrite(address, value);
+      break;
+    }
+    goto unwritable;
+  case 0x0E:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,value);
+#endif
+    if(!eepromInUse | cpuSramEnabled | cpuFlashEnabled) {
+      (*cpuSaveGameFunc)(address, (u8)value);
+      break;
+    }
+    // default
+  default:
+  unwritable:
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal word write: %08x to %08x\n",value, address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+    break;
+  }
+}
+
+__attribute__((section(".itcm")))
+void CPUWriteHalfWord(u32 address, u16 value)
+{
+#ifdef printreads
+iprintf("w16 %04x to %08x\r\n",value,address);
+#endif
+
+#ifdef DEV_VERSION
+  if(address & 1) {
+    if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
+      iprintf("Unaligned halfword write: %04x to %08x from %08x\n",
+          value,
+          address,
+          armMode ? armNextPC - 4 : armNextPC - 2);
+    }
+  }
+#endif
+  
+  switch(address >> 24) {
+  case 2:
+#ifdef BKPT_SUPPORT
+    if(*((u16 *)&freezeWorkRAM[address & 0x3FFFE]))
+      cheatsWriteHalfWord(address & 0x203FFFE,
+                          value);
+    else
+#endif
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unwritable;
+#endif
+      WRITE16LE(((u16*)&workRAM[address & 0x3FFFE]),value);
+    break;
+  case 3:
+#ifdef BKPT_SUPPORT
+    if(*((u16 *)&freezeInternalRAM[address & 0x7ffe]))
+      cheatsWriteHalfWord(address & 0x3007ffe,
+                          value);
+    else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unwritable;
+#endif
+      WRITE16LE(((u16*)&internalRAM[address & 0x7ffe]), value);
+    break;    
+  case 4:
+  
+	/*if(address > 0x40000FF && address < 0x4000110)
+	{
+		*(u16 *)(address) = value;
+		break;
+	}*/ //don't need that
+  
+  	/*if(0x4000060 > address && address > 0x4000008)
+	{
+			iprintf("16 %x %x\r\n",address,value);
+		    *(u16 *)((address & 0x3FF) + 0x4000000) = value;
+	}*/ //dont do dobble
+    if(address < 0x4000400)
+      CPUUpdateRegister(address & 0x3fe, value);
+    else goto unwritable;
+    break;
+  case 5:
+#ifdef BKPT_SUPPORT
+    if(*((u16 *)&freezePRAM[address & 0x03fe]))
+      cheatsWriteHalfWord(address & 0x70003fe,
+                          value);
+    else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unwritable;
+#endif
+    WRITE16LE(((u16*)&paletteRAM[address & 0x3fe]), value);
+    break;
+  case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unwritable;
+#endif
+    address = (address & 0x1fffe);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+        return;
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+#ifdef BKPT_SUPPORT
+    if(*((u16 *)&freezeVRAM[address]))
+      cheatsWriteHalfWord(address + 0x06000000,
+                          value);
+    else
+#endif
+    WRITE16LE(((u16*)&vram[address]), value); 
+    break;
+  case 7:
+#ifdef BKPT_SUPPORT
+    if(*((u16 *)&freezeOAM[address & 0x03fe]))
+      cheatsWriteHalfWord(address & 0x70003fe,
+                          value);
+    else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unwritable;
+#endif
+    WRITE16LE(((u16*)&emultoroam[address & 0x3fe]), value);
+    break;
+  case 8:
+  case 9:
+    if(address == 0x80000c4 || address == 0x80000c6 || address == 0x80000c8) {
+      if(!rtcWrite(address, value))
+        goto unwritable;
+    } else if(!agbPrintWrite(address, value)) goto unwritable;
+    break;
+  case 13:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,value);
+#endif
+    if(cpuEEPROMEnabled) {
+      eepromWrite(address, (u8)value);
+      break;
+    }
+    goto unwritable;
+  case 14:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,value);
+#endif
+    if(!eepromInUse | cpuSramEnabled | cpuFlashEnabled) {
+      (*cpuSaveGameFunc)(address, (u8)value);
+      break;
+    }
+    goto unwritable;
+  default:
+  unwritable:
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal hword write: %04x to %08x\n",value, address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+    break;
+  }
+}
+
+__attribute__((section(".itcm")))
+void CPUWriteByte(u32 address, u8 b)
+{
+#ifdef printreads
+	iprintf("w8 %02x to %08x\r\n",b,address);
+#endif
+  switch(address >> 24) {
+  case 2:
+#ifdef BKPT_SUPPORT
+      if(freezeWorkRAM[address & 0x3FFFF])
+        cheatsWriteByte(address & 0x203FFFF, b);
+      else
+#endif
+#ifdef checkclearaddrrw
+	if(address >0x023FFFFF)goto unwritable;
+#endif
+        workRAM[address & 0x3FFFF] = b;
+    break;
+  case 3:
+#ifdef BKPT_SUPPORT
+    if(freezeInternalRAM[address & 0x7fff])
+      cheatsWriteByte(address & 0x3007fff, b);
+    else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x03008000 && !(address > 0x03FF8000)/*upern mirrow*/)goto unwritable;
+#endif
+      internalRAM[address & 0x7fff] = b;
+    break;
+  case 4:
+  
+    if(address < 0x4000400) {
+      switch(address & 0x3FF) {
+      case 0x301:
+	/*if(b == 0x80) //todo
+	  stopState = true;
+	holdState = 1;
+	holdType = -1;
+  cpuNextEvent = cpuTotalTicks;
+	break;*/
+      case 0x60:
+      case 0x61:
+      case 0x62:
+      case 0x63:
+      case 0x64:
+      case 0x65:
+      case 0x68:
+      case 0x69:
+      case 0x6c:
+      case 0x6d:
+      case 0x70:
+      case 0x71:
+      case 0x72:
+      case 0x73:
+      case 0x74:
+      case 0x75:
+      case 0x78:
+      case 0x79:
+      case 0x7c:
+      case 0x7d:
+      case 0x80:
+      case 0x81:
+      case 0x84:
+      case 0x85:
+      case 0x90:
+      case 0x91:
+      case 0x92:
+      case 0x93:
+      case 0x94:
+      case 0x95:
+      case 0x96:
+      case 0x97:
+      case 0x98:
+      case 0x99:
+      case 0x9a:
+      case 0x9b:
+      case 0x9c:
+      case 0x9d:
+      case 0x9e:
+      case 0x9f:      
+	//soundEvent(address&0xFF, b);  //ichfly disable sound
+#ifdef printsoundwrites
+		  iprintf("b %02x to %08x\r\n",b,address);
+#endif
+	  #ifdef arm9advsound
+			SendArm7Command((u32)((address & 0x3FF) | 0x40000000), (u32)b);	//faster in case we send a 0
+		#endif
+	break;
+      default:
+	/*if((0x4000060 > address && address > 0x4000008) || (address > 0x40000FF && address < 0x4000110))
+	{
+			//iprintf("8 %x %x\r\n",address,b);
+		    *(u8 *)(address) = b;
+	}*/ //ichfly don't need that
+	if(address & 1)
+	{
+	  CPUUpdateRegister(address & 0x3fe,
+			    ((READ16LE(((u16*)&ioMem[address & 0x3fe])))
+			     & 0x00FF) |
+			    b<<8);
+
+	}
+	else
+	  CPUUpdateRegister(address & 0x3fe,
+			    ((READ16LE(((u16*)&ioMem[address & 0x3fe])) & 0xFF00) | b));
+      }
+      break;
+    } else goto unwritable;
+    break;
+  case 5:
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unwritable;
+#endif
+    // no need to switch
+    *((u16 *)&paletteRAM[address & 0x3FE]) = (b << 8) | b;
+    break;
+  case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unwritable;
+#endif
+    address = (address & 0x1fffe);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+        return;
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+
+    // no need to switch 
+    // byte writes to OBJ VRAM are ignored
+    if ((address) < objTilesAddress[((DISPCNT&7)+1)>>2])
+    {
+#ifdef BKPT_SUPPORT
+      if(freezeVRAM[address])
+        cheatsWriteByte(address + 0x06000000, b);
+      else
+#endif  
+            *((u16 *)&vram[address]) = (b << 8) | b;
+    }
+    break;
+  case 7:
+#ifdef checkclearaddrrw
+	goto unwritable;
+#endif
+    // no need to switch
+    // byte writes to OAM are ignored
+    //    *((u16 *)&emultoroam[address & 0x3FE]) = (b << 8) | b;
+    break;    
+  case 13:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,b);
+#endif
+
+    if(cpuEEPROMEnabled) {
+      eepromWrite(address, b);
+      break;
+    }
+    goto unwritable;
+  case 14:
+#ifdef printsavewrite
+	  	  iprintf("%X %X\n\r",address,b);
+#endif
+      if (!(saveType == 5) && (!eepromInUse | cpuSramEnabled | cpuFlashEnabled)) {
+
+    //if(!cpuEEPROMEnabled && (cpuSramEnabled | cpuFlashEnabled)) { 
+
+        (*cpuSaveGameFunc)(address, b);
+      break;
+    }
+    // default
+  default:
+  unwritable:
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal byte write: %02x to %08x\n",b, address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+    break;
+  }
+}
+
+
+
+//for protection unit (arm exception triggers from virtualized ARM code running from GBA memory)
+__attribute__((section(".itcm")))
+void updateVCsub()
+{
+		u32 temp = REG_VCOUNT;
+		u32 temp2 = REG_DISPSTAT;
+		//iprintf("Vcountreal: %08x\n",temp);
+		#ifdef usebuffedVcout
+			VCOUNT = VCountdstogba[temp];
+		#else
+		if(temp < 192)
+		{
+			VCOUNT = ((temp * 214) >> 8);//VCOUNT = help * (1./1.2); //1.15350877;
+			//help3 = (help + 1) * (1./1.2); //1.15350877;  // ichfly todo it is to slow
+		}
+		else
+		{
+			VCOUNT = (((temp - 192) * 246) >>  8)+ 160;//VCOUNT = ((temp - 192) * (1./ 1.04411764)) + 160 //* (1./ 1.04411764)) + 160; //1.15350877;
+			//help3 = ((help - 191) *  (1./ 1.04411764)) + 160; //1.15350877;  // ichfly todo it is to slow			
+		}
+		#endif
+		DISPSTAT &= 0xFFF8; //reset h-blanc and V-Blanc and V-Count Setting
+		//if(help3 == VCOUNT) //else it is a extra long V-Line // ichfly todo it is to slow
+		//{
+			DISPSTAT |= (temp2 & 0x3); //temporary patch get original settings
+		//}
+		//if(VCOUNT > 160 && VCOUNT != 227)DISPSTAT |= 1;//V-Blanc
+		UPDATE_REG(0x06, VCOUNT);
+		if(VCOUNT == (DISPSTAT >> 8)) //update by V-Count Setting
+		{
+			DISPSTAT |= 0x4;
+			/*if(DISPSTAT & 0x20) {
+			  IF |= 4;
+			  UPDATE_REG(0x202, IF);
+			}*/
+		}
+		UPDATE_REG(0x04, DISPSTAT);
+		//iprintf("Vcountreal: %08x\n",temp);
+		//iprintf("DISPSTAT: %08x\n",temp2);
+}
+
+
+__attribute__((section(".itcm")))
+u32 CPUReadMemoryrealpu(u32 address)
+{
+
+	//iprintf("%08X",REG_IME);
+#ifdef DEV_VERSION
+  if(address & 3) {  
+    if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
+      iprintf("Unaligned word read: %08x at %08x\n", address, armMode ?
+          armNextPC - 4 : armNextPC - 2);
+    }
+  }
+#endif
+  
+#ifdef printreads
+  iprintf("r32 %08x\n",address);
+#endif
+  
+  u32 value=0;
+  switch(address >> 24) {
+  case 4:
+  
+	if(address > 0x40000FF && address < 0x4000111)
+	{
+		//todo timer shift
+		value = *(u32 *)(address);
+		break;
+	}
+#ifdef gba_handel_IRQ_correct
+	if(address == 0x4000202 || address == 0x4000200)//ichfly update
+	{
+		IF = *(vuint16*)0x04000214; //VBlanc
+		UPDATE_REG(0x202, IF);
+	}
+#endif	
+
+
+	if(address > 0x4000003 && address < 0x4000008)//ichfly update
+	{
+		if(disableHBLANKIRQ == true){
+			vcounthandler();
+		}
+		else{
+			updateVCsub();
+		}
+	}
+    if((address < 0x4000400) && ioReadable[address & 0x3fc]) {
+      if(ioReadable[(address & 0x3fc) + 2])
+        value = READ32LE(((u32*)&ioMem[address & 0x3fC]));
+      else
+        value = READ16LE(((u16*)&ioMem[address & 0x3fc]));
+    } else goto unreadable;
+    break;
+  case 8:
+  case 9:
+  case 10:
+  case 11:
+  case 12:
+#ifdef uppern_read_emulation
+	if( (int)(address&0x1FFFFFC) > romSize)
+	{
+#ifdef print_uppern_read_emulation
+		iprintf("high r32 %08x\n",address);
+#endif
+		if(ichflyfilestreamsize > (int)(address&0x1FFFFFC))
+		{
+			//fseek(ichflyfilestream , address&0x1FFFFFC , SEEK_SET);
+			//fread(&value,1,4,ichflyfilestream);
+			//ichfly_readfrom(ichflyfilestream,(address&0x1FFFFFC),(char*)&value,4);
+			value = ichfly_readu32(address&0x1FFFFFC);
+		}
+		else
+		{
+			value = 0;
+		}
+	}
+	else
+	{
+		value = READ32LE(((u32*)&rom[address&0x1FFFFFC]));
+	}
+#else
+    value = READ32LE(((u32*)&rom[address&0x1FFFFFC]));
+#endif
+    break;
+  case 13:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif
+    if(cpuEEPROMEnabled)
+      // no need to swap this
+      return eepromRead(address);
+    goto unreadable;
+  case 14:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif
+    if(cpuFlashEnabled | cpuSramEnabled)
+      // no need to swap this
+      return flashRead(address);
+    // default
+  default:
+  unreadable:
+  //while(1);
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal word read: %08x\n", address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+
+    /*if(cpuDmaHack) { //ichly won't work
+      value = cpuDmaLast;
+    } else {
+      if(armState) {
+        value = CPUReadMemoryQuick(reg[15].I);
+      } else {
+        value = CPUReadHalfWordQuick(reg[15].I) |
+          CPUReadHalfWordQuick(reg[15].I) << 16;
+      }
+    }*/
+	  break;
+  }
+
+  if(address & 3) {
+//#ifdef C_CORE
+    int shift = (address & 3) << 3;
+    value = (value >> shift) | (value << (32 - shift));
+/*#else    
+#ifdef __GNUC__ ichfly
+    asm("and $3, %%ecx;"
+        "shl $3 ,%%ecx;"
+        "ror %%cl, %0"
+        : "=r" (value)
+        : "r" (value), "c" (address));
+#else
+    asm(
+      mov ecx, address;
+      and ecx, 3;
+      shl ecx, 3;
+      ror [dword ptr value], cl;
+    )
+//#endif
+#endif*/
+  }
+  return value;
+}
+
+__attribute__((section(".itcm")))
+u16 CPUReadHalfWordrealpu(u32 address) //ichfly not inline is faster because it is smaler
+{
+#ifdef printreads
+	iprintf("r16 %08x\n",address);
+#endif
+#ifdef DEV_VERSION      
+  if(address & 1) {
+    if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
+      iprintf("Unaligned halfword read: %08x at %08x\n", address, armMode ?
+          armNextPC - 4 : armNextPC - 2);
+    }
+  }
+#endif
+  
+  u32 value=0;
+  
+  switch(address >> 24) {
+  case 4:
+  
+	if(address > 0x40000FF && address < 0x4000111)
+	{
+		
+		if((address&0x2) == 0)
+		{
+			if(ioMem[address & 0x3fe] & 0x8000)
+			{
+				value = ((*(u16 *)(address)) >> 1) | 0x8000;
+			}
+			else
+			{
+				value = (*(u16 *)(address)) >> 1;
+			}
+			return value;
+		}
+	}
+  
+	if(address > 0x4000003 && address < 0x4000008)//ichfly update
+	{
+		if(disableHBLANKIRQ == true){
+			vcounthandler();
+		}
+		else{
+			updateVCsub();
+		}
+	}
+	
+#ifdef gba_handel_IRQ_correct
+	if(address == 0x4000202)//ichfly update
+	{
+		IF = *(vuint16*)0x04000214;
+		UPDATE_REG(0x202, IF);
+	}
+#endif
+	
+    if((address < 0x4000400) && ioReadable[address & 0x3fe])
+    {
+		value =  READ16LE(((u16*)&ioMem[address & 0x3fe]));
+    }
+    else goto unreadable;
+    break;
+  case 8:
+  case 9:
+  case 10:
+  case 11:
+  case 12:
+    if(address == 0x80000c4 || address == 0x80000c6 || address == 0x80000c8)
+      value = rtcRead(address);
+    else
+	{
+#ifdef uppern_read_emulation
+	if( (int)(address&0x1FFFFFE) > romSize)
+	{
+#ifdef print_uppern_read_emulation
+		iprintf("high r16 %08x\n",address);
+#endif
+		if(ichflyfilestreamsize > (int)(address&0x1FFFFFE))
+		{
+			//fseek (ichflyfilestream , address&0x1FFFFFE , SEEK_SET);
+			//fread (&value,1,2,ichflyfilestream);
+			//ichfly_readfrom(ichflyfilestream,(address&0x1FFFFFE),(char*)&value,2);
+			value = ichfly_readu16(address&0x1FFFFFE);
+		}
+		else
+		{
+			value = 0;
+		}
+	}
+	else
+	{
+		value = READ16LE(((u16*)&rom[address & 0x1FFFFFE]));
+	}
+#else
+    value = READ16LE(((u16*)&rom[address & 0x1FFFFFE]));
+#endif
+	}
+    break;    
+  case 13:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif    
+
+	if(cpuEEPROMEnabled)
+      // no need to swap this
+      return  eepromRead(address);
+    goto unreadable;
+  case 14:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif    
+	
+	if(cpuFlashEnabled | cpuSramEnabled)
+      // no need to swap this
+      return flashRead(address);
+    // default
+  default:
+  unreadable:
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal hword read: %08x\n", address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+
+    /*if(cpuDmaHack) {
+      value = cpuDmaLast & 0xFFFF;
+    } else {
+      if(armState) {
+        value = CPUReadHalfWordQuick(reg[15].I + (address & 2));
+      } else {
+        value = CPUReadHalfWordQuick(reg[15].I);
+      }
+    }*/
+    break;
+  }
+
+  if(address & 1) {
+    value = (value >> 8) | (value << 24);
+  }
+  
+  return value;
+}
+
+__attribute__((section(".itcm")))
+u8 CPUReadByterealpu(u32 address) //ichfly not inline is faster because it is smaler
+{
+#ifdef printreads
+iprintf("r8 %02x\n",address);
+#endif
+
+  switch(address >> 24) {
+  case 4:
+  
+	if(address > 0x40000FF && address < 0x4000111)
+	{
+		//todo timer shift
+		return *(u8 *)(address);
+	}
+  
+  	if(address > 0x4000003 && address < 0x4000008)//ichfly update
+	{
+		if(disableHBLANKIRQ == true){
+			vcounthandler();
+		}
+		else{
+			updateVCsub();
+		}
+	}
+#ifdef gba_handel_IRQ_correct
+	if(address == 0x4000202 || address == 0x4000203)//ichfly update
+	{
+		IF = *(vuint16*)0x04000214; //VBlanc
+		UPDATE_REG(0x202, IF);
+	}
+#endif
+    if((address < 0x4000400) && ioReadable[address & 0x3ff])
+      return ioMem[address & 0x3ff];
+    else goto unreadable;
+  case 8:
+  case 9:
+  case 10:
+  case 11:
+  case 12:
+
+#ifdef uppern_read_emulation
+	if( (int)(address&0x1FFFFFF) > romSize)
+	{
+#ifdef print_uppern_read_emulation
+		iprintf("high r8 %08x\n",address);
+#endif
+		if(ichflyfilestreamsize > (int)(address&0x1FFFFFF))
+		{
+			//u8 temp = 0;
+			//fseek (ichflyfilestream , address&0x1FFFFFF , SEEK_SET);
+			//fread (&temp,1,1,ichflyfilestream);
+			//ichfly_readfrom(ichflyfilestream,(address&0x1FFFFFF),(char*)&temp,1);
+			return ichfly_readu8(address&0x1FFFFFF);
+		}
+		else
+		{
+			return 0;
+		}
+	}
+	else
+	{
+		return rom[address & 0x1FFFFFF];
+	}
+#else
+    return rom[address & 0x1FFFFFF];
+#endif        
+  case 13:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif    
+	
+	if(cpuEEPROMEnabled)
+      return eepromRead(address);
+    goto unreadable;
+  case 14:
+#ifdef printsaveread
+	  iprintf("%X\n\r",address);
+#endif    
+if(cpuSramEnabled | cpuFlashEnabled)
+      return flashRead(address);
+    if(cpuEEPROMSensorEnabled) {
+      switch(address & 0x00008f00) {
+      case 0x8200:
+        return systemGetSensorX() & 255;
+      case 0x8300:
+        return (systemGetSensorX() >> 8)|0x80;
+      case 0x8400:
+        return systemGetSensorY() & 255;
+      case 0x8500:
+        return systemGetSensorY() >> 8;
+      }
+    }
+    // default
+  default:
+  unreadable:
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal byte read: %08x\n", address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+
+    /*if(cpuDmaHack) {
+      return cpuDmaLast & 0xFF;
+    } else {
+      if(armState) {
+        return CPUReadByteQuick(reg[15].I+(address & 3));
+      } else {
+        return CPUReadByteQuick(reg[15].I+(address & 1));
+      }
+    }*/
+    break;
+  }
+
+return 0;
+}
+
+#ifndef asmspeedup
+__attribute__((section(".itcm")))
+void CPUWriteMemorypu(u32 address, u32 value) //ichfly not inline is faster because it is smaler
+{
+#ifdef printreads
+    iprintf("w32 %08x to %08x\n",value,address);
+#endif		  
+
+#ifdef DEV_VERSION
+  if(address & 3) {
+    if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
+      iprintf("Unaligned word write: %08x to %08x from %08x\n",
+          value,
+          address,
+          armMode ? armNextPC - 4 : armNextPC - 2);
+    }
+  }
+#endif
+  
+  switch(address >> 24) {
+
+
+#ifdef fullsync
+  case 0x06:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unreadable;
+#endif
+    address = (address & 0x1fffc);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+        return;
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+
+#ifdef BKPT_SUPPORT
+    if(*((u32 *)&freezeVRAM[address]))
+      cheatsWriteMemory(address + 0x06000000, value);
+    else
+#endif
+    
+    WRITE32LE(((u32*)&vram[address]), value);
+    break;
+  case 0x07:
+#ifdef checkclearaddrrw
+	if(address > 0x07000400)goto unreadable;
+#endif
+#ifdef BKPT_SUPPORT
+    if(*((u32 *)&freezeOAM[address & 0x3fc]))
+      cheatsWriteMemory(address & 0x70003FC,
+                        value);
+    else
+#endif
+    WRITE32LE(((u32*)&emultoroam[address & 0x3fc]), value);
+#endif
+
+  case 0x04:
+    if(address < 0x4000400) {
+
+	/*if((0x4000060 > address && address > 0x4000007) || (address > 0x40000FF && address < 0x4000110)) //timer and lcd
+	{
+			//iprintf("32 %x %x\r\n",address,value);
+		    *(u32 *)(address) = value;
+	}
+	else //dont do twice*/ //don't need that any more
+	{
+      CPUUpdateRegister((address & 0x3FC), value & 0xFFFF);
+      CPUUpdateRegister((address & 0x3FC) + 2, (value >> 16));
+    }
+	} else goto unwritable;
+    break;
+  case 0x0D:
+#ifdef printsavewrite
+	  iprintf("%X %X\n\r",address,value);
+#endif
+    if(cpuEEPROMEnabled) {
+      eepromWrite(address, value);
+      break;
+    }
+    goto unwritable;
+  case 0x0E:
+#ifdef printsavewrite
+	  iprintf("%X %X\n\r",address,value);
+#endif
+    if(!eepromInUse | cpuSramEnabled | cpuFlashEnabled) {
+      (*cpuSaveGameFunc)(address, (u8)value);
+      break;
+    }
+    // default
+  default:
+  unwritable:
+  
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal word write: %08x to %08x\n",value, address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+    break;
+  }
+}
+#else
+	extern "C" void CPUWriteMemorypu(u32 address, u32 value);
+#endif
+
+__attribute__((section(".itcm")))
+void CPUWriteHalfWordpu(u32 address, u16 value)
+{
+#ifdef printreads
+iprintf("w16 %04x to %08x\r\n",value,address);
+#endif
+
+#ifdef DEV_VERSION
+  if(address & 1) {
+    if(systemVerbose & VERBOSE_UNALIGNED_MEMORY) {
+      iprintf("Unaligned halfword write: %04x to %08x from %08x\n",
+          value,
+          address,
+          armMode ? armNextPC - 4 : armNextPC - 2);
+    }
+  }
+#endif
+  
+  switch(address >> 24) {  
+
+
+#ifdef fullsync
+  case 5:
+#ifdef BKPT_SUPPORT
+    if(*((u16 *)&freezePRAM[address & 0x03fe]))
+      cheatsWriteHalfWord(address & 0x70003fe,
+                          value);
+    else
+#endif
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unwritable;
+#endif
+    WRITE16LE(((u16*)&paletteRAM[address & 0x3fe]), value);
+    break;
+  case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unwritable;
+#endif
+    address = (address & 0x1fffe);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+        return;
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+#ifdef BKPT_SUPPORT
+    if(*((u16 *)&freezeVRAM[address]))
+      cheatsWriteHalfWord(address + 0x06000000,
+                          value);
+    else
+#endif
+    WRITE16LE(((u16*)&vram[address]), value); 
+    break;
+#endif
+
+case 4:
+    if(address < 0x4000400)
+      CPUUpdateRegister(address & 0x3fe, value);
+    else goto unwritable;
+    break;
+  case 8:
+  case 9:
+    if(address == 0x80000c4 || address == 0x80000c6 || address == 0x80000c8) {
+      if(!rtcWrite(address, value))
+        goto unwritable;
+    } else if(!agbPrintWrite(address, value)) goto unwritable;
+    break;
+  case 13:
+#ifdef printsavewrite
+	  iprintf("%X %X\n\r",address,value);
+#endif
+    if(cpuEEPROMEnabled) {
+      eepromWrite(address, (u8)value);
+      break;
+    }
+    goto unwritable;
+  case 14:
+#ifdef printsavewrite
+	  iprintf("%X %X\n\r",address,value);
+#endif
+    if(!eepromInUse | cpuSramEnabled | cpuFlashEnabled) {
+      (*cpuSaveGameFunc)(address, (u8)value);
+      break;
+    }
+    goto unwritable;
+  default:
+  unwritable:
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal hword write: %04x to %08x\n",value, address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+    break;
+  }
+}
+
+__attribute__((section(".itcm")))
+void CPUWriteBytepu(u32 address, u8 b)
+{
+#ifdef printreads
+	iprintf("w8 %02x to %08x\r\n",b,address);
+#endif
+  switch(address >> 24) {
+
+
+#ifdef fullsync
+  case 5:
+#ifdef checkclearaddrrw
+	if(address > 0x05000400)goto unwritable;
+#endif
+    // no need to switch
+    *((u16 *)&paletteRAM[address & 0x3FE]) = (b << 8) | b;
+    break;
+  case 6:
+#ifdef checkclearaddrrw
+	if(address > 0x06020000)goto unwritable;
+#endif
+    address = (address & 0x1fffe);
+    if (((DISPCNT & 7) >2) && ((address & 0x1C000) == 0x18000))
+        return;
+    if ((address & 0x18000) == 0x18000)
+      address &= 0x17fff;
+
+    // no need to switch 
+    // byte writes to OBJ VRAM are ignored
+    if ((address) < objTilesAddress[((DISPCNT&7)+1)>>2])
+    {
+#ifdef BKPT_SUPPORT
+      if(freezeVRAM[address])
+        cheatsWriteByte(address + 0x06000000, b);
+      else
+#endif  
+            *((u16 *)&vram[address]) = (b << 8) | b;
+    }
+    break;
+#endif
+
+
+  case 4:
+    if(address < 0x4000400) {
+      switch(address & 0x3FF) {
+      case 0x301:
+	/*if(b == 0x80) //todo
+	  stopState = true;
+	holdState = 1;
+	holdType = -1;
+  cpuNextEvent = cpuTotalTicks;
+	break;*/
+      case 0x60:
+      case 0x61:
+      case 0x62:
+      case 0x63:
+      case 0x64:
+      case 0x65:
+      case 0x68:
+      case 0x69:
+      case 0x6c:
+      case 0x6d:
+      case 0x70:
+      case 0x71:
+      case 0x72:
+      case 0x73:
+      case 0x74:
+      case 0x75:
+      case 0x78:
+      case 0x79:
+      case 0x7c:
+      case 0x7d:
+      case 0x80:
+      case 0x81:
+      case 0x84:
+      case 0x85:
+      case 0x90:
+      case 0x91:
+      case 0x92:
+      case 0x93:
+      case 0x94:
+      case 0x95:
+      case 0x96:
+      case 0x97:
+      case 0x98:
+      case 0x99:
+      case 0x9a:
+      case 0x9b:
+      case 0x9c:
+      case 0x9d:
+      case 0x9e:
+      case 0x9f:      
+	//soundEvent(address&0xFF, b);  //ichfly disable sound
+#ifdef printsoundwrites
+		  iprintf("b %02x to %08x\r\n",b,address);
+#endif
+	  #ifdef arm9advsound
+		  SendArm7Command((u32)((address & 0x3FF) | 0x40000000), (u32)b);	//faster in case we send a 0
+		#endif
+	break;
+      default:
+	/*if((0x4000060 > address && address > 0x4000008) || (address > 0x40000FF && address < 0x4000110))
+	{
+			//iprintf("8 %x %x\r\n",address,b);
+		    *(u8 *)(address) = b;
+	}*/ //ichfly don't need that
+	if(address & 1)
+	{
+	  CPUUpdateRegister(address & 0x3fe,
+			    ((READ16LE(((u16*)&ioMem[address & 0x3fe])))
+			     & 0x00FF) |
+			    b<<8);
+
+	}
+	else
+	  CPUUpdateRegister(address & 0x3fe,
+			    ((READ16LE(((u16*)&ioMem[address & 0x3fe])) & 0xFF00) | b));
+      }
+      break;
+    } else goto unwritable;
+    break;   
+  case 13:
+#ifdef printsavewrite
+	  iprintf("%X %X\n\r",address,b);
+#endif
+    if(cpuEEPROMEnabled) {
+      eepromWrite(address, b);
+      break;
+    }
+    goto unwritable;
+  case 14:
+#ifdef printsavewrite
+	  iprintf("%X %X\n\r",address,b);
+#endif
+      if (!(saveType == 5) && (!eepromInUse | cpuSramEnabled | cpuFlashEnabled)) {
+
+    //if(!cpuEEPROMEnabled && (cpuSramEnabled | cpuFlashEnabled)) { 
+        (*cpuSaveGameFunc)(address, b);
+      break;
+    }
+    // default
+  default:
+  unwritable:
+#ifdef checkclearaddrrw
+      //iprintf("Illegal word read: %08x at %08x\n", address,reg[15].I);
+	  iprintf("Illegal byte write: %02x to %08x\n",b, address);
+	  REG_IME = IME_DISABLE;
+	  debugDump();
+	  while(1);
+#endif
+    break;
+  }
+}
+
+__attribute__((section(".itcm")))
+s16 CPUReadHalfWordrealpuSigned(u32 address)
+{
+  u16 value = CPUReadHalfWordrealpu(address);
+  if((address & 1))
+    value = (s8)value;
+  return value;
+}

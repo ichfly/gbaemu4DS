@@ -17,7 +17,6 @@
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 #include "GBA.h"
-#include "Globals.h"
 #include "Flash.h"
 #include "Sram.h"
 

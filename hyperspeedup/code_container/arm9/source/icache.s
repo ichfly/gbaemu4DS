@@ -23,11 +23,13 @@
      distribution.
 
 ---------------------------------------------------------------------------------*/
+.arch	armv4t
+.cpu arm7tdmi
+.arm
+
 #define ICACHE_SIZE	0x2000
 #define DCACHE_SIZE	0x1000
 #define CACHE_LINE_SIZE	32
-//---------------------------------------------------------------------------------
-	.arm
 //---------------------------------------------------------------------------------
 	.global	IC_InvalidateAll
 	.type	IC_InvalidateAll STT_FUNC

@@ -1,24 +1,13 @@
 #include <nds.h>
 #include <stdio.h>
-#include "../../gloabal/cpuglobal.h"
-#include <filesystem.h>
-#include "GBA.h"
-#include "Sound.h"
-#include "Util.h"
-#include "getopt.h"
-#include "System.h"
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
 #include <fat.h>
 #include <dirent.h>
-#include "cpumg.h"
-#include "GBAinline.h"
-#include "bios.h"
-#include "mydebuger.h"
-#include "ichflysettings.h"
-#include "arm7sound.h"
-#include "main.h"
-#include "Port.h"
-#include <stdlib.h>
-#include <nds/memory.h>//#include <memory.h> ichfly
+#include <filesystem.h>
+
+#include <nds/memory.h>
 #include <nds/ndstypes.h>
 #include <nds/memory.h>
 #include <nds/bios.h>
@@ -28,68 +17,51 @@
 #include <nds/arm9/videoGL.h>
 #include <nds/arm9/trig_lut.h>
 #include <nds/arm9/sassert.h>
-#include <stdarg.h>
-#include <string.h>
 
-#define public
+#include "GBA.h"
+#include "Sound.h"
+#include "Util.h"
+#include "getopt.h"
+#include "System.h"
 
-#define UPDATE_REG(address, value)\
-  {\
-    WRITE16LE(((u16 *)&caioMem[address + dsuncashedoffset]),value);\
-  }\
+#include "cpumg.h"
+#include "bios.h"
+#include "main.h"
+#include "mydebuger.h"
+#include "file_browse.h"
+#include "fatmore.h"
 
-extern char savePath[MAXPATHLEN * 2];
+//reload app
+#include "./hbmenustub/nds_loader_arm9.h"
 
-extern char szFile[MAXPATHLEN * 2];
+#include "ichflysettings.h"
+#define GBA_EWRAM ((void*)(0x02000000))
 
-extern "C" void resettostartup();
+#include <nds/disc_io.h>
+#include <dirent.h>
 
-extern "C" void IntrMain();
-
-
-extern "C" void testasm(u32* feld);
-extern "C" void cpu_SetCP15Cnt(u32 v);
-extern "C" u32 cpu_GetCP15Cnt();
-extern "C" u32 pu_Enable();
-
+//asm stuff
 extern "C" void copyMode_5(u32* src,u32* tar);
 extern "C" void copyMode_3(void* src ,void* tar );
 
-extern "C" int SPtoload;
-extern "C" int SPtemp;
+//coto: some games may require it.
+__attribute__((section(".dtcm")))
+bool disableHBLANKIRQ = false;
 
-int main( int argc, char **argv);
+__attribute__((section(".dtcm")))
+volatile u16 DISPCNT = 0;
 
-//#define loaddirect
-
-void emulateedbiosstart();
-
-volatile u16 DISPCNT;
-
-
-void downgreadcpu();
-
-//volatile u16 DISPCNT  = 0x0080;
-
-
+__attribute__((section(".dtcm")))
 int framenummer;
 
-char* rootdirnames [3] = {"nitro:/","fat:/","sd:/"};
-bool rootenabelde[3];
-
+char* rootdirnames [3] = {(char*)"nitro:/",(char*)"fat:/",(char*)"sd:/"};
+//bool rootenabelde[3];
 int ausgewauhlt = 0;
-
-char* currentdir =  (char*)0;
-
-int seite = 0;
-
-int dirfeldsize = 0;
-char** names; //stupid i know but i don't know a better way
-u32* dirfeldsizes;
-
-
+//char* currentdir =  (char*)0;
+//int seite = 0;
+//int dirfeldsize = 0;
+//u32* dirfeldsizes;
 int bg = 0;
-
 int ignorenextY = 0;
 
 
@@ -208,23 +180,20 @@ The background occupies exactly 40 KBytes, so that BG VRAM may be split into two
 In BG modes 4,5, one Frame may be displayed (selected by DISPCNT Bit 4), the other Frame is invisible and may be redrawn in background.
 */
 
-
-
-
-
 int frameskip = 10;
-
 int framewtf = 0;
 
 #ifdef usebuffedVcout
+__attribute__((section(".dtcm")))
 u8 VCountgbatods[0x100]; //(LY)      (0..227) + check overflow
+
+__attribute__((section(".dtcm")))
 u8 VCountdstogba[263]; //(LY)      (0..262)
+
+__attribute__((section(".dtcm")))
 u8 VCountdoit[263]; //jump in or out
 #endif
 
-#ifdef skipper
-u8 skipval = 0;
-#endif 
 #ifdef usebuffedVcout
 
 void initspeedupfelder()
@@ -244,7 +213,6 @@ void initspeedupfelder()
 		if (isdaas&KEY_UP) modusVcount = true;
 		if (isdaas&KEY_DOWN) modusVcount = false;
 	}
-
 
 	if(modusVcount)*/
 	{
@@ -318,93 +286,87 @@ void initspeedupfelder()
 
 }
 #endif
+
+__attribute__((section(".itcm")))
 //---------------------------------------------------------------------------------
 void HblankHandler(void) {
 //---------------------------------------------------------------------------------
 
-#ifdef usebuffedVcout
-
-	if(VCountdoit[REG_VCOUNT])
-	{
-#ifdef HBlankdma
+	//coto (disabled) hblank handler
+	if(disableHBLANKIRQ == true){
+		//Wifi_Sync();
+		DISPSTAT |= (REG_DISPSTAT & 0x3);
+		DISPSTAT |= 0x2;	//hblank
+		DISPSTAT &= 0xFFFe; //remove vblank
+		UPDATE_REG(0x04, DISPSTAT);
 		CPUCheckDMA(2, 0x0f);
-#endif
-	}
-	else
-	{
 		REG_IF = IRQ_HBLANK;
 	}
-#ifdef forceHBlankirqs
-	if(!(IE & IRQ_HBLANK))REG_IF = IRQ_HBLANK;
-#endif
+	//ichfly hblank handler
+	else{
+
+			u16 temp = REG_VCOUNT;
+		#ifdef usebuffedVcout
+
+			if(VCountdoit[temp])
+			{
+		#ifdef HBlankdma
+				CPUCheckDMA(2, 0x0f);
+		#endif
+			}
+			else
+			{
+				REG_IF = IRQ_HBLANK;
+			}
+		#ifdef forceHBlankirqs
+			if(!(IE & IRQ_HBLANK))REG_IF = IRQ_HBLANK;
+		#endif
 
 
-#else
-	u16 res1;
-	u16 res2;
-	u16 temp = REG_VCOUNT;
-	if(temp < 192)
-	{
-		res1 = ((temp * 214) >> 8);//VCOUNT = help * (1./1.2); //1.15350877;
-		//help3 = (help + 1) * (1./1.2); //1.15350877;  // ichfly todo it is to slow
-	}
-	else
-	{
-		res1 = (((temp - 192) * 246) >>  8)+ 160;//VCOUNT = ((temp - 192) * (1./ 1.04411764)) + 160 //* (1./ 1.04411764)) + 160; //1.15350877;
-		//help3 = ((help - 191) *  (1./ 1.04411764)) + 160; //1.15350877;  // ichfly todo it is to slow			
-	}
-	temp++;
-	if(temp < 192)
-	{
-		res2 = ((temp * 214) >> 8);//VCOUNT = help * (1./1.2); //1.15350877;
-		//help3 = (help + 1) * (1./1.2); //1.15350877;  // ichfly todo it is to slow
-	}
-	else
-	{
-		res2 = (((temp - 192) * 246) >>  8)+ 160;//VCOUNT = ((temp - 192) * (1./ 1.04411764)) + 160 //* (1./ 1.04411764)) + 160; //1.15350877;
-		//help3 = ((help - 191) *  (1./ 1.04411764)) + 160; //1.15350877;  // ichfly todo it is to slow			
-	}
+		#else
+			u16 res1;
+			u16 res2;
+			if(temp < 192)
+			{
+				res1 = ((temp * 214) >> 8);//VCOUNT = help * (1./1.2); //1.15350877;
+				//help3 = (help + 1) * (1./1.2); //1.15350877;  // ichfly todo it is to slow
+			}
+			else
+			{
+				res1 = (((temp - 192) * 246) >>  8)+ 160;//VCOUNT = ((temp - 192) * (1./ 1.04411764)) + 160 //* (1./ 1.04411764)) + 160; //1.15350877;
+				//help3 = ((help - 191) *  (1./ 1.04411764)) + 160; //1.15350877;  // ichfly todo it is to slow			
+			}
+			temp++;
+			if(temp < 192)
+			{
+				res2 = ((temp * 214) >> 8);//VCOUNT = help * (1./1.2); //1.15350877;
+				//help3 = (help + 1) * (1./1.2); //1.15350877;  // ichfly todo it is to slow
+			}
+			else
+			{
+				res2 = (((temp - 192) * 246) >>  8)+ 160;//VCOUNT = ((temp - 192) * (1./ 1.04411764)) + 160 //* (1./ 1.04411764)) + 160; //1.15350877;
+				//help3 = ((help - 191) *  (1./ 1.04411764)) + 160; //1.15350877;  // ichfly todo it is to slow			
+			}
 
 
-	if(res1 == res2)
-	{
-		REG_IF = IRQ_HBLANK;
-#ifdef HBlankdma
-		CPUCheckDMA(2, 0x0f);
-#endif
+			if(res1 == res2)
+			{
+				REG_IF = IRQ_HBLANK;
+		#ifdef HBlankdma
+				CPUCheckDMA(2, 0x0f);
+		#endif
+			}
+		#ifdef forceHBlankirqs
+			if(!(IE & IRQ_HBLANK))REG_IF = IRQ_HBLANK;
+		#endif
+		#endif
 	}
-#ifdef forceHBlankirqs
-	if(!(IE & IRQ_HBLANK))REG_IF = IRQ_HBLANK;
-#endif
-#endif
 }
-
-#ifdef showdebug
-u16 IntrWaitnum = 0;
-u32 VBlankIntrWaitentertimes = 0;
-u32 VBlankIntrWaitentertimesshow = 0;
-u8 counterenters = 0;
-#endif
-
+u8 currentVRAMcapblock = 0;
 //---------------------------------------------------------------------------------
+__attribute__((section(".itcm")))
 void VblankHandler(void) {
 //---------------------------------------------------------------------------------
-#ifdef showdebug
-	iprintf("\x1b[2J");
-	iprintf("%d %d\n",VBlankIntrWaitentertimesshow,IntrWaitnum);
-#ifdef anyarmcom
-	extern void showcomdebug();
-	showcomdebug();
-#endif
-	counterenters++;
-	if(counterenters == 60)
-	{
-		VBlankIntrWaitentertimesshow = VBlankIntrWaitentertimes;
-		counterenters = 0;
-		VBlankIntrWaitentertimes = 0;
-	}
-#endif
-
 #ifdef capture_and_pars
 #ifndef antyflicker
 	if(currentVRAMcapblock == 0)
@@ -439,11 +401,8 @@ void VblankHandler(void) {
 		DISPCAPCNT = 0x8030000F | (1 << 16);
 		u8 *pointertobild = (u8 *)(0x6820000);
 		for(int iy = 0; iy <160; iy++){
-			dmaCopyWords(3, (void*)pointertobild, (void*)(0x6200000/*bgGetGfxPtr(bgrouid)*/+512*(iy)), 480);
+			dmaCopy( (void*)pointertobild, (void*)(0x06200000/*bgGetGfxPtr(bgrouid)*/+(512*iy)), 480);
 			pointertobild+=512;
-#ifdef priosound
-					arm7dmareq();
-#endif
 		}
 #ifdef skipper
 	}
@@ -462,6 +421,7 @@ lastdebugcurrent++;
 if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 #endif
 
+	CPUCheckDMA(1, 0x0f); //V-Blank
 
 	if(framewtf == frameskip)
 	{
@@ -471,14 +431,9 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 #ifndef nogfxsoundstruggler
 			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
 #else
-			extern void arm7dmareq();
-			arm7dmareq();
 			dmaCopyWords(3,(void*)0x06010000,(void*)0x06400000,0x2000);
-			arm7dmareq();
 			dmaCopyWords(3,(void*)0x06012000,(void*)0x06402000,0x2000);
-			arm7dmareq();
 			dmaCopyWords(3,(void*)0x06014000,(void*)0x06404000,0x2000);
-			arm7dmareq();
 			dmaCopyWords(3,(void*)0x06016000,(void*)0x06406000,0x2000);
 #endif
 		}
@@ -487,11 +442,8 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 #ifndef nogfxsoundstruggler
 			dmaCopyWordsAsynch(1,(void*)0x06014000,(void*)0x06404000,0x4000);
 #else
-			arm7dmareq();
 			dmaCopyWords(3,(void*)0x06014000,(void*)0x06404000,0x2000);
-			arm7dmareq();
 			dmaCopyWords(3,(void*)0x06016000,(void*)0x06406000,0x2000);
-			arm7dmareq();
 #endif
 
 			if((DISPCNT & 7) == 3) //BG Mode 3 - 240x160 pixels, 32768 colors
@@ -501,9 +453,6 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 					//dmaCopyWords(3, (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
 					copyMode_3((void*)pointertobild,(void*)0x6020000+512*(iy));
 					pointertobild+=480;
-#ifdef priosound
-					arm7dmareq();
-#endif
 				}
 			}
 			else
@@ -513,12 +462,10 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 					u8 *pointertobild = (u8 *)(0x6000000);
 					if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 					for(int iy = 0; iy <160; iy++){
+						*(u8*)(0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy)) = 0xFF;
 						dmaCopyWords(3, (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 240);
 						pointertobild+=240;
 						//pointertobild+=120;
-#ifdef priosound
-					arm7dmareq();
-#endif
 					}
 				}
 				else
@@ -531,9 +478,6 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 							copyMode_5((u32*)pointertobild,(u32*)(0x6020000+512*(iy)));
 							//dmaCopyWords(3,(void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
 							pointertobild+=320;
-#ifdef priosound
-					arm7dmareq();
-#endif
 						}
 					}
 				}
@@ -544,10 +488,6 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 	{
 		framewtf++;
 	}
-
-	
-
-	
   
     P1 = REG_KEYINPUT&0x3ff;
 #ifdef ichflytestkeypossibillity  
@@ -566,33 +506,18 @@ if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
 			ignorenextY = 60; // 1 sec break time
 		}
 		else {ignorenextY -= 1;}
-	}            
+	}
     UPDATE_REG(0x130, P1);
-
-	CPUCheckDMA(1, 0x0f); //V-Blank
-
-#ifdef lastdebug
-lasttime[lastdebugcurrent] = 0x0000001;
-lastdebugcurrent++;
-if(lastdebugcurrent == lastdebugsize)lastdebugcurrent = 0;
-#endif
-#ifdef showdebug
-	//iprintf("ex %d\n",REG_VCOUNT);
-#endif
 }
 
 
-
-
-
-
-
+__attribute__((section(".itcm")))
 void frameasyncsync(void) {
 //---------------------------------------------------------------------------------
 		framewtf = 0;
 		if((DISPCNT & 7) < 3)
 		{
-			dmaCopyWordsAsynch(1,(void*)vram + 0x10000,(void*)0x06400000,0x8000);
+			dmaCopyWordsAsynch(1,(void*) (vram + 0x10000),(void*)0x06400000,0x8000);
 		}
 		else
 		{
@@ -601,7 +526,7 @@ void frameasyncsync(void) {
 			{
 				u8 *pointertobild = (u8 *)(0x6000000);
 				for(int iy = 0; iy <160; iy++){
-					dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 480);
+					dmaCopy( (void*)pointertobild, (void*)(0x06020000/*bgGetGfxPtr(bgrouid)*/+(512*iy)), 480);
 					pointertobild+=480;
 				}
 			}
@@ -609,10 +534,10 @@ void frameasyncsync(void) {
 			{
 				if((DISPCNT & 7) == 4) //BG Mode 4 - 240x160 pixels, 256 colors (out of 32768 colors)
 				{
-					u8 *pointertobild = (u8 *)(0x6000000);
+					u8 *pointertobild = (u8 *)(0x06000000);
 					if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 					for(int iy = 0; iy <160; iy++){
-						dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+256*(iy), 240);
+						dmaCopy( (void*)pointertobild, (void*)(0x06020000/*bgGetGfxPtr(bgrouid)*/+(256*iy)), 240);
 						pointertobild+=240;
 						//pointertobild+=120;
 					}
@@ -624,7 +549,7 @@ void frameasyncsync(void) {
 						u8 *pointertobild = (u8 *)(0x6000000);
 						if(BIT(4) & DISPCNT)pointertobild+=0xA000;
 						for(int iy = 0; iy <128; iy++){
-							dmaCopy( (void*)pointertobild, (void*)0x6020000/*bgGetGfxPtr(bgrouid)*/+512*(iy), 320);
+							dmaCopy( (void*)pointertobild, (void*)(0x06020000/*bgGetGfxPtr(bgrouid)*/+(512*iy)), 320);
 							pointertobild+=320;
 						}
 					}
@@ -633,14 +558,8 @@ void frameasyncsync(void) {
 		}
 	}
 
-
-
-
-
-
-
-
-char* seloptions [4] = {"save save","show mem","Continue","load GBA"};
+//pause menu
+char* seloptions [5] = {(char*)"save save",(char*)"show mem",(char*)"Continue",(char*)"load GBA",(char*)"close GBA"};
 
 void pausemenue()
 {
@@ -662,10 +581,11 @@ void pausemenue()
 	int ausgewauhlt = 2;
 	while(1)
 	{
+		int itemcount=5; 
 		iprintf("\x1b[2J");
 		iprintf("Pause\n");
 		iprintf ("--------------------------------");
-		for(int i = 0; i < 4; i++)
+		for(int i = 0; i < itemcount; i++)
 		{
 			if(i == ausgewauhlt) iprintf("->");
 			else iprintf("  ");
@@ -706,14 +626,33 @@ void pausemenue()
 					TIMER2_CR = timer2Value;
 					TIMER3_CR = timer3Value;
 					REG_IE = IE | IRQ_FIFO_NOT_EMPTY; //irq on
-					while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))u32 src = REG_IPC_FIFO_RX; //get sync irqs back
-					return; //and return
+					while(!(REG_IPC_FIFO_CR & IPC_FIFO_RECV_EMPTY))
+						//u32 src = REG_IPC_FIFO_RX; //get sync irqs back
+					return ; //and return
+					break;
 				case 3:
 					resettostartup();
 					//main(0,0);
+					break;
+				case 4:
+					//close GBA handle
+					closegbarom();
+					free(bios);
+					rom = 0x00000000;
+					
+					flashInit();
+					eepromInit();
+					
+					//init begin
+					//add loader code here
+					//runNdsFile (const char* filename, int argc, const char** argv);
+					runNdsFile ((const char*)"fat:/hbmenu.nds", 0, 0);
+					//init end
+					
+					break;
 				}
 		}
-		if (pressed&KEY_DOWN && ausgewauhlt != 3){ ausgewauhlt++;}
+		if (pressed&KEY_DOWN && ausgewauhlt != itemcount){ ausgewauhlt++;}
 		if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
 
 	}

@@ -16,7 +16,6 @@
 // along with this program; if not, write to the Free Software Foundation,
 // Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <nds/memory.h>//#include <memory.h> ichfly
+#include <nds/memory.h>
 #include <nds/ndstypes.h>
 #include <nds/memory.h>
 #include <nds/bios.h>
@@ -40,9 +39,6 @@
 #include <nds.h>
 #include <stdio.h>
 
-extern "C" void getandpatchmap(int offsetgba,int offsetthisfile);
-void arm7dmareqandcheat();
-
 #include <filesystem.h>
 #include "GBA.h"
 #include "Sound.h"
@@ -53,91 +49,38 @@ void arm7dmareqandcheat();
 #include <dirent.h>
 
 #include "cpumg.h"
-#include "GBAinline.h"
 #include "bios.h"
 
 #include "mydebuger.h"
 
 #include "file_browse.h"
 
-#define MAXPATHLEN 256 
-
 #include <nds.h>
 
-#include "arm7sound.h"
-
 #include "main.h"
-
-
+#include "fatmore.h"
+#include "fatfile.h"
+#include "ds_dma.h"
 #include <unistd.h>    // for sbrk()
-
-
-#define INT_TABLE_SECTION __attribute__((section(".dtcm")))
-
-
-extern struct IntTable irqTable[MAX_INTERRUPTS] INT_TABLE_SECTION;
-
-extern "C" void __irqSet(u32 mask, IntFn handler, struct IntTable irqTable[] );
-
-
-extern  char patchPath[MAXPATHLEN * 2];
-
 #include <fat.h>
+
 
 extern "C" {
 //#include <png.h> //ichfly todo ganze datei!!!!!!!! realy todo
 }
+
+
 #include "ichflysettings.h"
-
-#if 0
-#include "unrarlib.h"
-#endif
-
 #include "System.h"
 #include "NLS.h"
 #include "Util.h"
 #include "Flash.h"
 #include "GBA.h"
-#include "Globals.h"
 #include "RTC.h"
-#include "Port.h"
-
-extern "C" void pu_Enable();
-extern "C" void cpu_SetCP15Cnt(u32 v);
-extern "C" u32 cpu_GetCP15Cnt();
 
 #ifndef _MSC_VER
 #define _stricmp strcasecmp
 #endif // ! _MSC_VER
-
-extern int systemColorDepth;
-extern int systemRedShift;
-extern int systemGreenShift;
-extern int systemBlueShift;
-
-extern u32 CPUReadMemorypu(u32 address);
-extern u32 CPUReadHalfWordpu(u32 address);
-extern u8 CPUReadBytepu(u32 address);
-extern void CPUWriteMemorypuextern(u32 address, u32 value);
-extern void CPUWriteHalfWordpuextern(u32 address, u16 value);
-extern void CPUWriteBytepuextern(u32 address, u8 b);
-
-extern u32 CPUReadMemory(u32 address);
-extern u32 CPUReadHalfWord(u32 address);
-extern u8 CPUReadByte(u32 address);
-extern void CPUWriteMemoryextern(u32 address, u32 value);
-extern void CPUWriteHalfWordextern(u32 address, u16 value);
-extern void CPUWriteByteextern(u32 address, u8 b);
-
-extern s16 CPUReadHalfWordSignedoutline(u32 address);
-extern s8 CPUReadByteSigned(u32 address);
-
-extern s16 CPUReadHalfWordrealpuSignedoutline(u32 address);
-extern s8 CPUReadByteSignedpu(u32 address);
-
-extern u32 ichfly_readu32extern(unsigned int pos);
-extern u16 ichfly_readu16extern(unsigned int pos);
-extern u8 ichfly_readu8extern(unsigned int pos);
 
 /*
 static int (ZEXPORT *utilGzWriteFunc)(gzFile, const voidp, unsigned int) = NULL;
@@ -272,7 +215,6 @@ bool utilWritePNGFile(const char *fileName, int w, int h, u8 *pix)
   return true;  
 }
 */
-extern bool cpuIsMultiBoot;
 
 
 bool utilIsSAV(const char * file)
@@ -421,7 +363,7 @@ IMAGE_TYPE utilFindType(const char *file)
   return IMAGE_UNKNOWN;  
 }
 */
-static int utilGetSize(int size)
+int utilGetSize(int size)
 {
   int res = 1;
   while(res < size)
@@ -636,22 +578,7 @@ static u8 *utilLoadRarFile(const char *file,
   return NULL;
 }
 #endif
-void entersu()
-{
-			DC_FlushAll(); //try it
-			IC_InvalidateAll();
-			cpu_SetCP15Cnt(cpu_GetCP15Cnt() & ~0x1); //disable pu
-			DC_FlushAll(); //try it
-			IC_InvalidateAll();
-}
-void leavesu()
-{
-			DC_FlushAll(); //try it
-			IC_InvalidateAll();
-			pu_Enable(); //back to normal code
-			DC_FlushAll(); //try it
-			IC_InvalidateAll();
-}
+
 void patchit(int romSize2)
 {
 	FILE *patchf = fopen(patchPath, "rb");
@@ -662,7 +589,10 @@ void patchit(int romSize2)
 		systemMessage(MSG_ERROR_OPENING_IMAGE, N_("Error in patchfile"));
 		while(1);
 	}
-	int patchnum = *(u32*)&header[0x10];
+	
+	u32 * ptr = (u32*)&header[0x10];
+	int patchnum = (*ptr);
+
 	for(int i = 0;i < patchnum;i++)
 	{
 		int type;
@@ -686,9 +616,6 @@ void patchit(int romSize2)
 			{
 				getandpatchmap(offsetgba,offsetthisfile);
 			}
-#ifdef debugpatch
-			iprintf("patch gbaedit from %08X to %08X (%08X)\n\r",offsetthisfile,offsetgba,ftell(patchf));
-#endif
 			}
 			break;
 		case 1:
@@ -701,9 +628,6 @@ void patchit(int romSize2)
 			fread((void*)cheatsList,1,cheatsNumber*28,patchf);
 			fseek(patchf,coo5,SEEK_SET);
 			__irqSet(IRQ_FIFO_NOT_EMPTY,arm7dmareqandcheat,irqTable);
-#ifdef debugpatch
-			iprintf("patch cheats %08X from %08X (%08X)\n\r",cheatsNumber,cheatsList,ftell(patchf));
-#endif
 			}
 			break;
 		case 2:
@@ -716,13 +640,8 @@ void patchit(int romSize2)
 			fread((void*)&offset,1,0x4,patchf);
 			int coo = ftell(patchf);
 			fseek(patchf,offset,SEEK_SET);
-			entersu();
 			fread((void*)gbaoffset,1,payloadsize,patchf);
-			leavesu();
 			fseek(patchf,coo,SEEK_SET);
-#ifdef debugpatch
-			iprintf("patch direct write to %08X from %08X size %08X (%08X)\n\r",gbaoffset,offset,payloadsize,ftell(patchf));
-#endif
 			break;
 			}
 		case 3:
@@ -737,7 +656,6 @@ void patchit(int romSize2)
 			fread((void*)&Condition,1,0x4,patchf);
 			if(offset & BIT(31))offset = (offset & ~BIT(31)) + (u32)rom;
 			u32 topatchoffset = address - offset - 8;
-			entersu();
 			switch (type)
 			{
 				case 0:
@@ -757,10 +675,6 @@ void patchit(int romSize2)
 					*(u32*)offset = (Condition << 0x1B) | 0x0B000000 | ((topatchoffset >> 2) & ~0xFF000000);
 					break;
 			}
-			leavesu();
-#ifdef debugpatch
-			iprintf("link to sa type %08X where %08X dest %08X Condition %08X (%08X)\n\r",type,offset,address,Condition,ftell(patchf));
-#endif
 			}
 			break;
 			case 4:
@@ -769,8 +683,8 @@ void patchit(int romSize2)
 			fread((void*)&type,1,0x1,patchf);
 			u32 offset;
 			fread((void*)&offset,1,0x4,patchf);
-			int function;
-			int address;
+			int function=0;
+			int address=0;
 			fread((void*)&function,1,0x4,patchf);
 			switch (function)
 			{
@@ -792,11 +706,6 @@ void patchit(int romSize2)
 				case 5:
 					address = (u32)CPUWriteBytepuextern;
 					break;
-
-
-
-
-
 				case 6:
 					address = (u32)CPUReadMemory;
 					break;
@@ -821,15 +730,12 @@ void patchit(int romSize2)
 				case 13:
 					address = (u32)CPUReadByteSigned;
 					break;
-
 				case 14:
 					address = (u32)CPUReadHalfWordrealpuSignedoutline;
 					break;
 				case 15:
 					address = (u32)CPUReadByteSignedpu;
 					break;
-
-
 				case 100:
 					address = (u32)ichfly_readu32extern;
 					break;
@@ -844,30 +750,25 @@ void patchit(int romSize2)
 			fread((void*)&Condition,1,0x4,patchf);
 			if(offset & BIT(31))offset = (offset & ~BIT(31)) + (u32)rom;
 			u32 topatchoffset = address - offset - 8;
-			entersu();
 			switch (type)
 			{
 				case 0:
 					topatchoffset =+ 4;
-					*(u16*)offset = (u16)0xF000 | (u16)((topatchoffset >> 12) & 0x7FF);
-					*(u16*)(offset + 2) = (u16)0xF800 | (u16)((topatchoffset >> 1) & 0x7FF);
+					*(u16*)address = (u16)0xF000 | (u16)((topatchoffset >> 12) & 0x7FF);
+					*(u16*)(address + 2) = (u16)0xF800 | (u16)((topatchoffset >> 1) & 0x7FF);
 					break;
 				case 1:
 					topatchoffset =+ 4;
-					*(u16*)offset = (u16)0xF000 + (u16)((topatchoffset >> 12) & 0x7FF);
-					*(u16*)(offset + 2) = (u16)0xE800 + (u16)((topatchoffset >> 1) & 0x7FF);
+					*(u16*)address = (u16)0xF000 + (u16)((topatchoffset >> 12) & 0x7FF);
+					*(u16*)(address + 2) = (u16)0xE800 + (u16)((topatchoffset >> 1) & 0x7FF);
 					break;
 				case 2:
-					*(u32*)offset = (Condition << 0x1C) | 0x0A000000 | ((topatchoffset >> 2) & ~0xFF000000);
+					*(u32*)address = (Condition << 0x1B) | 0x0A000000 | ((topatchoffset >> 2) & ~0xFF000000);
 					break;
 				case 3:
-					*(u32*)offset = (Condition << 0x1C) | 0x0B000000 | ((topatchoffset >> 2) & ~0xFF000000);
+					*(u32*)address = (Condition << 0x1B) | 0x0B000000 | ((topatchoffset >> 2) & ~0xFF000000);
 					break;
 			}
-			leavesu();
-#ifdef debugpatch
-			iprintf("link to sf type %08X where %08X function %08X Condition %08X (%08X)\n\r",type,offset,function,Condition,ftell(patchf));
-#endif
 			}
 			break;
 			case 5:
@@ -886,87 +787,167 @@ void patchit(int romSize2)
 			break;
 		}
 	}
-	char patchmsg[0x100];
-	if(fread(patchmsg,1,0x100,patchf) > 0)
-	{
-		iprintf(patchmsg);
-	}
-#ifdef debugpatch
-		iprintf("end (%X)",patchnum);
-#endif
-		fclose(patchf);
 }
 
-u8 *utilLoad(const char *file, //ichfly todo
+u8 *utilLoad(const char *file,
              u8 *data,
              int &size,bool extram)
 {
-  u8 *image = data;
+	u8 *image = data;
+	FILE *f = fopen(file, "rb");
 
+	if(!f) {
+		systemMessage(MSG_ERROR_OPENING_IMAGE, N_("Error opening image %s"), file);
+		return NULL;
+	}
 
-  FILE *f = fopen(file, "rb");
-
-  if(!f) {
-    systemMessage(MSG_ERROR_OPENING_IMAGE, N_("Error opening image %s"), file);
-    return NULL;
-  }
-
-  fseek(f,0,SEEK_END);
-  int fileSize = ftell(f);
-  fseek(f,0,SEEK_SET);
-
-  generatefilemap(fileSize);
-
-  if(data == NULL)
-  {
-#ifdef wifidebuger
+	fseek(f,0,SEEK_END);
+	int fileSize = ftell(f);
+	fseek(f,0,SEEK_SET); //set at zero pos of GBA ROM block (offset = 0)
+	
+	generatefilemap(fileSize);
+	
+	#ifdef wifidebuger
 	  romSize = 0x02380000 - ((u32)sbrk(0) + 0x5000 + 0x2000);
-#else
-	  romSize = 0x02400000 - ((u32)sbrk(0) + 0x5000 + 0x2000);
-#endif
-	  rom = (u8 *)(sbrk(0) + 0x2000/*8K for future alloc*/);              //rom = (u8 *)0x02180000; //old
-	  image = data = rom;
-	  size = romSize;
-  }
-  size_t read = fileSize <= size ? fileSize : size;
+	#else
+	  romSize = 	(int)0x02400000 - ((u32)sbrk(0) + 0x5000 + 0x2000);
+	#endif
 
+	image = rom = 		(u8 *)((u8 *)sbrk(0) + (int)0x2000);	
+	size_t read = fileSize <= romSize ? fileSize : romSize;
+	size_t r= 0x80000;
+	if(cpuIsMultiBoot == true){	//MultiBoot cart?
+		//read binary into workRAM and point the rom to WorkRAM so it executes there
+		rom=workRAM;
+	}
+	else{	//Single Cart, Normal Boot
+		r = fread(image, 1, read, f);
+	}
+	
+	//set up header
+    memcpy((u8*)&gbaheader, (u8*)image, sizeof(gbaHeader_t));
+	
+	#ifndef uppern_read_emulation
+		fclose(f);
+	#else
+		ichflyfilestream = f; //pass the filestreampointer and make it global
+		ichflyfilestreamsize = fileSize;
+	#endif
 
-  size_t r= 0x80000;
-
-  //workaround read
-  /*int seek = 0;
-  while(r == 0x80000)
-  {
-	fseek(f,seek,SEEK_SET);
-	if(read > 0x80000)r = fread(image, 1, 0x80000, f); //512 KByte chucks
-	else r = fread(image, 1, read, f);
-	read -= r;
-	image += r;
-	seek += r;
-	fclose(f);
-	f = fopen(file, "rb"); //close and open
-  }*/
-
-	r = fread(image, 1, read, f);
-
-#ifndef uppern_read_emulation
-  fclose(f);
-#else
-  ichflyfilestream = f;
-#endif
-
-  if(r != read) {
-    systemMessage(MSG_ERROR_READING_IMAGE,
-                  N_("Error reading image %s"), file);
-	while(1);
-  }  
-#ifdef uppern_read_emulation
-  ichflyfilestreamsize = fileSize;
-#endif
-  //size = fileSize;
-  
-  if(patchPath[0] != 0)patchit(romSize);
-
-
+	if(r != read) {
+		systemMessage(MSG_ERROR_READING_IMAGE,
+		N_("Error reading image %s"), file);
+		while(1);
+	}
+	
+	if(patchPath[0] != 0)patchit(romSize);
+	
   return image;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+//ARM core does not need them
+
+// swaps a 16-bit value
+/*
+u16 swap16(u16 v)
+{
+  return (v<<8)|(v>>8);
+}
+
+// swaps a 32-bit value
+u32 swap32(u32 v)
+{
+  return (v<<24)|((v<<8)&0xff0000)|((v>>8)&0xff00)|(v>>24);
+}
+*/
+
+/*
+#define CPUReadByteQuick(addr) \
+  map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]
+*/
+
+__attribute__((section(".itcm")))
+u8 CPUReadByteQuick(u32 addr)	{
+	return map[(addr)>>24].address[(addr) & map[(addr)>>24].mask];
+}
+
+/*
+#define CPUReadHalfWordQuick(addr) \
+  READ16LE(((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
+*/
+
+__attribute__((section(".itcm")))
+u16 CPUReadHalfWordQuick(u32 addr){
+	return READ16LE(((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]));
+}
+/*
+#define CPUReadMemoryQuick(addr) \
+  READ32LE(((u32*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]))
+*/
+
+__attribute__((section(".itcm")))
+u32 CPUReadMemoryQuick(u32 addr){
+	return READ32LE(((u32*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask]));
+}
+
+
+//little-endian GBA == little-endian NDS
+__attribute__((section(".itcm")))
+u16 READ16LE(u16 * x){
+  return *((u16 *)x);
+}
+
+__attribute__((section(".itcm")))
+u32 READ32LE(u32 * x){
+  return *((u32 *)x);
+}
+
+__attribute__((section(".itcm")))
+void WRITE16LE(u16 * x,u16 v){
+  *((u16 *)x) = (v);
+}
+
+__attribute__((section(".itcm")))
+void WRITE32LE(u32 * x, u32 v){
+  *((u32 *)x) = (v);
+}
+
+__attribute__((section(".itcm")))
+void UPDATE_REG(u16 address, u16 value){
+	WRITE16LE(((u16*)&ioMem[address]),value);
+}
+
+
+char* strtoupper(char* s) {
+  assert(s != NULL);
+
+  char* p = s;
+  while (*p != '\0') {
+    *p = toupper(*p);
+    p++;
+  }
+
+  return s;
+}
+
+char* strtolower(char* s) {
+  assert(s != NULL);
+
+  char* p = s;
+  while (*p != '\0') {
+    *p = tolower(*p);
+    p++;
+  }
+
+  return s;
+}
+
+
+bool useMPUFast = false;
+
+bool pendingSaveFix = false;	//false if already saved new forked save / or game doesn't meet savefix conditions // true if pending a save that was fixed in gba core, but still has not been written/updated to file.
+int  SaveSizeBeforeFix = 0;	//only valid if pendingSaveFix == true
+int  SaveSizeAfterFix = 0;	//only valid if pendingSaveFix == true

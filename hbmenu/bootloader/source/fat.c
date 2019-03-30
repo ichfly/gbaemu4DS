@@ -308,7 +308,6 @@ bool FAT_InitFiles (bool initCard)
 	{
 		return (false);
 	}
-	
 	// Read first sector of card
 	if (!CARD_ReadSector (0, globalBuffer)) 
 	{

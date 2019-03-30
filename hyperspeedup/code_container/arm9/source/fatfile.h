@@ -69,6 +69,10 @@ struct _FILE_STRUCT {
 
 typedef struct _FILE_STRUCT FILE_STRUCT;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode);
 
 int _FAT_close_r (struct _reent *r, int fd);
@@ -101,5 +105,9 @@ Does no locking of its own -- lock the partition before calling.
 Returns 0 on success, an error code on failure.
 */
 extern int _FAT_syncToDisc (FILE_STRUCT* file);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _FATFILE_H

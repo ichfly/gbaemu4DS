@@ -28,10 +28,10 @@
 */
 
 
+#include <string.h>
 #include "file_allocation_table.h"
 #include "partition.h"
 #include "mem_allocate.h"
-#include <string.h>
 
 /*
 Gets the cluster linked from input cluster
@@ -63,7 +63,7 @@ uint32_t _FAT_fat_nextCluster(PARTITION* partition, uint32_t cluster)
 
 			offset++;
 
-			if (offset >= partition->bytesPerSector) {
+			if (offset >= ((int)partition->bytesPerSector)) {
 				offset = 0;
 				sector++;
 			}
@@ -150,7 +150,7 @@ static bool _FAT_fat_writeFatEntry (PARTITION* partition, uint32_t cluster, uint
 				_FAT_cache_writeLittleEndianValue (partition->cache, value & 0xFF, sector, offset, sizeof(u8));
 
 				offset++;
-				if (offset >= partition->bytesPerSector) {
+				if (offset >= ((int)partition->bytesPerSector)) {
 					offset = 0;
 					sector++;
 				}
@@ -162,7 +162,7 @@ static bool _FAT_fat_writeFatEntry (PARTITION* partition, uint32_t cluster, uint
 				_FAT_cache_writeLittleEndianValue (partition->cache, value, sector, offset, sizeof(u8));
 
 				offset++;
-				if (offset >= partition->bytesPerSector) {
+				if (offset >= ((int)partition->bytesPerSector)) {
 					offset = 0;
 					sector++;
 				}

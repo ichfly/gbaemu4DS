@@ -1,45 +1,75 @@
-#ifndef __CPU_H__
-#define __CPU_H__
+#include <nds/ndstypes.h>
 
-// void cpu_GbaMemPerm();
-// void cpu_NdsMemPerm();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// extern void cpu_GbaSetIwram();
+extern void __attribute__((section(".dtcm"))) (*exHandler)();
+extern void __attribute__((section(".dtcm"))) (*exHandlerswi)();
+extern void __attribute__((section(".dtcm"))) (*exHandlerundifined)();
 
-extern "C" void cpu_ArmJump(u32 address, u32 r1);
-extern "C" void cpu_ArmJumpforstackinit(u32 address, u32 r1);
-void exInitswisystem(void (*customswiHdl)());
-void gbaswieulatedbios();
+extern u32  __attribute__((section(".dtcm"))) exRegs[];
+extern u32  __attribute__((section(".dtcm"))) BIOSDBG_SPSR;
 
-void gbaMode2();
+extern void readbankedextra(u32 CPSR);
+extern u32 cpuGetCPSR();
+extern u32 cpuGetSPSR();
+extern void cpuSetCPSR(u32 CPSR);
 
-void gbaInit(u8 slow);
-void switch_to_unprivileged_mode();
-void gbaMode();
-void ndsMode();
-u32 getExceptionAddress( u32 opcodeAddress, u32 thumbState);
-unsigned long ARMShift(unsigned long value,unsigned char shift);
+extern u32 readbankedsp(u32 CPSR);
+extern u32 readbankedlr(u32 CPSR);
 
-extern "C" void readbankedextra(u32 CPSR);
-extern "C" u32 cpuGetCPSR();
-extern "C" u32 cpuGetSPSR();
-extern "C" void cpuSetCPSR(u32 CPSR);
+extern void cpupausemodeexit();
+extern void cpupausemode();
 
-extern "C" u32 readbankedsp(u32 CPSR);
-extern "C" u32 readbankedlr(u32 CPSR);
+extern char disbuffer[0x2000];
 
-void cpupausemodeexit();
-void cpupausemode();
-void debugDump();
+extern void debugDump();
+extern void failcpphandler();
 
+extern void exInitundifinedsystem(void (*)());
+extern void exInitswisystem(void (*)());
+extern void exInit(void (*)());
 
-extern "C" void ichflyswiHalt();
-extern "C" void ichflyswiWaitForVBlank();
-extern "C" void ichflyswiIntrWait(u32 i,u32 c);
+extern void undifinedresolver();
 
+extern void gbaInit(bool useMPUFast);
+extern void switch_to_unprivileged_mode();
+extern void gbaMode();
+extern void gbaMode2();
 
+extern void ndsMode();
+extern u32 getExceptionAddress( u32 opcodeAddress, u32 thumbState);
+extern unsigned long ARMShift(unsigned long value,unsigned char shift);
 
+extern void BIOScall(int op,  u32 *R);
 
-#endif /*__CPU_H__*/
- 
+extern void cpu_ArmJump(u32 address, u32 r1);
+extern void cpu_ArmJumpforstackinit(u32 address, u32 r1);
+extern void exInitswisystem(void (*customswiHdl)());
+extern void gbaswieulatedbios();
+
+//cpu_s.s
+extern void ichflyswiHalt();
+extern void ichflyswiWaitForVBlank();
+extern void ichflyswiIntrWait(u32 i,u32 c);
+
+extern void switch_to_unprivileged_mode();
+extern void emulateedbiosstart();
+extern void downgreadcpu();
+
+extern void puGba();
+extern void puNds();
+
+extern void ARMV5toARMV4Mode();
+
+//GBA SWI sleep mode (swi 0x3)
+extern void backup_mpu_setprot();
+extern void restore_mpu_setprot();
+extern u32 MPUPERMBACKUPSET_SWI;	//MPUd/itcmmemorypermissionsfromcaller
+extern void IRQWait(uint32 reentrant,uint32 irqstowait);
+
+#ifdef __cplusplus
+}
+#endif
  

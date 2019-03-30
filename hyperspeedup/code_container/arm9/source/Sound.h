@@ -85,3 +85,17 @@ extern bool soundLowPass;
 extern bool soundReverse;
 
 #endif // VBA_SOUND_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern u32 arm7arm9buffer;
+extern int cnt_cmd;
+
+extern void arm7dmareq();
+extern void arm7dmareqandcheat();
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,6 +1,8 @@
 #include <nds.h>
 #include <nds/arm7/sdmmc.h>
 
+#include "sdmmc.h"
+
 int sdmmc_curdevice = -1;
 u32 sdmmc_cid[4];
 vu32 sdmmc_cardready = 0;
@@ -9,11 +11,25 @@ static int sdmmc_timeout = 0;
 static int sdmmc_gotcmd8reply = 0;
 static int sdmmc_sdhc = 0;
 
+//sdmmc_send_command
+u16 is_stat0=0, was_stat0=0;
+u16 is_stat1=0, was_stat1=0;
+
+
+//sdmmc_sdcard_init
+u16 sdaddr=0;
+u32 resp0=0;
+u32 resp1=0;
+u32 resp2=0;
+u32 resp3=0;
+u32 resp4=0;
+u32 resp5=0;
+u32 resp6=0;
+u32 resp7=0;
+
 //---------------------------------------------------------------------------------
 int sdmmc_send_command(u16 cmd, u16 arg0, u16 arg1) {
 //---------------------------------------------------------------------------------
-	u16 is_stat0, was_stat0;
-	u16 is_stat1, was_stat1;
 
 	sdmmc_write16(REG_SDCMDARG0, arg0);
 	sdmmc_write16(REG_SDCMDARG1, arg1);
@@ -96,18 +112,7 @@ void sdmmc_send_acmd41(u32 arg, u32 *resp) {
 //---------------------------------------------------------------------------------
 int sdmmc_sdcard_init() {
 //---------------------------------------------------------------------------------
-	u16 sdaddr;
-	u32 resp0;
-	u32 resp1;
-	u32 resp2;
-	u32 resp3;
-	u32 resp4;
-	u32 resp5;
-	u32 resp6;
-	u32 resp7;
-
 	u32 ocr, ccs, hcs, response;
-
 	sdmmc_cardready = 0;
 
 	sdmmc_write16(REG_SDCLKCTL, 0x20);
@@ -248,7 +253,6 @@ void sdmmc_clkdelay() {
 int sdmmc_sd_readsector(u32 sector_no, void *out) {
 //---------------------------------------------------------------------------------
 	u16 *out16 = (u16*)out;
-	u16 resp0, resp1;
 	int i;
 
 	if(!sdmmc_sdhc)
@@ -294,7 +298,6 @@ int sdmmc_sd_readsector(u32 sector_no, void *out) {
 int sdmmc_sd_readsectors(u32 sector_no, u32 numsectors, void *out) {
 //---------------------------------------------------------------------------------
 	u16 *out16 = (u16*)out;
-	u16 resp0, resp1;
 	int i;
 
 	if(!sdmmc_sdhc)

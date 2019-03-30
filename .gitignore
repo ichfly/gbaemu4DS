@@ -168,3 +168,5 @@ pip-log.txt
 hbmenu/a.bat
 wifidebugstuff
 *.LUB
+hyperspeedup/build*
+vba.ini

@@ -49,14 +49,14 @@ LDFLAGS	=	-specs=ds_arm9.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:= 	-lfat -lnds9 -ldswifi9
+LIBS	:= 	-lfat -lnds9
  
  
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=	$(LIBNDS) -ldswifi9
+LIBDIRS	:=	$(LIBNDS)
  
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -113,14 +113,20 @@ else
 	endif
 endif
  
-.PHONY: bootloader bootstub $(BUILD) clean
+.PHONY: bootloader bootstub BootStrap $(BUILD) clean
 
-all:	bootloader bootstub $(BUILD)
+all:	bootloader bootstub $(BUILD) BootStrap	buildgbaemu4ds
+	
+
+buildgbaemu4ds:
+	@[ -d ../build ] && echo "Hbmenu directory exists" || mkdir ../build
+	@cp hbmenu.nds ../build
 	
 dist:	all
 	@rm	-fr	hbmenu
 	@mkdir hbmenu
 	@cp hbmenu.nds hbmenu/BOOT.NDS
+	@cp BootStrap/_BOOT_MP.NDS BootStrap/TTMENU.DAT BootStrap/_DS_MENU.DAT BootStrap/ez5sys.bin BootStrap/akmenu4.nds hbmenu
 	@zip -9r hbmenu-$(VERSION).zip hbmenu testfiles README.html COPYING hbmenu -x@exclude.lst
 
 #---------------------------------------------------------------------------------
@@ -134,7 +140,8 @@ clean:
 	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).nds $(TARGET).arm9 data
 	@$(MAKE) -C bootloader clean
 	@$(MAKE) -C bootstub clean
-
+	@$(MAKE) -C BootStrap clean
+	@rm -rf ../build
 data:
 	@mkdir -p data
 
@@ -144,6 +151,8 @@ bootloader: data
 bootstub: data
 	@$(MAKE) -C bootstub
 
+BootStrap:
+	@$(MAKE) -C BootStrap
 
 #---------------------------------------------------------------------------------
 else

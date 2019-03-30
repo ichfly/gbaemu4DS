@@ -18,11 +18,18 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 ------------------------------------------------------------------*/
+#include "file_browse.h"
+
+char biosPath[MAXPATHLEN * 2];
+char patchPath[MAXPATHLEN * 2];
+char savePath[MAXPATHLEN * 2];
+char szFile[MAXPATHLEN * 2];
+char temppath[MAXPATHLEN * 2];
+
 
 #include "ichflysettings.h"
 #ifdef standalone
 #include "Util.h"
-#include "file_browse.h"
 #include <vector>
 #include <algorithm>
 #include <unistd.h>
@@ -42,40 +49,10 @@ extern "C" u32 fileRead (char* buffer, u32 cluster, u32 startOffset, u32 length)
 #define ENTRIES_START_ROW 2
 #define ENTRY_PAGE_LENGTH 10
 
+
 using namespace std;
 
-
-
-extern	char savePath[MAXPATHLEN * 2];
-
-extern	char biosPath[MAXPATHLEN * 2];
-
-extern  char patchPath[MAXPATHLEN * 2];
-
-extern	char szFile[MAXPATHLEN * 2];
-
-char temppath[MAXPATHLEN * 2];
-
-typedef struct
-{
-	u32 entryPoint;
-	u8 logo[156];
-	char title[0xC];
-	char gamecode[0x4];
-	char makercode[0x2];
-	u8 is96h;
-	u8 unitcode;
-	u8 devicecode;
-	u8 unused[7];
-	u8 version;
-	u8 complement;
-	u16 res;
-} __attribute__ ((__packed__)) gbaHeader_t;
-
 char showbuff[0x10];
-
-
-gbaHeader_t gbaheader;
 
 char* filetypsforemu [4] = {"gbafile (start emu)","savefile","bios","patch"};
 

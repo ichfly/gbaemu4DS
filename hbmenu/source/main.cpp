@@ -24,8 +24,6 @@
 #include <fat.h>
 #include <sys/stat.h>
 
-#include <dswifi9.h>
-
 #include <string.h>
 #include <unistd.h>
 
@@ -37,17 +35,6 @@
 #include <nds/arm9/dldi.h>
 extern DLDI_INTERFACE _io_dldi_stub;
 
-char biosPath[MAXPATHLEN * 2];
-
-char patchPath[MAXPATHLEN * 2];
-
-char savePath[MAXPATHLEN * 2];
-
-char szFile[MAXPATHLEN * 2];
-
-bool cpuIsMultiBoot = false;
-
-char* arcvsave = (char*)0;
 
 typedef struct
 {
@@ -78,7 +65,7 @@ typedef struct
 	u32 gamecode;
 	u8 homebrew;
 	u64 crc;
-	char patchPath[MAXPATHLEN * 2];
+	char patchPath[0x400 * 2]; //MAXPATHLEN old
 	u8 swaplcd;
 	u8 savfetype;
 	u8 frameskip;
@@ -96,16 +83,16 @@ gbaHeader_tf gbaheaderf;
 patch_t patchheader;
 
 char* readabelnameversionsschar[18] =
-	{"oldirq","newirq","advirq","HblancDMA","forceHblanc",
-	"newirqsound","advirqsound","HblancDMAsound","forceHblancsound",
-	"newirqsoundsc","advirqsoundsc","HblancDMAsoundsc","forceHblancsoundsc",
-	"oldirqsc","newirqsc","advirqsc","HblancDMAsc","forceHblancsc"};
+	{(char*)"oldirq",(char*)"newirq",(char*)"advirq",(char*)"HblancDMA",(char*)"forceHblanc",
+	(char*)"newirqsound",(char*)"advirqsound",(char*)"HblancDMAsound",(char*)"forceHblancsound",
+	(char*)"newirqsoundsc",(char*)"advirqsoundsc",(char*)"HblancDMAsoundsc",(char*)"forceHblancsoundsc",
+	(char*)"oldirqsc",(char*)"newirqsc",(char*)"advirqsc",(char*)"HblancDMAsc",(char*)"forceHblancsc"};
 
-char* pathversionschar[18] = //O = oldirq N = newirq A = advirq H = HblancDMA F = forceHblanc *** S = sound C = Scaling ending .LUB
-	{"fat:/GBADS/O.LUB","fat:/GBADS/N.LUB","fat:/GBADS/A.LUB","fat:/GBADS/H.LUB","fat:/GBADS/F.LUB",
-	"fat:/GBADS/NS.LUB","fat:/GBADS/AS.LUB","fat:/GBADS/HS.LUB","fat:/GBADS/FS.LUB",
-	"fat:/GBADS/NSC.LUB","fat:/GBADS/ASC.LUB","fat:/GBADS/HSC.LUB","fat:/GBADS/FSC.LUB",
-	"fat:/GBADS/OC.LUB","fat:/GBADS/NC.LUB","fat:/GBADS/AC.LUB","fat:/GBADS/HC.LUB","fat:/GBADS/FC.LUB"};
+char* pathversionschar[18] =
+	{(char*)"fat:/gbaemu4ds/oldirq.loader",(char*)"fat:/gbaemu4ds/newirq.loader",(char*)"fat:/gbaemu4ds/advirq.loader",(char*)"fat:/gbaemu4ds/HblancDMA.loader",(char*)"fat:/gbaemu4ds/forceHblanc.loader",
+	(char*)"fat:/gbaemu4ds/newirqsound.loader",(char*)"fat:/gbaemu4ds/advirqsound.loader",(char*)"fat:/gbaemu4ds/HblancDMAsound.loader",(char*)"fat:/gbaemu4ds/forceHblancsound.loader",
+	(char*)"fat:/gbaemu4ds/newirqsoundsc.loader",(char*)"fat:/gbaemu4ds/advirqsoundsc.loader",(char*)"fat:/gbaemu4ds/HblancDMAsoundsc.loader",(char*)"fat:/gbaemu4ds/forceHblancsoundsc.loader",
+	(char*)"fat:/gbaemu4ds/oldirqsc.loader",(char*)"fat:/gbaemu4ds/newirqsc.loader",(char*)"fat:/gbaemu4ds/advirqsc.loader",(char*)"fat:/gbaemu4ds/HblancDMAsc.loader",(char*)"fat:/gbaemu4ds/forceHblancsc.loader"};
 
 u8 inputtoVersion[18] = 
 	{
@@ -116,83 +103,12 @@ u8 inputtoVersion[18] =
 
 
 char* savetypeschar[7] =
-	{"SaveTypeAutomatic","SaveTypeEeprom","SaveTypeSram","SaveTypeFlash64KB","SaveTypeEepromSensor","SaveTypeNone","SaveTypeFlash128KB"};
+	{(char*)"SaveTypeAutomatic",(char*)"SaveTypeEeprom",(char*)"SaveTypeSram",(char*)"SaveTypeFlash64KB",(char*)"SaveTypeEepromSensor",(char*)"SaveTypeNone",(char*)"SaveTypeFlash128KB"};
 
-char* listless = "fat:/GBADS/LIST.LST";
+char* listless = (char*)"fat:/gbaemu4ds/listless.list";
 
 using namespace std;
 
-volatile u8 emmac[6];
-volatile bool shoeemmac = false;
-					u32 resgbanum = 0;
-					u32 resspeed = 0x7;
-					u32 resChannel = 1;
-
-// Handler - this receives all the wifi msgs & handles them
-void Handler(int packetID, int readlength)
-{
-	static char data[4096];
-	static int bytesRead;
-
-// Wifi_RxRawReadPacket:  Allows user code to read a packet from within the WifiPacketHandler function
-//  long packetID:		a non-unique identifier which locates the packet specified in the internal buffer
-//  long readlength:		number of bytes to read (actually reads (number+1)&~1 bytes)
-//  unsigned short * data:	location for the data to be read into
-	bytesRead = Wifi_RxRawReadPacket(packetID, readlength, (unsigned short *)data);
-
-	// Lazy test to see if this is our packet (does it start with SGBA ?).
-	if (data[32] == 'S' && data[33] == 'G' && data[34] == 'B' && data[35] == 'A')
-	{// i.e. it is MGBA 
-		memcpy((void*)emmac,(void*)(data+36),6);
-		shoeemmac = true;
-	}
-}
-void Handlerzwei(int packetID, int readlength)
-{
-	static char data[4096];
-	static int bytesRead;
-
-// Wifi_RxRawReadPacket:  Allows user code to read a packet from within the WifiPacketHandler function
-//  long packetID:		a non-unique identifier which locates the packet specified in the internal buffer
-//  long readlength:		number of bytes to read (actually reads (number+1)&~1 bytes)
-//  unsigned short * data:	location for the data to be read into
-	bytesRead = Wifi_RxRawReadPacket(packetID, readlength, (unsigned short *)data);
-
-	// Lazy test to see if this is our packet (does it start with SGBA ?).
-	if (data[32] == 'M' && data[33] == 'G' && data[34] == 'B' && data[35] == 'A')
-	{// i.e. it is MGBA 
-		memcpy((void*)emmac,(void*)(data+36),6);
-		shoeemmac = true;
-	}
-}
-
-int wifisender(u8* data, u32 datalen)
-{
-	
-	u16 frame[12 + 4 + datalen];
-
-	int hdrlen = 12;
-	//u16 framehdr[12 + 2];
-
-	frame[0]=0x0208;
-	frame[1]=0;
-	// MACs.
-	memset(frame + 2, 0xFF, 0x12); //to 11
-
-	frame[11] = 0; // SC
-
-
-	// add LLC header
-	frame[12]=0xAAAA;
-	frame[13]=0x0003;
-	frame[14]=0x0000;
-	unsigned short protocol = 0x08FE;
-	frame[15] = ((protocol >> 8) & 0xFF) | ((protocol << 8) & 0xFF00);
-	memcpy(frame + 16,data,datalen);
-
-	return Wifi_RawTxFrame(12 + 4 + datalen,0x7,frame);//slow
-
-}
 
 //---------------------------------------------------------------------------------
 void stop (void) {
@@ -246,63 +162,65 @@ int main(int argc, char **argv) {
 	extensionList.push_back(".sav");
 	extensionList.push_back(".pat");
 
-		vector<char*> argarray;
-		if(argc != 2)
-		{
-			// set up our bitmap background
-			bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
-			
-			decompress(hbmenu_bannerBitmap, BG_GFX,  LZ77Vram);
-
-			//filename = browseForFile(extensionList);
-			browseForFile(extensionList);
-			if(arcvsave != (char*)0) goto dataluncher;
-			argarray.push_back("a");
-			argarray.push_back(szFile);
-			argarray.push_back(savePath);
-			argarray.push_back(biosPath);
-			argarray.push_back(patchPath);
-			//stop();
-			
-			// Construct a command line
-			/*getcwd (filePath, MAXPATHLEN);
-			pathLen = strlen (filePath);
-
-
-			argarray.push_back(strdup(filename.c_str()));
-
-			char *name = argarray.at(0);
-			strcpy (filePath + pathLen, name);
-			free(argarray.at(0));*/
-			
-			
-						int pressed;
-
-	iprintf("\x1b[2J");
-	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press B for lcdswap A for normal\n");
-	while(1) 
+	vector<char*> argarray;
+	bool bypass = false;
+	if(argc != 2)
 	{
+		// set up our bitmap background
+		bgInit(3, BgType_Bmp16, BgSize_B16_256x256, 0,0);
+			
+		decompress(hbmenu_bannerBitmap, BG_GFX,  LZ77Vram);
 
-		swiWaitForVBlank();
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A)
-		{
-			argarray.push_back("0");
-			break;
-		}
-		if(isdaas&KEY_B)
-		{
-			argarray.push_back("1");
-			break;
-		}
+		//filename = browseForFile(extensionList);
+		bypass = browseForFile(extensionList);
 	}
+	if(bypass == false)
+	{
+		argarray.push_back((char*)"a");
+		argarray.push_back((char*)szFile);
+		argarray.push_back((char*)savePath);
+		argarray.push_back((char*)biosPath);
+		argarray.push_back((char*)patchPath);
+		//stop();
+		
+		// Construct a command line
+		/*getcwd (filePath, MAXPATHLEN);
+		pathLen = strlen (filePath);
+
+
+		argarray.push_back(strdup(filename.c_str()));
+
+		char *name = argarray.at(0);
+		strcpy (filePath + pathLen, name);
+		free(argarray.at(0));*/
+			
+		int pressed;
+
+		iprintf("\x1b[2J");
+		iprintf("gbaemu4DS: original ichfly 2018 - Coto 2015 \n");
+		iprintf("press B for lcdswap A for normal\n");
+		while(1) 
+		{
+
+			swiWaitForVBlank();
+			scanKeys();
+			int isdaas = keysDownRepeat();
+			if (isdaas&KEY_A)
+			{
+				argarray.push_back((char*)"0");
+				break;
+			}
+			if(isdaas&KEY_B)
+			{
+				argarray.push_back((char*)"1");
+				break;
+			}
+		}
 	
 	
-				char temp1[MAXPATHLEN * 2];
-				char temp2[MAXPATHLEN * 2];
-				char temp3[MAXPATHLEN * 2];
+		char temp1[MAXPATHLEN * 2];
+		char temp2[MAXPATHLEN * 2];
+		char temp3[MAXPATHLEN * 2];
 		int ausgewauhlt = 0;
 		while(1)
 		{
@@ -335,7 +253,7 @@ int main(int argc, char **argv) {
 		while(1) 
 		{
 			iprintf("\x1b[2J");
-			iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+			iprintf("gbaemu4DS: original ichfly 2018 - Coto 2015 \n");
 			iprintf("fps 60/%i\n",frameskip + 1);
 			swiWaitForVBlank();
 			scanKeys();
@@ -344,37 +262,33 @@ int main(int argc, char **argv) {
 			if (isdaas&KEY_UP) frameskip++;
 			if (isdaas&KEY_DOWN && frameskip != 0) frameskip--;
 		}
-				sprintf(temp2,"%X",frameskip);
-				argarray.push_back(temp2);
+		sprintf(temp2,"%X",frameskip);
+		argarray.push_back(temp2);
 
-	iprintf("\x1b[2J");
-	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press A for normal B for wifi\n");
-	bool wifi_an = false;
-	while(1) 
-	{
-
-		swiWaitForVBlank();
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A)
+		iprintf("\x1b[2J");
+		iprintf("gbaemu4DS: original ichfly 2018 - Coto 2015 \n");
+		iprintf("press A for autovsync B for normal\n");
+		while(1) 
 		{
-			argarray.push_back("0");
-			break;
+			swiWaitForVBlank();
+			scanKeys();
+			int isdaas = keysDownRepeat();
+			if (isdaas&KEY_A)
+			{
+				argarray.push_back((char*)"1");
+				break;
+			}
+			if(isdaas&KEY_B)
+			{
+				argarray.push_back((char*)"0");
+				break;
+			}
 		}
-		if(isdaas&KEY_B)
-		{
-			wifi_an = true;
-			argarray.push_back("1");
-			break;
-		}
-	}
-
 		int syncline =159;
 		while(1) 
 		{
 			iprintf("\x1b[2J");
-			iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
+			iprintf("gbaemu4DS: original ichfly 2018 - Coto 2015 \n");
 			iprintf("Videosyncline %i\n",syncline);
 			swiWaitForVBlank();
 			scanKeys();
@@ -389,353 +303,105 @@ int main(int argc, char **argv) {
 		argarray.push_back(temp3);
 
 
-	iprintf("\x1b[2J");
-	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press B for slow A for normal UP for speedhack\n");
-	while(1) 
-	{
-
-		swiWaitForVBlank();
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A)
-		{
-			argarray.push_back("0");
-			break;
-		}
-		if(isdaas&KEY_B)
-		{
-			argarray.push_back("1");
-			break;
-		}
-		if (isdaas&KEY_UP)
-		{
-			argarray.push_back("2");
-			break;
-		}
-
-	}
 		iprintf("\x1b[2J");
-	iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-	iprintf("press B for mb A for normal\n");
-	while(1) 
-	{
-
-		swiWaitForVBlank();
-		scanKeys();
-		int isdaas = keysDownRepeat();
-		if (isdaas&KEY_A)
+		iprintf("gbaemu4DS: original ichfly 2018 - Coto 2015 \n");
+		iprintf("press B for fast A for normal\n");
+		while(1) 
 		{
-			argarray.push_back("0");
-			break;
+			swiWaitForVBlank();
+			scanKeys();
+			int isdaas = keysDownRepeat();
+			if (isdaas&KEY_A)
+			{
+				argarray.push_back((char*)"1");
+				break;
+			}
+			if(isdaas&KEY_B)
+			{
+				argarray.push_back((char*)"0");
+				break;
+			}
 		}
-		if(isdaas&KEY_B)
+		iprintf("\x1b[2J");
+		iprintf("gbaemu4DS: original ichfly 2018 -  Coto 2015 \n");
+		iprintf("press B for mb A for normal\n");
+		while(1) 
 		{
-			argarray.push_back("1");
-			break;
+			swiWaitForVBlank();
+			scanKeys();
+			int isdaas = keysDownRepeat();
+			if (isdaas&KEY_A)
+			{
+				argarray.push_back((char*)"0");
+				break;
+			}
+			if(isdaas&KEY_B)
+			{
+				argarray.push_back((char*)"1");
+				break;
+			}
 		}
-	}
-
-			ausgewauhlt = 0;
-			while(1)
+		ausgewauhlt = 0;
+		while(1)
+		{
+			iprintf("\x1b[2J");
+			for(int i = 0; i < nummerVersions; i++)
 			{
-				iprintf("\x1b[2J");
-				for(int i = 0; i < nummerVersions; i++)
-				{
-					if(i == ausgewauhlt) iprintf("->");
-					else iprintf("  ");
-					iprintf(readabelnameversionsschar[inputtoVersion[i]]);
-					iprintf("\n");
-				}
-				do 
-				{
-					swiWaitForVBlank();
-					scanKeys();
-					pressed = keysDownRepeat();
-				} while (!pressed);
-
-				if (pressed&KEY_A)
-				{
-					argarray.at(0) = pathversionschar[inputtoVersion[ausgewauhlt]];
-
-					FILE *testfile = fopen(pathversionschar[inputtoVersion[ausgewauhlt]], "r");
-					if(testfile==NULL)
-					{
-						iprintf("incorrect setup");
-						stop();
-					}
-					fclose(testfile);
-					break;
-				}
-				if (pressed&KEY_DOWN && ausgewauhlt < nummerVersions){ ausgewauhlt++;}
-				if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
+				if(i == ausgewauhlt) iprintf("->");
+				else iprintf("  ");
+				iprintf(readabelnameversionsschar[inputtoVersion[i]]);
+				iprintf("\n");
 			}
-			if(wifi_an)
+			do 
 			{
-				bool nifi = false;
-				iprintf("\x1b[2J");
-				iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-				iprintf("press B for nifi A for APDEBUG\n");
-				while(1)
-				{
+				swiWaitForVBlank();
+				scanKeys();
+				pressed = keysDownRepeat();
+			} while (!pressed);
 
-					swiWaitForVBlank();
-					scanKeys();
-					int isdaas = keysDownRepeat();
-					if (isdaas&KEY_A)
-					{
-						argarray.push_back("0");
-						break;
-					}
-					if(isdaas&KEY_B)
-					{
-						nifi = true;
-						argarray.push_back("1");
-						break;
-					}
-				}
-				if(nifi)
-				{
-
-
-					iprintf("\x1b[2J");
-					iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-					iprintf("press B for 2MBits A for 1MBits\n");
-					while(1) 
-					{
-
-						swiWaitForVBlank();
-						scanKeys();
-						int isdaas = keysDownRepeat();
-						if (isdaas&KEY_A)
-						{
-							resspeed = 0x7;
-							break;
-						}
-						if(isdaas&KEY_B)
-						{
-							resspeed = 0x14;
-							break;
-						}
-					}
-					while(1) 
-					{
-						iprintf("\x1b[2J");
-						iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-						iprintf("gbanum %i (0 = master)\n",resgbanum);
-						swiWaitForVBlank();
-						scanKeys();
-						int isdaas = keysDownRepeat();
-						if (isdaas&KEY_A) break;
-						if (isdaas&KEY_UP && resgbanum < 4) resgbanum++;
-						if (isdaas&KEY_DOWN && resgbanum > 0) resgbanum--;
-					}
-					if(resgbanum != 0)
-					{
-						iprintf("wifi initiating\n");
-						Wifi_InitDefault(false);
-
-						// Wifi_SetPromiscuousMode: Allows the DS to enter or leave a "promsicuous" mode, in which 
-						//   all data that can be received is forwarded to the arm9 for user processing.
-						//   Best used with Wifi_RawSetPacketHandler, to allow user code to use the data
-						//   (well, the lib won't use 'em, so they're just wasting CPU otherwise.)
-						//  int enable:  0 to disable promiscuous mode, nonzero to engage
-						Wifi_SetPromiscuousMode(1);
-
-						// Wifi_EnableWifi: Instructs the ARM7 to go into a basic "active" mode, not actually
-						//   associated to an AP, but actively receiving and potentially transmitting
-						Wifi_EnableWifi();
-
-						// Wifi_RawSetPacketHandler: Set a handler to process all raw incoming packets
-						//  WifiPacketHandler wphfunc:  Pointer to packet handler (see WifiPacketHandler definition for more info)
-						Wifi_RawSetPacketHandler(Handlerzwei);
-						bool connected = false;
-						while(!connected)
-						{
-							for(int k = 1;k < 13;k++)
-							{
-								iprintf("\x1b[2J");
-								iprintf("scan Channel %i\n",k);
-								Wifi_SetChannel(k);
-								if(shoeemmac)
-								{
-									shoeemmac = false;
-									iprintf("conected %02X:%02X:%02X:%02X:%02X:%02X\n",emmac[0],emmac[1],emmac[2],emmac[3],emmac[4],emmac[5]);
-									for(int k2 = 0;k2 < 10;k2++)
-									{
-										u8 data[4 + 6];
-										data[0] = 'S';
-										data[1] = 'G';
-										data[2] = 'B';
-										data[3] = 'A';
-										u8 macAddress[6];
-										if(Wifi_GetData(WIFIGETDATA_MACADDRESS, 6, macAddress) == -1) //my mac is here lol
-										{
-											iprintf("error collecting data\n");
-										}
-										memcpy(data + 4,macAddress,6);
-										if(wifisender(data,10) != 0)
-										{
-											iprintf("send error\n");
-										}
-										for(int i = 0;i < 10;i++)swiWaitForVBlank();
-									}
-
-									connected = true;
-								}
-								for(int i = 0;i < 120;i++)swiWaitForVBlank();
-							}
-						}
-					}
-					else
-					{
-						bool connected = false;
-						while(1)
-						{
-							iprintf("\x1b[2J");
-							iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-							iprintf("server Channel %i\n",resChannel);
-							swiWaitForVBlank();
-							scanKeys();
-							int isdaas = keysDownRepeat();
-							if (isdaas&KEY_A) break;
-							if (isdaas&KEY_UP && resChannel < 13) resChannel++;
-							if (isdaas&KEY_DOWN && resChannel > 1) resChannel--;
-						}
-						iprintf("\x1b[2J");
-						//start wifi server
-						// initialises DS for NiFi using dswifi.lib hack (change to Wifi_RawTxFrame function... see greenacorn.co.uk)
-						//
-						iprintf("wifi initiating\n");
-						Wifi_InitDefault(false);
-
-						// Wifi_SetPromiscuousMode: Allows the DS to enter or leave a "promsicuous" mode, in which 
-						//   all data that can be received is forwarded to the arm9 for user processing.
-						//   Best used with Wifi_RawSetPacketHandler, to allow user code to use the data
-						//   (well, the lib won't use 'em, so they're just wasting CPU otherwise.)
-						//  int enable:  0 to disable promiscuous mode, nonzero to engage
-						Wifi_SetPromiscuousMode(1);
-
-						// Wifi_EnableWifi: Instructs the ARM7 to go into a basic "active" mode, not actually
-						//   associated to an AP, but actively receiving and potentially transmitting
-						Wifi_EnableWifi();
-
-						// Wifi_RawSetPacketHandler: Set a handler to process all raw incoming packets
-						//  WifiPacketHandler wphfunc:  Pointer to packet handler (see WifiPacketHandler definition for more info)
-						Wifi_RawSetPacketHandler(Handler);
-
-						// Wifi_SetChannel: If the wifi system is not connected or connecting to an access point, instruct
-						//   the chipset to change channel
-						//  int channel: the channel to change to, in the range of 1-13
-						Wifi_SetChannel(resChannel);
-						iprintf("wifi initiated press A\n");
-						int i44 = 0;
-						while(1)
-						{
-							if((i44%10) == 0)
-							{
-								u8 data[4 + 6];
-								data[0] = 'M';
-								data[1] = 'G';
-								data[2] = 'B';
-								data[3] = 'A';
-								u8 macAddress[6];
-								if(Wifi_GetData(WIFIGETDATA_MACADDRESS, 6, macAddress) == -1) //my mac is here lol
-								{
-									iprintf("error collecting data\n");
-								}
-								memcpy(data + 4,macAddress,6);
-								if(wifisender(data,10) != 0)
-								{
-									iprintf("send error\n");
-								}
-							}
-							if(shoeemmac)
-							{
-								shoeemmac = false;
-								iprintf("conected %02X:%02X:%02X:%02X:%02X:%02X Press A to confirm the connections\n",emmac[0],emmac[1],emmac[2],emmac[3],emmac[4],emmac[5]);
-								connected = true;
-							}
-							swiWaitForVBlank();
-							scanKeys();
-							int isdaas = keysDownRepeat();
-							if (isdaas&KEY_A && connected) break;
-							i44++;
-						}
-					}
-
-
-
-
-					iprintf("\x1b[2J");
-					iprintf("gbaemu DS for r4i gold (3DS) (r4ids.cn) by ichfly\n");
-					iprintf("press A to load the emulator\n");
-					while(1)
-					{
-
-						swiWaitForVBlank();
-						scanKeys();
-						int isdaas = keysDownRepeat();
-						if (isdaas&KEY_A)break;
-					}
-				}
-			}
-			for(int j = 0;j < 6;j++)
+			if (pressed&KEY_A)
 			{
-				sprintf(temp3,"%X",emmac[j]);
-				argarray.push_back(temp3);
+				argarray.at(0) = pathversionschar[inputtoVersion[ausgewauhlt]];
+				break;
 			}
-			sprintf(temp3,"%X",resChannel);
-			argarray.push_back(temp3);
-			sprintf(temp3,"%X",resgbanum);
-			argarray.push_back(temp3);
-			sprintf(temp3,"%X",resspeed);
-			argarray.push_back(temp3);
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
+			if (pressed&KEY_DOWN && ausgewauhlt < nummerVersions){ ausgewauhlt++;}
+			if (pressed&KEY_UP && ausgewauhlt != 0) {ausgewauhlt--;}
+			}		
 		}
 		else
 		{
-			arcvsave = argv[1];
-dataluncher:
-			argarray.push_back("a");
-			strcpy(filePath,arcvsave);
-
-
-			sprintf(savePath,"%s.sav",arcvsave);
-			FILE *pFile2 = fopen(savePath, "r");
-			if(pFile2==NULL)savePath[0] = 0;
-			fclose(pFile2);
+			argarray.push_back((char*)"a");
 			
-			sprintf(patchPath,"%s.pat",arcvsave);
+			if(argc == 2)
+				strcpy(filePath,argv[1]);
+			else
+				strcpy(filePath,szFile);
+
+			sprintf(savePath,"%s.sav",filePath);
+			//FILE *pFile2 = fopen(savePath, "r");
+			//if(pFile2==NULL)savePath[0] = 0;
+			//fclose(pFile2);
+			
+			sprintf(patchPath,"%s.pat",filePath);
 			FILE *pFile3 = fopen(patchPath, "r");
-			if(pFile3==NULL)patchPath[0] = 0;
+			if(pFile3==NULL)
+				sprintf(patchPath,"fat:/gbaemu4ds/patch.pat");
 			fclose(pFile3);
 
 
 			argarray.push_back(filePath);
 			argarray.push_back(savePath);
-			//argarray.push_back("fat:/GBADS/bios.bin");
-			argarray.push_back("\0");
+			//argarray.push_back("fat:/ichflyr4igoldgbaemu/bios.bin");
+			argarray.push_back((char*)"\0");
 			
-			FILE *gbafile = fopen(arcvsave, "r");
+			FILE *gbafile = fopen(filePath, "r");
 			
 			fread((char*)&gbaheaderf, 1, sizeof(gbaHeader_tf),gbafile);
 			
 			FILE *listfiledata = fopen(listless, "r");
 			if(listfiledata==NULL)
 			{
-				iprintf("incorrect setup");
+				iprintf("incorrect setup. lacking: gbaemu4ds/listless.list");
 				stop();
 			}
 			
@@ -750,13 +416,11 @@ dataluncher:
 			
 			fclose(gbafile);
 			fclose(listfiledata);
-
 			
-
 			u32 ourcrc = swiCRC16(0x0,(void*)&patchheader,sizeof(gbaHeader_tf)) + swiCRC16(0xFFFF,(void*)&patchheader,sizeof(gbaHeader_tf)) << 16;
 			//checksettings
 			u32 matching = 0;
-			for(int i2 = 0;i2 < patchheader.listentr;i2++)
+			for(int i2 = 0;i2 < patchheader.listentr - 1;i2++)
 			{
 				if(*(u32*)gbaheaderf.gamecode == entries[i2].gamecode)
 				{
@@ -767,7 +431,7 @@ dataluncher:
 					}
 					else
 					{
-						if(ourcrc == entries[i2].crc)
+						if(ourcrc == entries[i2].crc || entries[i2].crc == 0)
 						{
 							matching = i2;
 							break;
@@ -790,8 +454,8 @@ dataluncher:
 			char temp2[MAXPATHLEN * 2];
 			char temp3[MAXPATHLEN * 2];
 			
-			if(entries[matching].swaplcd)argarray.push_back("1");
-			else argarray.push_back("0");
+			if(entries[matching].swaplcd)argarray.push_back((char*)"1");
+			else argarray.push_back((char*)"0");
 			
 			sprintf(temp1,"%X",entries[matching].savfetype);
 			argarray.push_back(temp1);
@@ -799,53 +463,42 @@ dataluncher:
 			sprintf(temp2,"%X",entries[matching].frameskip);
 			argarray.push_back(temp2);
 			
-			if(entries[matching].frameskipauto)argarray.push_back("1");
-			else argarray.push_back("0");
+			if(entries[matching].frameskipauto)argarray.push_back((char*)"1");
+			else argarray.push_back((char*)"0");
 			
 			sprintf(temp3,"%X",entries[matching].frameline);
 			argarray.push_back(temp3);
 			
-			if(entries[matching].fastpu == 1)argarray.push_back("1");
-			else if(entries[matching].fastpu == 2)argarray.push_back("2");
-			else argarray.push_back("0");
+			if(entries[matching].fastpu)argarray.push_back((char*)"1");
+			else argarray.push_back((char*)"0");
 			
-			if(entries[matching].mb)argarray.push_back("1");
-			else argarray.push_back("0");
+			if(entries[matching].mb)argarray.push_back((char*)"1");
+			else argarray.push_back((char*)"0");
 			
 			argarray.at(0) = pathversionschar[entries[matching].loadertype];
-			FILE *testfile = fopen(pathversionschar[entries[matching].loadertype], "r");
-			if(testfile==NULL)
-			{
-				iprintf("incorrect setup");
-				stop();
-			}
-			fclose(testfile);
 			
 		}
-			//argarray.at(0) = filePath;
-			//iprintf ("Running %s with %d parameters\n", argarray[0], argarray.size());
-			//while(1);
-#ifdef test1
-			iprintf("press B to continue.\n");
-			scanKeys();
-			u16 keys_up = 0;
-			while( 0 == (keys_up & KEY_B) )
-			{
-				scanKeys();
-				keys_up = keysUp();
-			}
-			for(int i = 0;i < 600;i++)swiWaitForVBlank();
-#endif
-
-			int err = runNdsFile (argarray[0], argarray.size(), (const char **)&argarray[0]);
-			iprintf ("Start failed. Error %i\n", err);
+		//argarray.at(0) = filePath;
+		//iprintf ("Running %s with %d parameters\n", argarray[0], argarray.size());
+		//while(1);
+			
+		FILE *test = fopen(argarray.at(0), "r");
+		if(test==NULL)
+		{
+			iprintf("incorrect setup. lacking: %s",argarray.at(0));
+			stop();
+		}
+		fclose(test);
+		
+		int err = runNdsFile (argarray[0], argarray.size(), (const char **)&argarray[0]);
+		iprintf ("Start failed. Error %i\n", err);
 
 		while(argarray.size() !=0 ) {
 			free(argarray.at(0));
 			argarray.erase(argarray.begin());
 		}
 
-		for(int i = 0;i < 600;i++)swiWaitForVBlank();
+		for(int i = 0;i < 60;i++)swiWaitForVBlank();
 		while (1) {
 			swiWaitForVBlank();
 			scanKeys();

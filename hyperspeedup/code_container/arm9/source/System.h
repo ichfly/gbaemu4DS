@@ -38,60 +38,21 @@
 #ifndef NULL
 #define NULL 0
 #endif
-/* ichfly test todo
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
 
-#ifdef _MSC_VER
-typedef unsigned __int64 u64;
-#else
-typedef unsigned long long u64;
+//extern void log(const char *,...);
+
+#define SYSTEM_SAVE_UPDATED 30
+#define SYSTEM_SAVE_NOT_UPDATED 0
+
+#endif //VBA_SYSTEM_H
+
+
+//MPU NDS Definitions
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-typedef signed char s8;
-typedef signed short s16;
-typedef signed int s32;
-
-#ifdef _MSC_VER
-typedef signed __int64 s64;
-#else
-typedef signed long long s64;
-#endif
-*/
-//struct EmulatedSystem {
-  // main emulation function
-  //void (*emuMain)(int);
-  // reset emulator
-  //void (*emuReset)();
-  // clean up memory
-  //void (*emuCleanUp)();
-  // load battery file
-  //bool (*emuReadBattery)(const char *);
-  // write battery file
-  //bool (*emuWriteBattery)(const char *);
-  // load state
-  //bool (*emuReadState)(const char *);  
-  // save state
-  //bool (*emuWriteState)(const char *);
-  // load memory state (rewind)
-  //bool (*emuReadMemState)(char *, int);
-  // write memory state (rewind)
-  //bool (*emuWriteMemState)(char *, int);
-  // write PNG file
-  //bool (*emuWritePNG)(const char *);
-  // write BMP file
-  //bool (*emuWriteBMP)(const char *);
-  // emulator update CPSR (ARM only)
-  //void (*emuUpdateCPSR)();
-  // emulator has debugger
-  //bool emuHasDebugger;
-  // clock ticks to emulate
-  //int emuCount;
-//};
-
-extern void log(const char *,...);
-
+//System.cpp
 extern bool systemPauseOnFrame();
 extern void systemGbPrint(u8 * a,int,int,int,int);
 extern void systemScreenCapture(int);
@@ -137,7 +98,40 @@ extern int systemFrameSkip;
 extern int systemSaveUpdateCounter;
 extern int systemSpeed;
 
-#define SYSTEM_SAVE_UPDATED 30
-#define SYSTEM_SAVE_NOT_UPDATED 0
+extern int len;
 
-#endif //VBA_SYSTEM_H
+//icache.s | dcache.s
+
+// extern void puSetMemPerm(u32 perm);
+extern void pu_Enable();
+
+// extern void puSetGbaIWRAM();
+extern void pu_SetRegion(u32 region, u32 value);
+
+extern void pu_SetDataPermissions(u32 v);
+extern void pu_SetCodePermissions(u32 v);
+extern void pu_SetDataCachability(u32 v);
+extern void pu_SetCodeCachability(u32 v);
+extern void pu_GetWriteBufferability(u32 v);
+
+extern void cpu_SetCP15Cnt(u32 v); //mask bit 1 for: 0 disable, 1 enable, PU
+extern u32 cpu_GetCP15Cnt(); //get PU status: 0 disable, 1 enable
+
+//instruction cache CP15
+extern void IC_InvalidateAll();
+extern void IC_InvalidateRange(const void *, u32 v);
+
+//data cache CP15
+extern void DC_FlushAll();
+extern void DC_FlushRange(const void *, u32 v);
+
+//ex_s.s
+extern u32 savedsp;
+extern u32 savedlr;
+extern void gbaExceptionHdl();
+extern int SPtoload;
+extern int SPtemp;
+
+#ifdef __cplusplus
+}
+#endif

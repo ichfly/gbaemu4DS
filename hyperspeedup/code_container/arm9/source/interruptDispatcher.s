@@ -22,22 +22,25 @@
 
 
 ---------------------------------------------------------------------------------*/
+.arch	armv4t
+.cpu arm7tdmi
 
 #include "ichflysettings.h"
+
 
 @new stacks todo mix some stacks
 __sp_undef	=	__dtcm_top - 0x100;	@ichfly @ 1.792 Byte
 __sp_svc	=	__sp_undef - 0x700;	@ichfly @ 4.096 Byte
 __sp_irq	=	__sp_svc  - 0x1000; @ichfly @ 1.024 Byte each @also in interruptDispatcher.s
 
-	.section .itcm,"ax",%progbits
+.section .itcm,"ax",%progbits
 
-	.extern	irqTable
-	.code 32
-	
-	
-	.global	IntrMain, __cpsr_mask
-    .type   IntrMain STT_FUNC
+.extern	irqTable
+.code 32
+
+
+.global	IntrMain, __cpsr_mask
+.type   IntrMain STT_FUNC
 @---------------------------------------------------------------------------------
 IntrMain:
 @---------------------------------------------------------------------------------
@@ -71,7 +74,7 @@ no_handler:
 	ldrh r2, [r0]
 	orr r1,r1,r2
 	strh r1, [r0]
-	ldr r0, =caioMem+dsuncashedoffset
+	ldr r0, =ioMem
 	ldr r0,[r0]
 	add	r0, r0, #0x200
 	add	r0, r0, #0x2 @don't like todo
@@ -86,7 +89,7 @@ jump_intr:
 	ldr	r1, [r2]		@ user IRQ handler address
 	cmp	r1, #0
 	bne	got_handler
-	@mov	r1, r0
+	mov	r1, r0
 	b	no_handler
 @---------------------------------------------------------------------------------
 got_handler:
@@ -110,7 +113,8 @@ got_handler:
 
 	mov SP,r0
 	
-	blx	r1
+	mov lr,pc
+	bx	r1
 	
 exitichfly:
 

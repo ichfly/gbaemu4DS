@@ -10,12 +10,11 @@
 #include <nds/interrupts.h>
 #include <nds/fifocommon.h>
 #include <time.h>
-#include "libnds_internal.h"
-#include "ichflysettings.h"
 #include <sys/iosupport.h>
 
-#include "arm7sound.h"
-
+#include "libnds_internal.h"
+#include "ichflysettings.h"
+#include "GBA.H"
 
 
 extern time_t *punixTime;

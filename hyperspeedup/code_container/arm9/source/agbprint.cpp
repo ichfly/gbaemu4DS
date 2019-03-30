@@ -20,8 +20,7 @@
 #include <string.h>
 
 #include "GBA.h"
-#include "Globals.h"
-#include "Port.h"
+#include "Util.h"
 
 #define debuggerWriteHalfWord(addr, value) \
   WRITE16LE((u16*)&map[(addr)>>24].address[(addr) & map[(addr)>>24].mask], (value))
@@ -76,7 +75,7 @@ void agbPrintFlush()
 
   u32 address = (debuggerReadHalfWord(0x9fe20fa) << 16);
   if(address != 0xfd0000 && address != 0x1fd0000) {
-    dbgOutput("Did you forget to call AGBPrintInit?\n", 0);
+    dbgOutput((char*)"Did you forget to call AGBPrintInit?\n", 0);
     // get rid of the text otherwise we will continue to be called
     debuggerWriteHalfWord(0x9fe20fc, put);    
     return;

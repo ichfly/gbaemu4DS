@@ -1,17 +1,16 @@
+.arch	armv4t
+.cpu arm7tdmi
 
 #include "ichflysettings.h"
 
+.section	.itcm,"ax",%progbits
 
+.equ REG_BASE,	0x04000000
+.equ REG_IME,	0x04000208
 
-	.section	.itcm,"ax",%progbits
-
-	.equ REG_BASE,	0x04000000
-	.equ REG_IME,	0x04000208
-
-	.align 4
-	.code 32
-	.arm
-
+.align 4
+.code 32
+.arm
 
 
 @__sp_svc	=	__dtcm_top - 0x100;   @ichfly old
@@ -36,15 +35,15 @@ __sp_irq	=	__sp_svc  - 0x1000; @ichfly @ 1.024 Byte each @also in interruptDispa
 	
 		.global irqhandler2
 irqhandler2:
-b	inter_Reset + 0x1FF8000
-b	inter_undefined + 0x1FF8000
-b	inter_swi + 0x1FF8000
-b	inter_fetch + 0x1FF8000
-b	inter_data + 0x1FF8000
-b	inter_res + 0x1FF8000
-b	inter_irq + 0x1FF8000
-b	inter_fast + 0x1FF8000
-b	inter_res2 + 0x1FF8000
+b	inter_Reset + 0x1000000
+b	inter_undefined + 0x1000000
+b	inter_swi + 0x1000000
+b	inter_fetch + 0x1000000
+b	inter_data + 0x1000000
+b	inter_res + 0x1000000
+b	inter_irq + 0x1000000
+b	inter_fast + 0x1000000
+b	inter_res2 + 0x1000000
 
 somethingfailed:
 
@@ -52,19 +51,12 @@ inter_Reset:
 inter_res:
 inter_fast:
 inter_res2:
-
-	@ change the PU to nds mode
-	ldr	SP,=0x36333333	@ see cpumg.cpp for meanings protections
-	mcr	p15, 0, SP, c5, c0, 2
-	
-	@ jump into the personal handler
-	ldr	r1, =failcpphandler
-	ldr	r1, [r1]
-	
-	
-	ldr	sp, =__sp_undef	@ use the new stack
-	
-	blx	r1 @error no return
+	str sp,[pc, #0x10]
+	str lr,[pc, #0x10]
+	ldr sp, =failcpphandler
+	ldr lr, =exHandler
+	str sp,[lr]
+	b dointerwtf
 	
 
 
@@ -94,12 +86,10 @@ inter_irq:
 	mrc	p15, 0, r2, c5, c0, 2      @set pu
 	ldr	r1,=0x36333333
 	mcr	p15, 0, r1, c5, c0, 2
+	ldr	r1, =_exMain_tmpPuplain
+	str	r2, [r1]
+	
 
-
-	@ldr	r1, =_exMain_tmpPuplain
-	@str	r2, [r1]
-thisi1:	
-	str r2, [pc,#(_exMain_tmpPuplain - thisi1 -8)]
 	
 	BL IntrMain
 	
@@ -111,9 +101,6 @@ thisi1:
 	
 	ldr	r2, =anytimejmpfilter
 	ldr r2, [r2]
-@thisi2:	
-	@ldr r2, [pc,#(anytimejmpfilter - thisi2 -8)]
-	
 	ands r1,r1,r2 @ anytimejmpfilter und IF
 	BEQ	irqexitdirect
 	
@@ -136,20 +123,24 @@ gba_handler:
 	add    LR,PC,#0            @retadr for USER handler
 	ldr    PC,[R0, #-0x4]      @jump to [03FFFFFC] USER handler
 #endif
-
-irqexitdirect:
 	
-	@ldr	r1, =_exMain_tmpPuplain @set pu back @ichfly einschub
-	@ldr	r2, [r1] @ichfly
-thisi3:	
-	ldr r2, [pc,#(_exMain_tmpPuplain - thisi3 -8)]
-	
+	ldr	r1, =_exMain_tmpPuplain @set pu back @ichfly einschub
+	ldr	r2, [r1] @ichfly
 	mcr	p15, 0, r2, c5, c0, 2	
 
 	ldmfd  SP!, {R0-R3,R12,LR} @restore registers from SP_irq  
 	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
 	
 	
+
+irqexitdirect:
+	
+	ldr	r1, =_exMain_tmpPuplain  @set pu back
+	ldr	r2, [r1] @ichfly
+	mcr	p15, 0, r2, c5, c0, 2 
+	 
+	ldmfd  SP!, {R0-R3,R12,LR} @restore registers from SP_irq  
+	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
 
 #else
 inter_irq:
@@ -273,62 +264,57 @@ nop
 	subs   PC,LR, #0x4         @return from IRQ (PC=LR-4, CPSR=SPSR)
 #endif
 
-
-
 .global SPtoloadswi
 SPtoloadswi:
-.word __sp_svc
+	.word __sp_svc
 inter_swi:
 
 
-@ change the PU to nds mode
-ldr	SP,=0x36333333	@ see cpumg.cpp for meanings protections
-mcr	p15, 0, SP, c5, c0, 2
-ldr	SP, =exRegs
-
-str	lr, [SP, #(15 * 4)] @ save r15 (lr is r15)
-
-@ save the registres 0->12
-stmia	SP, {r0-r12}
-
-
-mov r1, SP @u32 *R
+	@ change the PU to nds mode
+	ldr	SP,=0x36333333	@ see cpumg.cpp for meanings protections
+	mcr	p15, 0, SP, c5, c0, 2
+	ldr	SP, =exRegs
 	
-ldrb r0,[lr,#-2] @int op
+	str	lr, [SP, #(15 * 4)]	@ save r15 (lr is r15)
+	
+	@ save the registres 0->12
+	stmia	SP, {r0-r12}
+	
+	@ jump into the personal handler
+	ldr	r1, =exHandlerswi
+	ldr	r1, [r1]
 	
 	
-thisi4:	
-ldr sp, [pc,#(SPtoloadswi - thisi4 -8)] @ use the new stack
+	ldr	sp, =SPtoloadswi	@ use the new stack
+	ldr sp, [sp]
 	
-BL _Z8BIOScalliPi @(int op,  s32 *R)
+	mov lr,pc @ichfly change back if possible , coto: change back was possible
+	bx r1
 	
-thisi5:	
-str sp, [pc,#(SPtoloadswi - thisi5 -8)] @save old stack
-
-ldr	SP,=0x06333333	@ change the PU to gba mode
-mcr	p15, 0, SP, c5, c0, 2
+	ldr	r1, =SPtoloadswi	@save old stack
+	str sp, [r1]
 	
-
-@ restore the registres 0->12
-ldr	lr, =exRegs
-ldmia	lr, {r0-r12}
-
-ldr	lr, [lr, #(15 * 4)]
-
-subs pc, lr, #0
-
-
+	@ restore the registres 0->12
+	ldr	lr, =exRegs
+	ldmia	lr, {r0-r12}
+	
+	ldr	lr, [lr, #(15 * 4)] 
+	
+	@add lr,lr,#4
+	
+	@subs    pc, lr, #4
+	
+	subs    pc, lr, #0 @ichfly this is not working	
+	
 
 
 
 
 inter_fetch: @ break function todo
 
-	ldr		sp,=rom
 	subs    lr, lr, #0x8000000
+	ldr		sp,=rom
 	ldr		sp,[sp]
-	@thisi4:	
-	@ldr r2, [pc,#(rom - thisi4 -8)]
 	add		lr,lr,sp
 	subs    pc, lr, #4
 
@@ -355,7 +341,8 @@ inter_undefined:
 	
 	ldr	sp, =__sp_undef	@ use the new stack
 	
-	blx	r1 @ichfly change back if possible
+	mov lr,pc
+	bx	r1 @ichfly change back if possible , coto: change back was possible
 	
 	@ restore the registres 0->12
 	ldr	lr, =exRegs
@@ -406,8 +393,8 @@ inter_data:
 
 	@ change the mode  @ on change de mode (on se mets dans le mode qui était avant l'exception)
 	mrs	r3, cpsr
-	and	r1, r5, #0x1F
 	bic	r4, r3, #0x1F
+	and	r1, r5, #0x1F
 	
 	
 	cmp r1,#0x10 @ichfly user is system
@@ -428,51 +415,23 @@ inter_data:
 #endif
 	
 	@ldr r1,=exRegs
-	
-#ifdef noasmTHUMB
 	sub r1,SP,#13 * 4
-#else
-	sub r4,SP,#13 * 4
-#endif
+	
 	lsls r2,r5, #0x1A
 	BMI itisTHUMB
 	
 itisARM:
 
-
-
 	ldr r0, [LR, #-0x8]
 	ldr	sp, =__sp_undef	@ use the new stack
-	BL _Z11emuInstrARMjPi @ is emuInstrARM(u32 opcode, s32 *R)
+	BL emuInstrARM @ is emuInstrARM(u32 opcode, s32 *R)
 	B exitdirectcpu
 itisTHUMB:
-#ifdef noasmTHUMB
 	ldrh r0, [LR,#-0x8]
 	sub LR, #0x2
 	str LR, [r1, #15*4]
 	ldr	sp, =__sp_undef	@ use the new stack
-	BL _Z13emuInstrTHUMBtPi @ is emuInstrTHUMB(u16 opcode, s32 *R)
-
-
-
-
-
-
-
-
-#else
-	ldrh r8, [LR,#-0x8]
-	sub LR, #0x2
-	str LR, [r4, #15*4]
-	ldr	sp, =__sp_undef	@ use the new stack
-
-
-#include "cr.s"
-#endif
-
-
-
-
+	BL emuInstrTHUMB @ is emuInstrTHUMB(u16 opcode, s32 *R)
 exitdirectcpu:
 #else
 
@@ -498,8 +457,8 @@ exitdirectcpu:
 
 	@change mode to the saved mode @ on change de mode (on se mets dans le mode qui était avant l'exception)
 	mrs	r3, cpsr
-	and	r5, r5, #0x1F
 	bic	r4, r3, #0x1F
+	and	r5, r5, #0x1F
 	
 	cmp r5,#0x10 @ichfly user is system
 	moveq r5,#0x1F	
@@ -514,14 +473,12 @@ exitdirectcpu:
 
 	
 	BIC SP,r7,#0x30000000 @ldr	SP, =0x06333333
-	
-	sub lr,r6,#13 * 4 @ldr	lr, =exRegs
-	
 	mcr	p15, 0, SP, c5, c0, 2
 
 
 
 	@restore r0-r12 easy
+	sub lr,r6,#13 * 4 @ldr	lr, =exRegs
 	ldmia	lr, {r0-r12}
 			
 	@restore PU from the handler @ restaure la protection du PU, comme voulue par l'handler perso
@@ -535,9 +492,13 @@ exitdirectcpu:
 	subs    pc, lr, #4
 	
 	
-	.section	.dtcm,"ax",%progbits
+.section	.dtcm,"ax",%progbits
 
-		.global BIOSDBG_SPSR
+.global MPUPERMBACKUPSET_SWI	@swi mpu save sleep mode
+MPUPERMBACKUPSET_SWI:
+	.word 0x00000000
+
+.global BIOSDBG_SPSR
 BIOSDBG_SPSR:
 	.word 0
 

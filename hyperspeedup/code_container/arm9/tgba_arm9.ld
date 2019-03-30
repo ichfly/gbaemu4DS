@@ -9,8 +9,8 @@ MEMORY {
        gbaew   : ORIGIN = 0x02000000, LENGTH = 256k
        ewram   : ORIGIN = 0x02040000, LENGTH = 1M - 256k + 512k
        dtcm    : ORIGIN = 0x027C0000, LENGTH = 16K
-       vectors : ORIGIN = 0x01FF8000, LENGTH = 16K
-       itcm    : ORIGIN = 0x01FFC000, LENGTH = 16K
+       vectors : ORIGIN = 0x01000000, LENGTH = 1K - 256
+       itcm    : ORIGIN = 0x01000300, LENGTH = 32K - 1K + 256
 }
 
 
@@ -18,6 +18,10 @@ __vectors_start	=	ORIGIN(vectors);
 __itcm_start	=	ORIGIN(itcm);
 __ewram_end	=	ORIGIN(ewram) + LENGTH(ewram);
 __eheap_end	=	ORIGIN(ewram) + LENGTH(ewram);
+
+__gbarom_start 	= ORIGIN(gbarom);
+__gbarom_end	= ORIGIN(gbarom) + LENGTH(gbarom);
+
 __dtcm_start	=	ORIGIN(dtcm);
 __dtcm_top	=	ORIGIN(dtcm) + LENGTH(dtcm);
 __irq_flags	=	__dtcm_top - 0x08;

@@ -30,6 +30,12 @@
 #ifndef _PARTITION_H
 #define _PARTITION_H
 
+#include <nds.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>//BRK(); SBRK();
+
 #include "common.h"
 #include "cache.h"
 #include "lock.h"
@@ -73,35 +79,31 @@ typedef struct {
 	char                  label[12];			// Volume label
 } PARTITION;
 
-/*
-Mount the supplied device and return a pointer to the struct necessary to use it
-*/
+/*C++ compiler*/
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*Mount the supplied device and return a pointer to the struct necessary to use it*/
 PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cacheSize, uint32_t SectorsPerPage, sec_t startSector);
 
-/*
-Dismount the device and free all structures used.
-Will also attempt to synchronise all open files to disc.
-*/
+/*Dismount the device and free all structures used.Will also attempt to synchronise all open files to disc.*/
 void _FAT_partition_destructor (PARTITION* partition);
 
-/*
-Return the partition specified in a path, as taken from the devoptab.
-*/
+/*Return the partition specified in a path, as taken from the devoptab.*/
 PARTITION* _FAT_partition_getPartitionFromPath (const char* path);
 
-/*
-Create the fs info sector.
-*/
+/*Create the fs info sector.*/
 void _FAT_partition_createFSinfo(PARTITION * partition);
 
-/*
-Read the fs info sector data.
-*/
+/*Read the fs info sector data.*/
 void _FAT_partition_readFSinfo(PARTITION * partition);
 
-/*
-Write the fs info sector data.
-*/
+/*Write the fs info sector data.*/
 void _FAT_partition_writeFSinfo(PARTITION * partition);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _PARTITION_H

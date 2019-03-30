@@ -1,3 +1,5 @@
+reimplement slow mode for homebrew that use loops for waits
+
 remove nops in ex_s.s
 todo timer MSB not working
 hwreg 0x301 in CPUWriteByte

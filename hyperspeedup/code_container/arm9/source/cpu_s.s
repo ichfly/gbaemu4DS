@@ -1,14 +1,14 @@
-	.text
+.arch	armv4t
+.cpu arm7tdmi
+.section	.itcm,"ax",%progbits
 
-	.equ REG_IME, 0x04000208
+.equ REG_IME, 0x04000208
 
-	.align 4
-	.code 32
-	.arm
+.align 4
+.code 32
+.arm
 	
-
 __sp_undef	=	__dtcm_top - 0x100;	@ichfly @ 1.792 Byte
-
 
 	.global readbankedsp
    .type   readbankedsp STT_FUNC
@@ -272,7 +272,8 @@ wait_irq:
 	sub r0,sp,#4*17 @+1 res you know
 	ldr r1,=exRegs
 	mov r2,#4*16
-	BLX memcpy
+	mov lr,pc
+	BL memcpy
 	pop {r0-r3}
 	
 	sub sp,sp,#0x58
@@ -294,7 +295,8 @@ wait_irq:
 	sub r1,sp,#4*17 @+1 res you know
 	ldr r0,=exRegs
 	mov r2,#4*16
-	BLX memcpy
+	mov lr,pc
+	BL memcpy
 	pop {r0-r3}
 
 
@@ -333,6 +335,40 @@ ichflyswiHalt:
 	pop {r12}
 	bx	lr
 	
+
+
+
+@coto: sleep mode protection for gba
+@---------------------------------------------------------------------------------
+	.global backup_mpu_setprot
+	.type   backup_mpu_setprot STT_FUNC
+@---------------------------------------------------------------------------------
+backup_mpu_setprot:
+
+	push {r6,r7}
+	@read MPU mode (should be NDS)
+	ldr	r6, =MPUPERMBACKUPSET_SWI		@MPU current Protection Settings for Data Region are backd
+	mrc	p15, 0, r7, c5, c0, 2      
+	str	r7, [r6]
+	pop {r6,r7}
+	bx lr
+	
+	
+@-----------------------------------
+	.global restore_mpu_setprot
+	.type   restore_mpu_setprot STT_FUNC
+@---------------------------------------------------------------------------------
+restore_mpu_setprot:
+
+	push {r6,r7}
+	@restore MPU mode (should be NDS anyway)
+	ldr	r6, =MPUPERMBACKUPSET_SWI  @MPU current Protection Settings for Data Region are restored
+	ldr	r7, [r6]
+	mcr	p15, 0, r7, c5, c0, 2	
+	pop {r6,r7}
+	
+	bx lr
+
 	
 	
 @---------------------------------------------------------------------------------
@@ -344,8 +380,7 @@ resettostartup:
 @---------------------------------------------------------------------------------
 	B main
 	
-	
-	
+
 @---------------------------------------------------------------------------------
 	.global copyMode_5
 	.type   copyMode_5 STT_FUNC
@@ -430,3 +465,82 @@ loop2:
 	pop {r4-r11,pc}
 	
 	
+
+
+@
+@			Copyright (C) 2017  Coto
+@This program is free software; you can redistribute it and/or modify
+@it under the terms of the GNU General Public License as published by
+@the Free Software Foundation; either version 2 of the License, or
+@(at your option) any later version.
+
+@This program is distributed in the hope that it will be useful, but
+@WITHOUT ANY WARRANTY; without even the implied warranty of
+@MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+@General Public License for more details.
+
+@You should have received a copy of the GNU General Public License
+@along with this program; if not, write to the Free Software
+@Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+@USA
+@
+
+
+.arm
+.code 32
+
+.global 	IRQWait
+.type   	IRQWait STT_FUNC
+IRQWait:
+
+	stmdb sp!, {r0-r7, lr}
+	mov r3,r0
+
+	@r0 = IE/dummy / r1 = IRQtowaitfor / r2 = IF /r3 = reentrant / r4 = dummy/BIOSflags / r5 = IME saved / r6 = 0x04000000 /r7 = BIOSflags addr
+	mov r6,#0x04000000
+	ldr r5,[r6,#0x208]	@IME saved
+	mov r0,#1
+	str r0,[r6,#0x208]	@force IME = 1
+	
+waitirq:
+	add	r7, r6, #0x210
+	ldmia r7, {r0,r2}	@r0 = IE / r2 = IF
+	
+	@BIOS Flag
+	#ifdef ARM7
+	ldr	r7, =__irq_flags
+	#endif
+	#ifdef ARM9
+	ldr	r7, =__irq_flags
+	#endif
+	ldr r4,[r7]
+	
+	and r2,r2,r0			@IF & IE
+	orr r2,r2,r4			@orr swi flags
+	
+	@sleep if interrupt to wait for (r1) hasnt happened.
+	tst r2,r1
+	
+	#ifdef ARM7
+	@4000301h - NDS7 - Halt function (HALTCNT) - Low Power Mode Control (R/W)
+	ldrne	r2, =0x04000301
+	movne 	r3,#(2<<6)			@2=Halt
+	strne 	r3,[r2]
+	#endif
+	
+	#ifdef ARM9
+	@NDS9	-	Halt function	CP15
+	movne 	r0,#0
+	mcrne 	p15,0,r0,c7,c0,4				@low power mode: waitforIrq CP15
+	#endif
+	
+	bne waitirq		@retry until r1 happens
+	
+	orr r4,r4,r1	@add in bios flags
+	str r4,[r7]
+	
+	str r5,[r6,#0x208]	@restore IME
+exitirq:
+	ldmia sp!, {r0-r7, lr}
+	
+bx r14
