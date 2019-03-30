@@ -96,7 +96,7 @@ int main( int argc, char **argv) {
 	REG_POWERCNT &= ~((POWER_3D_CORE | POWER_MATRIX) & 0xFFFF);//powerOff(POWER_3D_CORE | POWER_MATRIX); //3D use power so that is not needed
 
 	//consoleDemoInitsubsc();
-	iprintf("gbaemu4DS: ichfly / Coto \n");
+	iprintf("gbaemu4DS for r4i gold (3DS) (r4ids.cn) by ichfly / Coto \n");
 	//consoleDemoInit();
 	//soundEnable(); //sound finaly
 	//fifoSetDatamsgHandler(FIFO_USER_02, arm7debugMsgHandler, 0);
