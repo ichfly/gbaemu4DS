@@ -18,25 +18,32 @@ include $(DEVKITARM)/ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(shell basename $(CURDIR))
 BUILD		:=	build
+
 SOURCES		:=	source \
-						source/gtk \
-INCLUDES	:=	include 
+				source/hbmenustub	\
+				../common/
+ 
+INCLUDES	:=	include	\
+						include/SDL	\
+						include/gl2d \
+						source/hbmenustub	\
+				../common/
 DATA		:=	data  
 GRAPHICS	:=	gfx  
 @NITRODATA	:=	nitrofiles
 
 # These set the information text in the nds file
-GAME_TITLE		:=	GBAemu4ds
-GAME_SUBTITLE1	:=	by ichfly/ichichfly
+GAME_TITLE		:=	gbaemu4ds
+GAME_SUBTITLE1	:=	2019 ichfly/ichichfly - 2015 Coto
 GAME_SUBTITLE2	:=	ichfly.github.com/gbaemu4DS/
 
 #---------------------------------------------------------------------------------
-# options for code generation  #-save-temps
+# options for code generation  # -save-temps
 #---------------------------------------------------------------------------------
-ARCH	:= -mthumb-interwork -march=armv5te -mtune=arm946e-s -mthumb
+ARCH	:= -mthumb-interwork -mcpu=arm7tdmi -march=armv4t -marm -mstructure-size-boundary=32
 CFLAGS	:= -g -Wall -Ofast\
- 		-fomit-frame-pointer\
-		-ffast-math \
+ 		-mapcs-frame	\
+		-funsafe-math-optimizations	\
 		$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -DARM9
@@ -49,7 +56,7 @@ LDFLAGS       =       --specs=../tgba_arm9.specs $(ARCH) -Wl,-Map,$(notdir $*.ma
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:= #-lfat  -lnds9
+LIBS	:= 	-lfat	-lnds9
  
  
 #---------------------------------------------------------------------------------
@@ -117,16 +124,17 @@ endif
  
 .PHONY: $(BUILD) clean
  
+
 #---------------------------------------------------------------------------------
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+	@$(MAKE) --no-print-directory -C $(BUILD) -o $(BUILD) -f $(CURDIR)/Makefile
  
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).nds
-
+	@rm -rf ../../build/gbaemu4ds
 #---------------------------------------------------------------------------------
 else
  
